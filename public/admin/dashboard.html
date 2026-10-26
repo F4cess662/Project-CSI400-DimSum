@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="small muted" id="updatedAt">กำลังโหลด...</div>
+      <button class="btn btn-secondary btn-sm" id="refreshBtn">↻ รีเฟรช</button>
+    </div>
+
+    <div class="alert alert-bad hidden" id="loadError" style="margin-bottom:16px"></div>
+
+    <!-- ตัวเลขสรุป -->
+    <div class="grid grid-4 section">
+      <div class="card stat">
+        <div class="stat-icon">🪑</div>
+        <div><div class="stat-value" id="statTables">-</div><div class="stat-label">โต๊ะมีลูกค้า</div></div>
+      </div>
+      <div class="card stat">
+        <div class="stat-icon">🧾</div>
+        <div><div class="stat-value" id="statBills">-</div><div class="stat-label" id="statBillsSub">บิลที่เปิด</div></div>
+      </div>
+      <div class="card stat">
+        <div class="stat-icon">🚫</div>
+        <div><div class="stat-value" id="statMenus">-</div><div class="stat-label">เมนูปิดขาย</div></div>
+      </div>
+      <div class="card stat">
+        <div class="stat-icon">👥</div>
+        <div><div class="stat-value" id="statStaff">-</div><div class="stat-label" id="statStaffSub">พนักงานใช้งาน</div></div>
+      </div>
+    </div>
+
+    <div class="split section">
+      <!-- ผังโต๊ะย่อ -->
+      <div class="card">
+        <div class="row-between" style="margin-bottom:12px">
+          <h3 class="card-title" style="margin:0">ผังโต๊ะ</h3>
+          <div class="row">
+            <span class="badge badge-ok">ว่าง</span>
+            <span class="badge badge-bad">มีลูกค้า</span>
+            <a class="btn btn-ghost btn-sm" href="/admin/tables.html">ไปผังโต๊ะ →</a>
+          </div>
+        </div>
+        <div id="tableMap"><div class="loading">กำลังโหลด...</div></div>
+      </div>
+
+      <div class="stack">
+        <!-- เมนูปิดขาย -->
+        <div class="card">
+          <div class="row-between" style="margin-bottom:12px">
+            <h3 class="card-title" style="margin:0">เมนูปิดขาย</h3>
+            <a class="btn btn-ghost btn-sm" href="/admin/stock-today.html">จัดการ →</a>
+          </div>
+          <div id="menuList"><div class="loading">กำลังโหลด...</div></div>
+        </div>
+
+        <!-- พนักงาน -->
+        <div class="card">
+          <div class="row-between" style="margin-bottom:12px">
+            <h3 class="card-title" style="margin:0">พนักงาน</h3>
+            <a class="btn btn-ghost btn-sm hidden" id="usersLink" href="/admin/users.html">จัดการ →</a>
+          </div>
+          <div id="staffList"><div class="loading">กำลังโหลด...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- เผื่อเฟสหน้า: ยอดขาย / เมนูใกล้หมด / VIP วันนี้ / วัตถุดิบ -->
+    <div class="card section">
+      <h3 class="card-title">เร็วๆ นี้</h3>
+      <div class="empty">
+        <div class="empty-icon">🥟</div>
+        <div class="bold">ยอดขายวันนี้ · เมนูใกล้หมด · การจองห้อง VIP วันนี้ · วัตถุดิบต่ำกว่าจุดสั่งซื้อ</div>
+        <div class="small">จะแสดงที่นี่เมื่อระบบส่วนนั้นพร้อมใช้งาน</div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/dashboard.js"></script>
+</body>
+</html>
