@@ -17,18 +17,7 @@ app.use(session({
 }));
 
 // หน้าเว็บทั้งหมด (HTML, CSS, JS, รูป) อยู่ใน public/
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'customer', 'web_homePage.html'));
-});
-app.get('/menu', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'customer', 'menu'));
-});
-
-app.get('/owner', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'Auth', 'login.html'));
-});
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ไฟล์จำลองของงานเพื่อนที่ยังไม่เสร็จ (dev-mocks/ ไม่ขึ้น Git) — ใช้ก็ต่อเมื่อยังไม่มีไฟล์จริง
 // ถ้าไฟล์จริงของเพื่อนเข้ามาแล้ว ไฟล์จริงชนะเสมอ ไม่ต้องลบไฟล์จำลองก็ได้
@@ -68,8 +57,7 @@ app.use((req, res) => {
 });
 
 app.listen(config.port, () => {
-  const baseWeb = `http://localhost:${config.port}`;
-  console.log(`หน้าเว็บร้านติ่มซำ เปิดที่ ${baseWeb}/`);
-  console.log(`หน้าเว็บสำหรับทางร้าน ${baseWeb}/owner`);
-  console.log(`หน้าเว็บลูกค้าสั่งอาหารผ่าน qr ${baseWeb}/menu`);
+  const base = `http://localhost:${config.port}`;
+  console.log(`หน้าเว็บร้านนึ่งสุข เปิดที่ ${base}/`);
+  console.log(`หน้าพนักงาน ${base}/admin/login.html`);
 });
