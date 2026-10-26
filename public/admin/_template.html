@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- แม่แบบหน้าพนักงาน: copy เป็น public/admin/ชื่อหน้า.html แล้วแก้ 3 จุดที่มี ★ -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ชื่อหน้า · นึ่งสุข</title> <!-- ★1 -->
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- ★2 เนื้อหาของหน้าใส่ใน template นี้ (ห้ามใส่ <style> หรือ style="" ที่ไม่จำเป็น) -->
+  <template id="page">
+    <div class="toolbar">
+      <input class="input" style="max-width:320px" id="search" placeholder="ค้นหา...">
+      <button class="btn" id="addBtn">+ เพิ่ม</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>ชื่อ</th><th>สถานะ</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="3" class="loading">กำลังโหลด...</td></tr></tbody>
+      </table>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      // ★3 ชื่อหน้า + บทบาทที่เข้าได้ (+ perm: 'payment' หรือ 'vip_booking' ถ้าต้องมีช่องติ๊ก)
+      const me = await initStaffPage({ title: 'ชื่อหน้า', roles: ['manager', 'owner'] });
+      if (!me) return;
+
+      async function load() {
+        const rows = await run(() => api.get('ชื่อapi', { q: document.getElementById('search').value }));
+        if (!rows) return;
+        document.getElementById('rows').innerHTML = rows.length
+          ? rows.map((r) => `<tr><td>${fmt.esc(r.name)}</td><td>${badge(r.is_active ? 'active' : 'inactive')}</td><td></td></tr>`).join('')
+          : `<tr><td colspan="3"><div class="empty"><div class="empty-icon">🥟</div>ยังไม่มีข้อมูล</div></td></tr>`;
+      }
+      document.getElementById('search').oninput = load;
+      load();
+    })();
+  </script>
+</body>
+</html>

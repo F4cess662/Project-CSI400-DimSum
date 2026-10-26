@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- หน้าล็อกอินชั่วคราว (ทำไว้ให้ทีมใช้ทดสอบได้ก่อน) — คนที่ 2 แก้ทับไฟล์นี้ได้เลยตอนทำเฟส 1 -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>เข้าสู่ระบบพนักงาน · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div class="container" style="max-width:420px;margin-top:48px">
+    <div class="card stack">
+      <a class="logo" href="/"><span class="logo-mark">🥟</span><span class="logo-text">นึ่งสุข</span></a>
+      <h2>เข้าสู่ระบบพนักงาน</h2>
+      <div class="alert alert-bad hidden" id="err"></div>
+      <form id="form" class="stack">
+        <div class="field"><label>ชื่อล็อกอิน</label><input class="input" name="username" autocomplete="username" required></div>
+        <div class="field"><label>รหัสผ่าน</label><input class="input" type="password" name="password" autocomplete="current-password" required></div>
+        <button class="btn btn-block" type="submit">เข้าสู่ระบบ</button>
+      </form>
+    </div>
+  </div>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    document.getElementById('form').onsubmit = async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const err = document.getElementById('err');
+      try {
+        const user = await api.post('auth', { action: 'login', username: f.get('username'), password: f.get('password') });
+        location.href = '/admin/' + (HOME_BY_ROLE[user.role_code] || 'dashboard.html');
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.remove('hidden');
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,3 +1,7 @@
 node_modules/
 public/assets/uploads/*
 !public/assets/uploads/.gitkeep
+
+# ไฟล์จำลองงานเพื่อน ใช้ในเครื่องตัวเองเท่านั้น ห้ามส่งขึ้น Git
+dev-mocks/*
+!dev-mocks/README.md
