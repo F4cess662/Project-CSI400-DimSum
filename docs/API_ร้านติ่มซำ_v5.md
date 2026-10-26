@@ -58,8 +58,8 @@
 | /api/users | POST deactivate / activate | id | ปิด/เปิดบัญชี ไม่ลบจริง · ปิดบัญชีตัวเองไม่ได้ | owner | FR-49 | P1 | 2 |
 | /api/settings | GET | — | ตั้งค่าร้านทั้งหมด (รวม vip_min_spend, vip_deposit_percent, vip_max_hours) | สาธารณะ | FR-02, 50 | P1 | 4 |
 | /api/settings | POST update | เวลาเปิด-ปิด 2 กะ, เวลาปิดรับออเดอร์, ข้อมูลร้าน, max_qty_per_item, ค่าห้อง VIP | ตั้งค่าใหม่ · log ระดับ system | owner | FR-50 | P1 | 4 |
-| /api/holidays | GET | year | วันหยุดราชการของปีนั้น | พนักงาน | FR-50 | P1 | 4 |
-| /api/holidays | POST create / delete | holiday_date, name / id | เพิ่ม/ลบวันหยุด (วันซ้ำเพิ่มไม่ได้) | owner | FR-50 | P1 | 4 |
+| /api/holidays | GET | year | วันหยุดราชการของปีนั้น | พนักงาน | FR-50 | P1 | 1 |
+| /api/holidays | POST create / delete | holiday_date, name / id | เพิ่ม/ลบวันหยุด (วันซ้ำเพิ่มไม่ได้) | owner | FR-50 | P1 | 1 |
 
 ## 2. เมนู
 
@@ -143,8 +143,8 @@
 | /api/members | POST register | phone, otp, name, birth_date | สมาชิกใหม่ + **แจกคูปองต้อนรับเข้าบัญชีอัตโนมัติ** (FR-43) + ล็อกอินให้เลย | สาธารณะ | FR-38, 43 | P3 | 2 |
 | /api/members | POST login / logout | phone, otp | session สมาชิก | สาธารณะ | FR-38 | P3 | 2 |
 | /api/members | GET | action=me | แต้มคงเหลือ, ประวัติแต้ม, คูปองในบัญชี, ค่าบาร์โค้ด, เตือน "แต้มจะหมดอายุ 31 ธ.ค." ตั้งแต่ 1 ธ.ค. | สมาชิก | FR-39 | P3 | 2 |
-| /api/rewards | GET | — | รางวัลที่ใช้งาน | พนักงาน | FR-41 | P3 | 3 |
-| /api/rewards | POST create / update / deactivate | name, points_cost, reward_type, menu_item_id, discount_value | — | manager+ | FR-41 | P3 | 3 |
+| /api/rewards | GET | — | รางวัลที่ใช้งาน | พนักงาน | FR-41 | P3 | 1 |
+| /api/rewards | POST create / update / deactivate | name, points_cost, reward_type, menu_item_id, discount_value | — | manager+ | FR-41 | P3 | 1 |
 | /api/coupons | GET | — · `?code=` = เช็กคูปองใบเดียว | คูปองทั้งหมด / ใช้ได้หรือไม่ + เหตุผล | manager+ / staff+ [รับเงิน] | FR-42 | P3 | 6 |
 | /api/coupons | POST create / update / deactivate | code, coupon_type, value, free_menu_item_id, min_spend, start_date, end_date, valid_time_start, valid_time_end, **valid_weekdays**, **exclude_holidays**, member_only, usage_limit, per_member_limit | 1 บิลใช้ได้ 1 ใบ (BR-23) · เช็กวันในสัปดาห์ ช่วงเวลา และวันหยุดราชการ (BR-27) | manager+ | FR-42 | P3 | 6 |
 | /api/tasks | POST birthday_coupons | month | แจกคูปองเดือนเกิดเข้าบัญชีสมาชิกที่เกิดเดือนนั้น (ไม่แจกซ้ำในเดือนเดียวกัน) | owner | FR-43 | P3 | 1 |
@@ -169,8 +169,8 @@
 | /api/suppliers | GET | — · `?ingredient_id=` = เทียบราคาทุกเจ้า | ซัพพลายเออร์ / ราคาเรียงจากถูกไปแพง | manager+ | FR-54, 55 | P4 | 2 |
 | /api/suppliers | POST create / update / deactivate | name, contact_name, phone, line_id, lead_time_days | — | manager+ | FR-54 | P4 | 2 |
 | /api/suppliers | POST set_price | supplier_id, ingredient_id, price, quoted_at | บันทึกราคาจากใบเสนอราคา (ทับราคาเก่า) | manager+ | FR-55 | P4 | 2 |
-| /api/ingredients | GET | q, low_stock=1 | วัตถุดิบ + คงเหลือ + ต่ำกว่าจุดสั่งซื้อซ้ำหรือไม่ | manager+ | FR-56, 57 | P4 | 3 |
-| /api/ingredients | POST create / update / deactivate | name, unit, reorder_point | — | manager+ | FR-56 | P4 | 3 |
+| /api/ingredients | GET | q, low_stock=1 | วัตถุดิบ + คงเหลือ + ต่ำกว่าจุดสั่งซื้อซ้ำหรือไม่ | manager+ | FR-56, 57 | P4 | 1 |
+| /api/ingredients | POST create / update / deactivate | name, unit, reorder_point | — | manager+ | FR-56 | P4 | 1 |
 | /api/purchase_orders | GET | status · `?id=` = PO เดียว + รายการ | รายการ PO | manager+ | FR-58 | P4 | 5 |
 | /api/purchase_orders | POST create / update | supplier_id, expected_date, note, items[{ingredient_id, qty, unit_price}] | สถานะ draft · แก้ได้เฉพาะ draft · ราคาตั้งต้นดึงจาก supplier_prices | manager+ | FR-58 | P4 | 5 |
 | /api/purchase_orders | POST send / cancel | id | send → สถานะ sent + ข้อความสำหรับคัดลอกส่ง LINE · ไม่ต้องรออนุมัติ | manager+ | FR-58 | P4 | 5 |
