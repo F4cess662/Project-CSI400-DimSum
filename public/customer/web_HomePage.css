@@ -1,0 +1,624 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    font-family: "Prompt", sans-serif;
+    color: #38251e;
+    background-image: url("../assets/img/background.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.navbar {
+    width: 100%;
+    min-height: 100px;
+    padding: 0 6%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    background: rgba(255, 252, 235, 0.92);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 3px 15px rgba(120, 90, 30, 0.08);
+}
+
+.logo {
+    display: block;
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    background-image: url("../assets/img/logo_rantimsum.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 50%;
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    margin-right: auto;
+    margin-left: 20px;
+}
+
+.nav-menu a {
+    color: #5c4a2e;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.3s ease;
+}
+
+.nav-menu a:hover {
+    color: #d69b26;
+}
+
+.nav-login a {
+    display: inline-block;
+    padding: 11px 25px;
+    background-color: #f2d77b;
+    color: #59451e;
+    border: 1px solid #e8ca69;
+    border-radius: 25px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+.nav-login a:hover {
+    background-color: #e8c45a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(150, 110, 20, 0.15);
+}
+
+.page {
+    width: 90%;
+    max-width: 1000px;
+    margin: 14px auto 30px;
+}
+
+.details {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.slider {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
+}
+
+.slides {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    transition: transform 0.6s ease-in-out;
+    will-change: transform;
+}
+
+.slides img {
+    display: block;
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    object-fit: cover;
+    object-position: center;
+    user-select: none;
+}
+
+.slider-btn {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(120, 90, 30, 0.65);
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background 0.3s ease;
+}
+
+.slider-btn.prev {
+    left: 15px;
+}
+
+.slider-btn.next {
+    right: 15px;
+}
+
+.slider-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.indicators {
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    z-index: 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    transform: translateX(-50%);
+}
+
+.dot {
+    display: block;
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.dot.active {
+    background: #38251e;
+}
+
+.details_2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    align-items: stretch;
+    width: 100%;
+    margin: 10px 0 0;
+    padding: 0;
+    font-family: "Prompt", sans-serif;
+    color: #38251e;
+}
+
+.member-card,
+.opening-card {
+    min-width: 0;
+    min-height: 260px;
+    background: #fffaf2;
+    border: 1px solid #f0d0a0;
+    border-radius: 16px;
+    box-shadow: 0 4px 0 #ead1a5;
+}
+
+.member-card {
+    display: flex;
+    align-items: center;
+    padding: 24px 20px;
+}
+
+.member-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+}
+
+.member-info {
+    min-width: 0;
+}
+
+.member-info h1 {
+    margin-bottom: 10px;
+    color: #38251e;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.member-info p {
+    margin-bottom: 16px;
+    color: #98725f;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.member-benefits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.benefit {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 11px;
+    border-radius: 30px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.points {
+    background: #fff0c9;
+    color: #a56a00;
+}
+
+.coupon {
+    background: #ffe6e3;
+    color: #c92d2d;
+}
+
+.birthday {
+    background: #e2f3e7;
+    color: #247747;
+}
+
+.register-btn {
+    flex-shrink: 0;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    background: #cf2e2e;
+    color: white;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #a92323;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.register-btn:hover {
+    background: #b92525;
+    transform: translateY(-1px);
+}
+
+.register-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #a92323;
+}
+
+.opening-card {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.opening-card h2 {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 18px;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.clock-icon {
+    color: #d92e2e;
+    font-size: 25px;
+    line-height: 1;
+}
+
+.opening-time {
+    padding-bottom: 15px;
+    border-bottom: 2px dotted #e8b56f;
+}
+
+.opening-time strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.opening-time p {
+    margin: 0;
+    color: #98725f;
+    font-size: 13px;
+}
+
+.opening-time.evening {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    border-bottom: none;
+}
+
+.phone-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 40px;
+    margin-top: auto;
+    padding: 8px 12px;
+    border: 1px solid #f0d0a0;
+    border-radius: 13px;
+    background: #fffdf8;
+    color: #38251e;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 3px 0 #ead1a5;
+    transition: background 0.2s;
+}
+
+.phone-btn:hover {
+    background: #fff0d9;
+}
+
+.phone-btn span {
+    font-size: 20px;
+}
+
+@media (max-width: 1000px) {
+    .navbar {
+        padding: 0 3%;
+        gap: 16px;
+    }
+
+    .logo {
+        width: 110px;
+    }
+
+    .nav-menu {
+        gap: 18px;
+        margin-left: 10px;
+    }
+
+    .nav-menu a {
+        font-size: 14px;
+    }
+
+    .nav-login a {
+        padding: 10px 18px;
+    }
+
+    .member-card {
+        padding: 20px 16px;
+    }
+
+    .member-content {
+        gap: 12px;
+    }
+
+    .member-info h1 {
+        font-size: 20px;
+    }
+
+    .member-info p {
+        font-size: 12px;
+    }
+
+    .register-btn {
+        padding: 12px 14px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar {
+        min-height: auto;
+        padding: 14px 5%;
+        flex-wrap: wrap;
+    }
+
+    .logo {
+        width: 100px;
+        height: 60px;
+    }
+
+    .nav-menu {
+        order: 3;
+        width: 100%;
+        margin: 0;
+        gap: 20px;
+        overflow-x: auto;
+        padding: 8px 0;
+    }
+
+    .nav-menu a {
+        font-size: 14px;
+    }
+
+    .page {
+        width: 92%;
+        margin-top: 14px;
+    }
+
+    .slider {
+        height: 300px;
+    }
+
+    .details_2 {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .member-card,
+    .opening-card {
+        min-height: 220px;
+    }
+
+    .member-content {
+        gap: 20px;
+    }
+
+    .member-info p {
+        font-size: 14px;
+    }
+
+    .register-btn {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page {
+        width: 94%;
+    }
+
+    .slider {
+        height: 220px;
+    }
+
+    .slider-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 18px;
+    }
+
+    .slider-btn.prev {
+        left: 10px;
+    }
+
+    .slider-btn.next {
+        right: 10px;
+    }
+
+    .member-card {
+        padding: 22px 16px;
+    }
+
+    .member-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .member-info h1 {
+        font-size: 20px;
+    }
+
+    .member-info p {
+        font-size: 13px;
+    }
+
+    .benefit {
+        font-size: 10px;
+    }
+
+    .register-btn {
+        width: 100%;
+    }
+
+    .opening-card {
+        padding: 18px 16px;
+    }
+
+    .opening-card h2 {
+        font-size: 19px;
+    }
+}
+
+.card-menu {
+    width: 250px;
+    background-color: #fffaf2;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.img_menu {
+    width: 100%;
+    height: 180px;
+    background-color: #ead1a5;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.img_menu img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.card-menu p {
+    padding: 12px;
+    margin: 0;
+    text-align: center;
+}
+
+.footer {
+    display: grid;
+    grid-template-columns: 1.2fr 1.5fr 1fr;
+    gap: 40px;
+    padding: 40px 8%;
+    background-color: #ead1a5;
+    color: #5b3825;
+    border-top: 4px solid #c8954a;
+}
+
+.footer > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.footer h1 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    color: #6b3e26;
+}
+
+.footer p {
+    font-size: 15px;
+    line-height: 1.9;
+    margin: 0 0 6px;
+    color: #694c38;
+}
+
+.footer > div:first-child {
+    align-items: center;
+    justify-content: center;
+}
+
+.footer .logo {
+    width: 75px;
+    height: 75px;
+    border-radius: 50%;
+    background-color: #fffaf2;
+    border: 3px solid #c8954a;
+    margin-bottom: 12px;
+}
+
+.footer > div:first-child h1 {
+    font-size: 26px;
+    margin: 0;
+}
+
+.footer > div:nth-child(2) p {
+    white-space: pre-line;
+}
+
+@media (max-width: 768px) {
+    .footer {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        padding: 32px 8%;
+    }
+
+    .footer > div:first-child {
+        align-items: flex-start;
+    }
+}

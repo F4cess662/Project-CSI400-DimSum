@@ -17,7 +17,18 @@ app.use(session({
 }));
 
 // หน้าเว็บทั้งหมด (HTML, CSS, JS, รูป) อยู่ใน public/
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'customer', 'web_homePage.html'));
+});
+app.get('/menu', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'customer', 'menu'));
+});
+
+app.get('/owner', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'Auth', 'login.html'));
+});
 
 // โหลด API อัตโนมัติ: routes/menus.js → /api/menus (ไฟล์ที่ขึ้นต้นด้วย _ จะข้าม)
 // เพิ่มไฟล์ใหม่ใน routes/ ได้เลย ไม่ต้องแก้ไฟล์นี้ ทีมจะได้ไม่ชนกัน
@@ -32,5 +43,8 @@ app.use('/api', (req, res) => res.status(404).json({ success: false, data: null,
 app.use(errorHandler);
 
 app.listen(config.port, () => {
-  console.log(`ระบบร้านติ่มซำ เปิดที่ http://localhost:${config.port}`);
+  const baseWeb = `http://localhost:${config.port}`;
+  console.log(`หน้าเว็บร้านติ่มซำ เปิดที่ ${baseWeb}/`);
+  console.log(`หน้าเว็บสำหรับทางร้าน ${baseWeb}/owner`);
+  console.log(`หน้าเว็บลูกค้าสั่งอาหารผ่าน qr ${baseWeb}/menu`);
 });

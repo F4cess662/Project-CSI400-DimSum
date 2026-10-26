@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Home Page</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="web_HomePage.css">
+    <script src="web_homePage.js" defer></script>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="#" class="logo" aria-label="หน้าแรก"></a>
+
+        <div class="nav-menu">
+            <a href="#">หน้าแรก</a>
+            <a href="#">เมนู</a>
+            <a href="#">จัดเลี้ยง</a>
+            <a href="#">เซ็ตเมนู</a>
+            <a href="#">ติดต่อสอบถาม</a>
+        </div>
+        <div class="nav-login">
+            <a href="#">เข้าสู่ระบบ</a>
+        </div>
+    </nav>
+    <main class="page">
+        <section class="details">
+            <div class="slider">
+                <div class="slides">
+                    <img src="https://www.regent-holidays.co.uk/upload-files/blog-sections/section-214_1975.jpg"
+                        class="slide active" alt="ปราสาทญี่ปุ่นและภูเขาฟูจิ">
+
+                    <img src="https://res.klook.com/image/upload/q_85/c_fill,w_750/v1674030135/blog/bnbtltnp5nqbdevfcbmn.jpg"
+                        class="slide" alt="สถานที่ท่องเที่ยวในญี่ปุ่น">
+
+                    <img src="https://www.nippon.com/en/ncommon/contents/guide-to-japan/133214/133214.jpg" class="slide"
+                        alt="บรรยากาศประเทศญี่ปุ่น">
+                </div>
+                <button type="button" class="slider-btn prev" onclick="plusSlides(-1)" aria-label="รูปก่อนหน้า">
+                    &#10094;
+                </button>
+                <button type="button" class="slider-btn next" onclick="plusSlides(1)" aria-label="รูปถัดไป">
+                    &#10095;
+                </button>
+
+                <div class="indicators">
+                    <button type="button" class="dot active" onclick="showSlide(0)" aria-label="แสดงรูปที่ 1">
+                    </button>
+
+                    <button type="button" class="dot" onclick="showSlide(1)" aria-label="แสดงรูปที่ 2">
+                    </button>
+
+                    <button type="button" class="dot" onclick="showSlide(2)" aria-label="แสดงรูปที่ 3">
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="details_2">
+            <div class="member-card">
+
+                <div class="member-content">
+
+                    <div class="member-info">
+                        <h1>สมาชิกนึ่งสุข</h1>
+
+                        <p>
+                            สะสมแต้ม 100฿ = 1 แต้ม ·
+                            คูปองต้อนรับ · ของขวัญวันเกิด
+                        </p>
+
+                        <div class="member-benefits">
+                            <span class="benefit points">
+                                ☆ 100฿ = 1 แต้ม
+                            </span>
+
+                            <span class="benefit coupon">
+                                ♧ WELCOME20
+                            </span>
+
+                            <span class="benefit birthday">
+                                ♔ ขนมจีบฟรีเดือนเกิด
+                            </span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="register-btn">
+                        สมัครสมาชิกฟรี
+                    </button>
+
+                </div>
+            </div>
+            <div class="opening-card">
+
+                <h2>
+                    <span class="clock-icon">◷</span>
+                    เวลาเปิด-ปิด
+                </h2>
+
+                <div class="opening-time">
+                    <strong>กะเช้า 10:00–14:00</strong>
+                    <p>ปิดรับออเดอร์ 13:30</p>
+                </div>
+
+                <div class="opening-time evening">
+                    <strong>กะเย็น 16:00–20:00</strong>
+                    <p>ปิดรับออเดอร์ 19:30</p>
+                </div>
+
+                <a href="tel:020000000" class="phone-btn">
+                    <span>♧</span>
+                    02-000-0000
+                </a>
+            </div>
+        </section>
+        <div class="menu">
+            <h1>menu</h1>
+            <div class="card-menu">
+                <div class="img_menu">img</div>
+                <p>ชื่อเมนู</p>
+            </div>
+        </div>
+    </main>
+    <footer class="footer">
+        <div>
+            <div class="logo"></div>
+            <h1>นึ่งสุข</h1>
+        </div>
+        <div>
+            <h1>เวลาเปิด-ปิด</h1>
+            <p>
+                10:00 - 14:00 (ปิดรับออเดอร์ 13:30)
+                16:00 - 20:00 (ปิดรับออเดอร์ 19:30)
+            </p>
+        </div>
+        <div>
+            <h1>ติดต่อ</h1>
+            <p>ร้านนิ่งสุข</p>
+            <p>โทร 02-000-0000</p>
+        </div>
+    </footer>
+</body>
+
+</html>
