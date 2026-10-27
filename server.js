@@ -17,7 +17,19 @@ app.use(session({
 }));
 
 // หน้าเว็บทั้งหมด (HTML, CSS, JS, รูป) อยู่ใน public/
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'customer', 'web_homePage.html'));
+});
+app.get('/menu', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'customer', 'menu.html'));
+});
+
+app.get('/owner', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'login.html'));
+});
 
 // ไฟล์จำลองของงานเพื่อนที่ยังไม่เสร็จ (dev-mocks/ ไม่ขึ้น Git) — ใช้ก็ต่อเมื่อยังไม่มีไฟล์จริง
 // ถ้าไฟล์จริงของเพื่อนเข้ามาแล้ว ไฟล์จริงชนะเสมอ ไม่ต้องลบไฟล์จำลองก็ได้
@@ -45,7 +57,10 @@ if (fs.existsSync(mockRoutes)) {
   }
 }
 
-// API ที่ไม่มีอยู่จริง
+// API 
+app.use('/api', require('./routes/menu'));
+
+
 app.use('/api', (req, res) => res.status(404).json({ success: false, data: null, message: 'ไม่พบ API นี้' }));
 app.use(errorHandler);
 
