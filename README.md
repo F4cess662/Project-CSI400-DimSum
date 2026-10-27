@@ -5,6 +5,7 @@
 2. เปิด XAMPP → Start เฉพาะ **MySQL** (ไม่ต้องเปิด Apache)
 3. phpMyAdmin → Import → `database/dimsum_schema.sql`
    (ถ้าเคย import ฉบับเก่าไว้ ให้ลบฐานข้อมูล `dimsum` ก่อนแล้ว import ใหม่)
+   **import ไปแล้วก่อน 27 ต.ค.** ไม่ต้องลบ ให้ Import `database/add_banners.sql` เพิ่ม 1 ครั้ง (ตารางแบนเนอร์)
 4. (เมื่อคนที่ 1 ส่งแล้ว) Import `scripts/seed.sql` แล้วรัน `node scripts/seed-users.js` = ข้อมูลตัวอย่าง + พนักงานตัวอย่าง
 5. เปิด Terminal ในโฟลเดอร์นี้ แล้วรัน
    ```
@@ -29,7 +30,7 @@ public/          หน้าเว็บทั้งหมด
   admin/         หน้าพนักงาน (แม่แบบ: admin/_template.html)
   customer/      หน้าลูกค้า (QR = /customer/order.html?token=...)
   index.html     หน้า Home (แม่แบบ: _template_customer.html)
-database/        dimsum_schema.sql (v5, 31 ตาราง) — ห้ามแก้เอง
+database/        dimsum_schema.sql (v5, 32 ตาราง) — ห้ามแก้เอง
 docs/            เอกสาร API v5 + prompt เขียนโค้ดของแต่ละคน
 scripts/         สคริปต์ตั้งค่า + ข้อมูลตัวอย่าง
 dev-mocks/       ไฟล์จำลองงานเพื่อน (ไม่ขึ้น Git) ดู dev-mocks/README.md
