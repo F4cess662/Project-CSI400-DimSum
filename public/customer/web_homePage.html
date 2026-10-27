@@ -12,8 +12,8 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="web_HomePage.css">
-    <script src="web_homePage.js" defer></script>
+    <link rel="stylesheet" href="/customer/web_HomePage.css">
+    <script src="/customer/web_homePage.js" defer></script>
 </head>
 
 <body>
@@ -95,7 +95,7 @@
                         </div>
                     </div>
 
-                    <button type="button" class="register-btn">
+                    <button type="button" class="register-btn" id="member">
                         สมัครสมาชิกฟรี
                     </button>
 
@@ -109,12 +109,12 @@
                 </h2>
 
                 <div class="opening-time">
-                    <strong>กะเช้า 10:00–14:00</strong>
+                    <strong>กะเช้า 10:00 - 14:00</strong>
                     <p>ปิดรับออเดอร์ 13:30</p>
                 </div>
 
                 <div class="opening-time evening">
-                    <strong>กะเย็น 16:00–20:00</strong>
+                    <strong>กะเย็น 16:00 - 20:00</strong>
                     <p>ปิดรับออเดอร์ 19:30</p>
                 </div>
 
@@ -124,13 +124,18 @@
                 </a>
             </div>
         </section>
-        <div class="menu">
-            <h1>menu</h1>
-            <div class="card-menu">
-                <div class="img_menu">img</div>
-                <p>ชื่อเมนู</p>
+
+
+        <section class="menu" id="menu">
+            <div class="title-menu">
+                <h1>เมนูแนะนำ</h1>&nbsp;
+                <p>อร่อยสดใหม่จากร้านนึ่งสุข</p>
             </div>
-        </div>
+            <div class="type-timsum" id="categories"></div>
+            <div class="menu-list" id="menu-list">
+                <p>กำลังโหลดเมนู...</p>
+            </div>
+        </section>
     </main>
     <footer class="footer">
         <div>
