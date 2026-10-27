@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- บิลที่เปิด (คนที่ 5 · เฟส 1) -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>บิลที่เปิด · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <input class="input" style="max-width:320px" id="search" placeholder="ค้นหาเลขบิลหรือโต๊ะ">
+      <span class="small muted" id="count"></span>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>เลขบิล</th><th>โต๊ะ</th><th>คน</th><th>เวลาเปิด</th><th>นั่งมาแล้ว</th><th>ยอดปัจจุบัน</th><th>รอบสั่ง</th><th></th></tr>
+        </thead>
+        <tbody id="rows"><tr><td colspan="8" class="loading">กำลังโหลด...</td></tr></tbody>
+      </table>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/bill-panel.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'บิลที่เปิด', roles: ['staff', 'manager', 'owner'] });
+      if (!me) return;
+      const canPay = ['manager', 'owner'].includes(me.role_code) || me.can_payment === 1;
+
+      let bills = [];
+      const search = document.getElementById('search');
+
+      function draw() {
+        const q = search.value.trim().toLowerCase();
+        const list = bills.filter((b) => !q
+          || b.bill_no.toLowerCase().includes(q)
+          || String(b.place).toLowerCase().includes(q));
+        document.getElementById('count').textContent = `ทั้งหมด ${bills.length} บิล`;
+        document.getElementById('rows').innerHTML = list.length
+          ? list.map((b) => `
+              <tr>
+                <td class="bold">${fmt.esc(b.bill_no)}</td>
+                <td>${fmt.esc(b.place)}</td>
+                <td>${fmt.esc(b.guests)}</td>
+                <td>${fmt.time(b.opened_at)} น.</td>
+                <td>${fmt.minutesAgo(b.opened_at)} นาที</td>
+                <td class="price">${fmt.baht(b.total)}</td>
+                <td>${fmt.num(b.rounds)}</td>
+                <td>
+                  <div class="row" style="gap:8px;flex-wrap:nowrap">
+                    <button class="btn btn-secondary btn-sm" data-qr="${b.id}">🔳 ดู QR</button>
+                    ${canPay
+                      ? `<a class="btn btn-sm" href="/admin/checkout.html?bill_id=${b.id}">💳 ชำระเงิน</a>`
+                      : `<button class="btn btn-sm" disabled title="ไม่มีสิทธิ์รับเงิน">💳 ชำระเงิน</button>`}
+                  </div>
+                </td>
+              </tr>`).join('')
+          : `<tr><td colspan="8"><div class="empty"><div class="empty-icon">🥟</div>${q ? 'ไม่พบบิลที่ค้นหา' : 'ยังไม่มีบิลที่เปิดอยู่'}</div></td></tr>`;
+
+        document.querySelectorAll('[data-qr]').forEach((btn) => {
+          btn.onclick = () => showBillQr(bills.find((b) => b.id === Number(btn.dataset.qr)));
+        });
+      }
+
+      async function load() {
+        try {
+          bills = await api.get('bills', { status: 'open' });
+          draw();
+        } catch (e) {
+          toast(e.message, 'error');
+        }
+      }
+
+      search.oninput = draw;
+      poll(load, 10);
+    })();
+  </script>
+</body>
+</html>
