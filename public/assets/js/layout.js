@@ -24,6 +24,7 @@ const STAFF_MENU = [
     { file: 'dashboard.html',       icon: '📊', label: 'Dashboard',         roles: ['manager', 'owner'] },
     { file: 'bills-search.html',    icon: '🔍', label: 'ค้นบิล',            roles: ['manager', 'owner'] },
     { file: 'coupons.html',         icon: '🎟️', label: 'คูปอง',             roles: ['manager', 'owner'] },
+    { file: 'banners.html',         icon: '🖼️', label: 'แบนเนอร์หน้าแรก',   roles: ['manager', 'owner'] },
     { file: 'rewards.html',         icon: '⭐', label: 'รางวัลแลกแต้ม',      roles: ['manager', 'owner'] },
     { file: 'prep-plans.html',      icon: '🗓️', label: 'แผนเตรียมของ',      roles: ['manager', 'owner'] },
     { file: 'ingredients.html',     icon: '🥬', label: 'วัตถุดิบ',           roles: ['manager', 'owner'] },
