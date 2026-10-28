@@ -99,7 +99,7 @@
           </div>
           ${table.is_vip ? '' : `
           <div class="field">
-            <label>ต่อโต๊ะเพิ่ม</label>
+            <label>เพิ่มโต๊ะสำหรับรวมบิล</label>
             <div class="row">
               <span class="chip active">${fmt.esc(table.code)}</span>
               ${others.length
