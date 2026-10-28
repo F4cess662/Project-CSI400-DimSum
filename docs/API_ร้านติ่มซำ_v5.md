@@ -1,6 +1,6 @@
 # รายการ API ทั้งระบบ — ระบบร้านติ่มซำ (CSI400) v5
 
-อ้างอิง: **Requirement v5**, **dimsum_schema.sql** (31 ตาราง), ชุดเริ่มต้น **dimsum_node.zip**
+อ้างอิง: **Requirement v5**, **dimsum_schema.sql** (32 ตาราง), ชุดเริ่มต้น **dimsum_node.zip**
 ทุก FR ใน Requirement v5 มี API รองรับครบ
 
 ## สิ่งที่เปลี่ยนจากเอกสาร API ฉบับก่อน
@@ -147,6 +147,9 @@
 | /api/rewards | POST create / update / deactivate | name, points_cost, reward_type, menu_item_id, discount_value | — | manager+ | FR-41 | P3 | 1 |
 | /api/coupons | GET | — · `?code=` = เช็กคูปองใบเดียว | คูปองทั้งหมด / ใช้ได้หรือไม่ + เหตุผล | manager+ / staff+ [รับเงิน] | FR-42 | P3 | 6 |
 | /api/coupons | POST create / update / deactivate | code, coupon_type, value, free_menu_item_id, min_spend, start_date, end_date, valid_time_start, valid_time_end, **valid_weekdays**, **exclude_holidays**, member_only, usage_limit, per_member_limit | 1 บิลใช้ได้ 1 ใบ (BR-23) · เช็กวันในสัปดาห์ ช่วงเวลา และวันหยุดราชการ (BR-27) | manager+ | FR-42 | P3 | 6 |
+| /api/banners | GET | — · `?all=1` = รวมที่ปิดอยู่ (manager+) | แบนเนอร์ที่เปิดใช้ เรียงตาม sort_order (ใช้ทำสไลด์หน้า Home) | สาธารณะ | — | P3 | 6 |
+| /api/banners | POST create / update | form-data: title, image, link_url, is_active | อัปโหลดรูปได้ทีละรูป เพิ่มได้หลายรายการ · รูปเก็บที่ public/assets/uploads · update ไม่ส่งรูป = ใช้รูปเดิม | manager+ | — | P3 | 6 |
+| /api/banners | POST delete / reorder | id · ids[] เรียงตามลำดับใหม่ | ลบ = ลบแถวจริงได้ (ไม่มีข้อมูลอื่นอ้างอิง) · reorder ตั้ง sort_order ตามลำดับ | manager+ | — | P3 | 6 |
 | /api/tasks | POST birthday_coupons | month | แจกคูปองเดือนเกิดเข้าบัญชีสมาชิกที่เกิดเดือนนั้น (ไม่แจกซ้ำในเดือนเดียวกัน) | owner | FR-43 | P3 | 1 |
 | /api/tasks | POST year_end_reset | — | ตั้งแต้มทุกคนเป็น 0 + บันทึก expire (BR-21) | owner | FR-44 | P3 | 1 |
 
@@ -188,5 +191,5 @@
 | --- | --- |
 | **P1** | auth ✅, roles, users, settings, holidays, categories, menus (ยกเว้น add_stock/set_stock), tables, vip_rooms, bills (open, cancel, GET open), public (home, menu), dashboard |
 | **P2** | menus (add_stock, set_stock), bills (detail, void, search), queue, public (bill_status), orders, kitchen, checkout (แบบไม่มีสมาชิก), shifts, logs |
-| **P3** | members, rewards, coupons, checkout (สมาชิก แต้ม คูปอง), vip_bookings, tasks |
+| **P3** | members, rewards, coupons, banners, checkout (สมาชิก แต้ม คูปอง), vip_bookings, tasks |
 | **P4** | prep_plans, reports, suppliers, ingredients, purchase_orders, goods_receipts, stock, dashboard (ส่วนวัตถุดิบ) |

@@ -51,6 +51,19 @@ CREATE TABLE public_holidays (
   name          VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB;
 
+CREATE TABLE banners (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  title        VARCHAR(100) NULL,
+  image_path   VARCHAR(255) NOT NULL,
+  link_url     VARCHAR(255) NULL,
+  sort_order   INT NOT NULL DEFAULT 0,
+  is_active    TINYINT(1) NOT NULL DEFAULT 1,
+  created_by   INT NULL,
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB;
+
 CREATE TABLE menu_categories (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   name        VARCHAR(100) NOT NULL,

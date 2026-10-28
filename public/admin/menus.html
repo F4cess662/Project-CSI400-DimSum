@@ -1,0 +1,2576 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>นิ่งสุข — ระบบจัดการร้านติ่มซำ (เมนูและหมวด)</title>
+  <!-- Google Fonts: Mitr (500) & Sarabun (400, 600) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@500&family=Sarabun:wght@400;600&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    /* =========================================================================
+       tailwind.config.js — Design Tokens ร้าน "นิ่งสุข" (ตรงตามพิมพ์เขียวทุกค่า)
+       ========================================================================= */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: {
+              50: 'var(--cream-50)',
+              100: 'var(--cream-100)',
+              200: 'var(--cream-200)',
+              300: 'var(--cream-300)',
+            },
+            bamboo: 'var(--bamboo)',
+            red: {
+              50: 'var(--red-50)',
+              600: 'var(--red-600)',
+              700: 'var(--red-700)',
+            },
+            gold: 'var(--gold)',
+            brown: {
+              500: 'var(--brown-500)',
+              900: 'var(--brown-900)',
+            },
+            white: 'var(--white)',
+            status: {
+              'success-bg': 'var(--status-success-bg)',
+              'success-text': 'var(--status-success-text)',
+              'warning-bg': 'var(--status-warning-bg)',
+              'warning-text': 'var(--status-warning-text)',
+              'info-bg': 'var(--status-info-bg)',
+              'info-text': 'var(--status-info-text)',
+              'danger-bg': 'var(--status-danger-bg)',
+              'danger-text': 'var(--status-danger-text)',
+              'disabled-bg': 'var(--status-disabled-bg)',
+              'disabled-text': 'var(--status-disabled-text)',
+            },
+            zone: {
+              steam: 'var(--zone-steam)',
+              fry: 'var(--zone-fry)',
+              congee: 'var(--zone-congee)',
+              drink: 'var(--zone-drink)',
+            }
+          },
+          fontFamily: {
+            heading: ['Mitr', 'sans-serif'],
+            body: ['Sarabun', 'sans-serif'],
+          },
+          spacing: {
+            '1': 'var(--space-4)',
+            '2': 'var(--space-8)',
+            '3': 'var(--space-12)',
+            '4': 'var(--space-16)',
+            '5': 'var(--space-20)',
+            '6': 'var(--space-24)',
+            '8': 'var(--space-32)',
+            '12': 'var(--space-48)',
+          },
+          borderRadius: {
+            'control': 'var(--radius-control)',
+            'card': 'var(--radius-card)',
+            'modal': 'var(--radius-modal)',
+            'pill': 'var(--radius-pill)',
+          },
+          boxShadow: {
+            'sticker': 'var(--shadow-sticker)',
+            'primary': 'var(--shadow-primary)',
+            'modal': 'var(--shadow-modal)',
+            'sticky-up': 'var(--shadow-sticky-up)',
+          }
+        }
+      }
+    };
+  </script>
+  <style id="index-css">
+    /* =========================================================================
+       index.css — Design Tokens ร้าน "นิ่งสุข" (ห้ามดัดแปลงค่าตัวเลขและรหัสสี)
+       ========================================================================= */
+    :root {
+      /* 2. สี (ใช้เท่านี้) */
+      --cream-50: #FFFBF3;   /* พื้นการ์ด / sidebar / navbar */
+      --cream-100: #FCF3E3;  /* พื้นหลังหน้า (body) */
+      --cream-200: #F6E6C8;  /* พื้นรอง / hover / แถวตารางสลับ / ช่อง input disabled */
+      --cream-300: #EBD3A8;  /* เส้นขอบทุกชนิด */
+      --bamboo: #D9A961;     /* สีเข่งไผ่ ใช้ตกแต่งเล็กน้อย (เส้นคั่น ไอคอนรอง) */
+      --red-600: #C8322F;    /* สีหลักแบรนด์: ปุ่มหลัก ลิงก์ เมนูที่เลือก โลโก้ตัวอักษร */
+      --red-700: #A52624;    /* hover / pressed ของปุ่มแดง */
+      --red-50: #FBE7E2;     /* พื้นของสิ่งที่ถูกเลือก / badge แดงอ่อน */
+      --gold: #F2B83B;       /* แต้ม ราคาเด่น ดาว โปรโมชัน */
+      --brown-900: #4A2C22;  /* ตัวอักษรหลัก */
+      --brown-500: #8A6E5E;  /* ตัวอักษรรอง / placeholder */
+      --white: #FFFFFF;      /* ตัวอักษรบนปุ่มแดง */
+
+      /* สถานะ (ใช้เป็นพื้นอ่อน + ตัวอักษรเข้มเสมอ) */
+      --status-success-bg: #E3F2E6;
+      --status-success-text: #2E7D4F;
+      --status-warning-bg: #FFF1CC;
+      --status-warning-text: #9A6B00;
+      --status-info-bg: #E6EEF7;
+      --status-info-text: #2F5F8F;
+      --status-danger-bg: #FBE7E2;
+      --status-danger-text: #C8322F;
+      --status-disabled-bg: #F6E6C8;
+      --status-disabled-text: #8A6E5E;
+
+      /* สีโซนครัว (จุดวงกลม 10px หน้าชื่อโซน + เส้นซ้ายการ์ด 4px) */
+      --zone-steam: #5B9A8B;   /* นึ่ง */
+      --zone-fry: #E08A3C;     /* ทอด */
+      --zone-congee: #A9785A;  /* โจ๊ก-เส้น */
+      --zone-drink: #C46A9B;   /* เครื่องดื่ม-ของหวาน */
+
+      /* 3. ตัวอักษร */
+      --font-heading: 'Mitr', sans-serif;
+      --font-body: 'Sarabun', sans-serif;
+
+      /* 4. ระยะห่าง ขอบมน เงา (ตัวเลขตายตัว) */
+      --space-4: 4px;
+      --space-8: 8px;
+      --space-12: 12px;
+      --space-16: 16px;
+      --space-20: 20px;
+      --space-24: 24px;
+      --space-32: 32px;
+      --space-48: 48px;
+
+      --radius-control: 12px;  /* input / ปุ่ม / แท็บ / รูปเมนู */
+      --radius-card: 16px;     /* การ์ด / ตาราง / แผง / ไทล์โต๊ะ */
+      --radius-modal: 24px;    /* modal / bottom sheet */
+      --radius-pill: 999px;    /* badge / chip / avatar */
+
+      --border-default: 1.5px solid var(--cream-300);
+      --shadow-sticker: 0 4px 0 #EBD3A8;
+      --shadow-primary: 0 4px 0 var(--red-700);
+      --shadow-modal: 0 12px 32px rgba(74, 44, 34, 0.18);
+      --shadow-sticky-up: 0 -4px 0 #EBD3A8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--cream-100);
+      color: var(--brown-900);
+      font-family: var(--font-body);
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Typography classes per Section 3 */
+    .ns-h1 {
+      font-family: var(--font-heading);
+      font-weight: 500;
+      font-size: 32px;
+      line-height: 40px;
+    }
+    @media (max-width: 767px) {
+      .ns-h1 {
+        font-size: 26px;
+        line-height: 34px;
+      }
+    }
+    .ns-h2 {
+      font-family: var(--font-heading);
+      font-weight: 500;
+      font-size: 24px;
+      line-height: 32px;
+    }
+    .ns-h3 {
+      font-family: var(--font-heading);
+      font-weight: 500;
+      font-size: 20px;
+      line-height: 28px;
+    }
+    .ns-body {
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 24px;
+    }
+    .ns-small {
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 20px;
+    }
+    .ns-caption {
+      font-family: var(--font-body);
+      font-size: 12px;
+      line-height: 16px;
+    }
+    .ns-price {
+      font-family: var(--font-body);
+      font-weight: 600;
+      color: var(--brown-900);
+    }
+
+    /* Standard Components per Section 5 */
+    .ns-card {
+      background-color: var(--cream-50);
+      border: 1.5px solid var(--cream-300);
+      border-radius: var(--radius-card);
+      padding: var(--space-20);
+      box-shadow: var(--shadow-sticker);
+    }
+
+    .ns-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-8);
+      height: 44px;
+      padding: 0 var(--space-20);
+      border-radius: var(--radius-control);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 16px;
+      line-height: 24px;
+      cursor: pointer;
+      transition: transform 0.1s ease, background-color 0.15s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .ns-btn-sm {
+      height: 36px;
+      padding: 0 var(--space-16);
+      font-size: 14px;
+      line-height: 20px;
+    }
+    .ns-btn-lg {
+      height: 56px;
+      padding: 0 var(--space-24);
+    }
+    .ns-btn-primary {
+      background-color: var(--red-600);
+      color: var(--white);
+      border: none;
+      box-shadow: 0 4px 0 var(--red-700);
+    }
+    .ns-btn-primary:hover {
+      background-color: var(--red-700);
+    }
+    .ns-btn-primary:active {
+      transform: translateY(2px);
+    }
+    .ns-btn-secondary {
+      background-color: var(--cream-50);
+      color: var(--brown-900);
+      border: 1.5px solid var(--cream-300);
+      box-shadow: var(--shadow-sticker);
+    }
+    .ns-btn-secondary:hover {
+      background-color: var(--cream-200);
+    }
+    .ns-btn-secondary:active {
+      transform: translateY(2px);
+    }
+    .ns-btn-danger {
+      background-color: var(--white);
+      color: var(--red-600);
+      border: 1.5px solid var(--red-600);
+      box-shadow: var(--shadow-sticker);
+    }
+    .ns-btn-danger:hover {
+      background-color: var(--red-50);
+    }
+    .ns-btn-danger:active {
+      transform: translateY(2px);
+    }
+    .ns-btn-ghost {
+      background-color: transparent;
+      color: var(--red-600);
+      border: none;
+      box-shadow: none;
+    }
+    .ns-btn-ghost:hover {
+      background-color: var(--red-50);
+    }
+    .ns-btn-disabled,
+    .ns-btn:disabled {
+      background-color: var(--cream-200) !important;
+      color: var(--brown-500) !important;
+      border: 1.5px solid var(--cream-300) !important;
+      box-shadow: none !important;
+      cursor: not-allowed !important;
+      transform: none !important;
+    }
+
+    .ns-input {
+      width: 100%;
+      height: 44px;
+      border-radius: var(--radius-control);
+      background-color: var(--white);
+      border: 1.5px solid var(--cream-300);
+      padding: 0 var(--space-16);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 24px;
+      color: var(--brown-900);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ns-input::placeholder {
+      color: var(--brown-500);
+    }
+    .ns-input:focus {
+      border-color: var(--red-600);
+      box-shadow: 0 0 0 3px var(--red-50);
+    }
+    .ns-input:disabled {
+      background-color: var(--cream-200);
+      color: var(--brown-500);
+      cursor: not-allowed;
+    }
+
+    .ns-label {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 20px;
+      font-weight: 600;
+      color: var(--brown-900);
+      margin-bottom: var(--space-8);
+    }
+
+    .ns-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-4);
+      height: 24px;
+      padding: 0 10px;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-body);
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Switch toggle per reference image */
+    .ns-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 44px;
+      height: 24px;
+      border-radius: var(--radius-pill);
+      transition: background-color 0.2s ease;
+      cursor: pointer;
+      border: none;
+      padding: 2px;
+      flex-shrink: 0;
+    }
+    .ns-switch-on {
+      background-color: var(--red-600);
+    }
+    .ns-switch-off {
+      background-color: var(--cream-300);
+    }
+    .ns-switch-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: var(--radius-pill);
+      background-color: var(--white);
+      transition: transform 0.2s ease;
+    }
+    .ns-switch-on .ns-switch-thumb {
+      transform: translateX(20px);
+    }
+    .ns-switch-off .ns-switch-thumb {
+      transform: translateX(0);
+    }
+
+    /* Custom scrollbar for sidebar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--cream-50);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--cream-300);
+      border-radius: var(--radius-pill);
+    }
+
+    /* Drag and drop visual feedback */
+    .cat-row-dragging {
+      opacity: 0.55;
+      background-color: var(--cream-200) !important;
+      border: 1.5px dashed var(--bamboo) !important;
+    }
+    .cat-row-dragover {
+      border-top: 2px solid var(--red-600) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-cream-100 text-brown-900">
+
+  <!-- Toast Container: มุมขวาบน (มือถือกลางบน) การ์ดขาวขอบซ้าย 4px สีสถานะ หายเองใน 3 วินาที -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-6 z-[90] flex flex-col gap-2 w-[calc(100%-32px)] max-w-[380px] pointer-events-none"></div>
+
+  <!-- Root App Container -->
+  <div id="app-root"></div>
+
+  <!-- Modal Container -->
+  <div id="modal-root"></div>
+
+  <!-- Floating Role Simulator (ข้อ 6D: ปุ่มจำลองบทบาท มุมขวาล่าง) -->
+  <div id="role-simulator-root" class="fixed bottom-4 right-4 z-[80]"></div>
+
+  <script>
+    /* =========================================================================
+       Lucide Icons SVG Helper (ขนาด 20px เส้น 2px สี currentColor เท่านั้น)
+       ========================================================================= */
+    const LUCIDE_PATHS = {
+      'layout-grid': '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+      'users': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      'receipt': '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',
+      'wallet': '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+      'calendar-check': '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+      'crown': '<path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/>',
+      'chef-hat': '<path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1Z"/><path d="M6 17h12"/>',
+      'package': '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/>',
+      'clipboard-list': '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
+      'bar-chart-3': '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+      'search': '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+      'ticket': '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>',
+      'gift': '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+      'file-edit': '<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>',
+      'box': '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+      'truck': '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+      'file-text': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+      'package-check': '<path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" x2="12" y1="22" y2="12"/>',
+      'sliders-horizontal': '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+      'pie-chart': '<path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
+      'history': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+      'user-cog': '<circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/><path d="m19.6 18.7-.4-1"/><path d="m16.8 12.3-.4-1"/><path d="m14.3 16.6 1-.4"/><path d="m20.7 13.8 1-.4"/>',
+      'utensils': '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+      'armchair': '<path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/><path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/><path d="M5 18v2"/><path d="M19 18v2"/>',
+      'settings': '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+      'calendar-off': '<path d="M4.2 4.2A2 2 0 0 0 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 1.82-1.18"/><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5"/><path d="M16 2v4"/><path d="M3 10h7"/><path d="M21 10h-5.5"/><path d="m2 2 20 20"/>',
+      'cpu': '<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+      'plus': '<path d="M5 12h14"/><path d="M12 5v14"/>',
+      'minus': '<path d="M5 12h14"/>',
+      'pencil': '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+      'trash-2': '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+      'eye-off': '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
+      'eye': '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+      'grip-vertical': '<circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>',
+      'log-out': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+      'menu': '<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>',
+      'x': '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+      'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+      'chevron-up': '<path d="m18 15-6-6-6 6"/>',
+      'upload': '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+      'check': '<path d="M20 6 9 17l-5-5"/>',
+      'alert-circle': '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+      'shopping-bag': '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+      'qr-code': '<rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/>',
+      'phone': '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+      'clock': '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      'map-pin': '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+      'star': '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'
+    };
+
+    function icon(name, extraClass = '') {
+      const paths = LUCIDE_PATHS[name] || LUCIDE_PATHS['utensils'];
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block shrink-0 ${extraClass}">${paths}</svg>`;
+    }
+
+    /* =========================================================================
+       7. ข้อมูลจำลองกลาง (ใช้ชุดนี้เท่านั้น ตรงตามพิมพ์เขียวทุกตัวอักษร)
+       ========================================================================= */
+    const ZONES = {
+      steam: { id: 'steam', name: 'นึ่ง', color: 'var(--zone-steam)', hex: '#5B9A8B', defaultEmoji: '🥟' },
+      fry: { id: 'fry', name: 'ทอด', color: 'var(--zone-fry)', hex: '#E08A3C', defaultEmoji: '🍤' },
+      congee: { id: 'congee', name: 'โจ๊ก-เส้น', color: 'var(--zone-congee)', hex: '#A9785A', defaultEmoji: '🍜' },
+      drink: { id: 'drink', name: 'เครื่องดื่ม-ของหวาน', color: 'var(--zone-drink)', hex: '#C46A9B', defaultEmoji: '🧋' }
+    };
+
+    const UNITS = ['เข่ง', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'แก้ว', 'ถ้วย', 'กา'];
+
+    const ROLES = [
+      {
+        id: 'owner',
+        label: 'เจ้าของร้าน',
+        staffName: 'สมชาย ใจดี',
+        roleTitle: 'เจ้าของร้าน',
+        avatarChar: 'ส',
+        shell: 'staff',
+        allowedGroups: ['front', 'kitchen', 'manager', 'owner'],
+        defaultPage: 'เมนูและหมวด'
+      },
+      {
+        id: 'manager',
+        label: 'ผู้จัดการ',
+        staffName: 'วิภา แสงทอง',
+        roleTitle: 'ผู้จัดการ',
+        avatarChar: 'ว',
+        shell: 'staff',
+        allowedGroups: ['front', 'kitchen', 'manager'],
+        defaultPage: 'เมนูและหมวด'
+      },
+      {
+        id: 'chef',
+        label: 'หัวหน้าเชฟ',
+        staffName: 'อาเหม่ย แซ่ลี้',
+        roleTitle: 'หัวหน้าเชฟ',
+        avatarChar: 'อ',
+        shell: 'staff',
+        allowedGroups: ['kitchen'],
+        defaultPage: 'เมนูและหมวด'
+      },
+      {
+        id: 'staff_front',
+        label: 'พนักงานหน้าร้าน',
+        staffName: 'ต้น ศรีสุข',
+        roleTitle: 'พนักงานหน้าร้าน',
+        avatarChar: 'ต',
+        shell: 'staff',
+        allowedGroups: ['front'],
+        defaultPage: 'ผังโต๊ะ'
+      },
+      {
+        id: 'customer_guest',
+        label: 'ลูกค้า (ยังไม่ล็อกอิน)',
+        staffName: '',
+        roleTitle: 'ลูกค้าทั่วไป',
+        avatarChar: '',
+        shell: 'customer',
+        isLoggedIn: false
+      },
+      {
+        id: 'customer_member',
+        label: 'ลูกค้าสมาชิก',
+        staffName: 'คุณมะลิ รักดี',
+        roleTitle: 'สมาชิกระดับทอง',
+        memberPhone: '081-234-5678',
+        memberTier: 'ระดับทอง',
+        memberPoints: 320,
+        memberCode: 'NS-000123',
+        avatarChar: 'ม',
+        shell: 'customer',
+        isLoggedIn: true
+      }
+    ];
+
+    const SIDEBAR_GROUPS = [
+      {
+        id: 'front',
+        title: 'หน้าร้าน',
+        items: [
+          { name: 'ผังโต๊ะ', icon: 'layout-grid' },
+          { name: 'คิว', icon: 'users' },
+          { name: 'บิลที่เปิด', icon: 'receipt' },
+          { name: 'ชำระเงิน', icon: 'wallet' },
+          { name: 'ปิดยอดกะ', icon: 'calendar-check' },
+          { name: 'จองห้อง VIP', icon: 'crown' },
+        ]
+      },
+      {
+        id: 'kitchen',
+        title: 'ครัว',
+        items: [
+          { name: 'จอครัว', icon: 'chef-hat' },
+          { name: 'จำนวนพร้อมขาย', icon: 'package' },
+          { name: 'ยอดเตรียมวันนี้', icon: 'clipboard-list' },
+        ]
+      },
+      {
+        id: 'manager',
+        title: 'ผู้จัดการ',
+        items: [
+          { name: 'Dashboard', icon: 'bar-chart-3' },
+          { name: 'ค้นบิล', icon: 'search' },
+          { name: 'คูปอง', icon: 'ticket' },
+          { name: 'รางวัลแลกแต้ม', icon: 'gift' },
+          { name: 'แผนเตรียมของ', icon: 'file-edit' },
+          { name: 'วัตถุดิบ', icon: 'box' },
+          { name: 'ซัพพลายเออร์', icon: 'truck' },
+          { name: 'ใบสั่งซื้อ', icon: 'file-text' },
+          { name: 'รับของ', icon: 'package-check' },
+          { name: 'ปรับสต็อก', icon: 'sliders-horizontal' },
+          { name: 'รายงาน', icon: 'pie-chart' },
+          { name: 'Log', icon: 'history' },
+        ]
+      },
+      {
+        id: 'owner',
+        title: 'เจ้าของร้าน',
+        items: [
+          { name: 'พนักงาน', icon: 'user-cog' },
+          { name: 'เมนูและหมวด', icon: 'utensils' },
+          { name: 'โต๊ะและห้อง VIP', icon: 'armchair' },
+          { name: 'ตั้งค่าร้าน', icon: 'settings' },
+          { name: 'วันหยุดราชการ', icon: 'calendar-off' },
+          { name: 'งานระบบ', icon: 'cpu' },
+        ]
+      }
+    ];
+
+    const STORAGE_KEY = 'ningsuk_menus_v2';
+
+    const INITIAL_CATEGORIES = [
+      { id: 'cat_buns', name: 'ซาลาเปา & ติ่มซำนึ่งแป้งนุ่ม', emoji: '🥟', hidden: false },
+      { id: 'cat_dumplings', name: 'ติ่มซำนึ่งคำโต', emoji: '🥟', hidden: false },
+      { id: 'cat_fried', name: 'ของทอดกรอบ', emoji: '🍤', hidden: false },
+      { id: 'cat_mains', name: 'จานหลัก & ซุปตุ๋นยาจีน', emoji: '🍜', hidden: false }
+    ];
+
+    const INITIAL_MENUS = [
+      // 1. หมวดซาลาเปา & ติ่มซำนึ่งแป้งนุ่ม (Steamed Buns)
+      // กลุ่มไส้คลาสสิก (30 บาท / ชิ้น)
+      { id: 'm1', categoryId: 'cat_buns', name: 'ซาลาเปาหมูสับ', description: 'กลุ่มไส้คลาสสิก แป้งนุ่มไส้หมูสับปรุงรสกลมกล่อม', price: 30, unit: 'ชิ้น', zone: 'steam', batchSize: 12, available: true, image: '' },
+      { id: 'm2', categoryId: 'cat_buns', name: 'ซาลาเปาหมูแดง', description: 'กลุ่มไส้คลาสสิก แป้งฟูนุ่มไส้หมูแดงหอมหวาน', price: 30, unit: 'ชิ้น', zone: 'steam', batchSize: 12, available: true, image: '' },
+      { id: 'm3', categoryId: 'cat_buns', name: 'ซาลาเปาครีม', description: 'กลุ่มไส้คลาสสิก ไส้ครีมคัสตาร์ดเนียนละมุน', price: 30, unit: 'ชิ้น', zone: 'steam', batchSize: 12, available: true, image: '' },
+      { id: 'm4', categoryId: 'cat_buns', name: 'ซาลาเปาถั่วแดง', description: 'กลุ่มไส้คลาสสิก ไส้ถั่วแดงกวนเนื้อเนียนหอมหวาน', price: 30, unit: 'ชิ้น', zone: 'steam', batchSize: 12, available: true, image: '' },
+      { id: 'm5', categoryId: 'cat_buns', name: 'ซาลาเปาเห็ดหอม (มังสวิรัติ)', description: 'กลุ่มไส้คลาสสิก ไส้เห็ดหอมคัดพิเศษสูตรมังสวิรัติ', price: 30, unit: 'ชิ้น', zone: 'steam', batchSize: 12, available: true, image: '' },
+      // กลุ่มพรีเมียม / เมนูพิเศษ (39 - 59 บาท / ที่)
+      { id: 'm6', categoryId: 'cat_buns', name: 'ซาลาเปาหมูสับไข่เค็ม', description: 'กลุ่มพรีเมียม หมูสับแน่นสอดไส้ไข่เค็มเต็มคำ', price: 39, unit: 'ที่', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm7', categoryId: 'cat_buns', name: 'ซาลาเปาไข่เค็มลาวาทอด', description: 'แป้งกรอบนอกเยิ้มใน ไส้ไข่เค็มลาวาเข้มข้น', price: 39, unit: 'ที่', zone: 'fry', batchSize: 10, available: true, image: '' },
+      { id: 'm8', categoryId: 'cat_buns', name: 'เสี่ยวหลงเปา', description: 'เข่งละ 3 ชิ้น น้ำซุปร้อนกลมกล่อมในแป้งบาง', price: 59, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+
+      // 2. หมวดติ่มซำนึ่งคำโต (Dumplings & Steamed Dim Sum)
+      // กลุ่มหมู / มังสวิรัติ (45 บาท / เข่ง)
+      { id: 'm9', categoryId: 'cat_dumplings', name: 'ขนมจีบหมู', description: 'เสิร์ฟ 3–4 ชิ้นต่อเข่ง หมูสับเด้งเต็มคำ', price: 45, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm10', categoryId: 'cat_dumplings', name: 'ขนมจีบเห็ดหอมวุ้นเส้น', description: 'กลุ่มหมู/มังสวิรัติ เสิร์ฟ 3–4 ชิ้นต่อเข่ง', price: 45, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm11', categoryId: 'cat_dumplings', name: 'หมูห่อสาหร่าย', description: 'เสิร์ฟ 3–4 ชิ้นต่อเข่ง หมูเด้งพันสาหร่ายนึ่งสด', price: 45, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      // กลุ่มซีฟู้ด & พรีเมียม (55 - 65 บาท / เข่ง)
+      { id: 'm12', categoryId: 'cat_dumplings', name: 'ขนมจีบกุ้ง', description: 'กลุ่มซีฟู้ด & พรีเมียม เสิร์ฟ 3–4 ชิ้นต่อเข่ง', price: 59, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm13', categoryId: 'cat_dumplings', name: 'ขนมจีบปู', description: 'กลุ่มซีฟู้ด & พรีเมียม เนื้อปูแน่น เสิร์ฟ 3–4 ชิ้น', price: 65, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm14', categoryId: 'cat_dumplings', name: 'ฮะเก๋ากุ้ง', description: 'แป้งใสนุ่ม ไส้กุ้งเต็มคำ เสิร์ฟ 3–4 ชิ้นต่อเข่ง', price: 59, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm15', categoryId: 'cat_dumplings', name: 'ฮะเก๋าปู', description: 'แป้งใสนุ่ม ไส้เนื้อปูพรีเมียม เสิร์ฟ 3–4 ชิ้น', price: 65, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm16', categoryId: 'cat_dumplings', name: 'กุ้งห่อสาหร่าย', description: 'กลุ่มซีฟู้ด & พรีเมียม กุ้งเด้งห่อสาหร่าย 3–4 ชิ้น', price: 59, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm17', categoryId: 'cat_dumplings', name: 'ปูห่อสาหร่าย', description: 'กลุ่มซีฟู้ด & พรีเมียม เนื้อปูห่อสาหร่าย 3–4 ชิ้น', price: 65, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm18', categoryId: 'cat_dumplings', name: 'หมี่หยกพันกุ้ง', description: 'เส้นหมี่หยกเหนียวนุ่มพันกุ้งสด เสิร์ฟ 3–4 ชิ้น', price: 55, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+      { id: 'm19', categoryId: 'cat_dumplings', name: 'หมี่หยกพันไข่เค็ม', description: 'เส้นหมี่หยกพันไข่เค็มมันนัว เสิร์ฟ 3–4 ชิ้น', price: 49, unit: 'เข่ง', zone: 'steam', batchSize: 10, available: true, image: '' },
+
+      // 3. หมวดของทอดกรอบ (Crispy Fried Dim Sum)
+      { id: 'm20', categoryId: 'cat_fried', name: 'ขนมผักกาดทอด', description: 'เสิร์ฟจานละ 3 ชิ้น พร้อมน้ำจิ้มบ๊วยหรืออาจาด', price: 55, unit: 'จาน', zone: 'fry', batchSize: 6, available: true, image: '' },
+      { id: 'm21', categoryId: 'cat_fried', name: 'เผือกทอดไส้หมูแดง/หมูสับ', description: 'เสิร์ฟจานละ 3 ชิ้น เผือกฟูกรอบนอกนุ่มใน', price: 59, unit: 'จาน', zone: 'fry', batchSize: 6, available: true, image: '' },
+      { id: 'm22', categoryId: 'cat_fried', name: 'ถุงทองมังกรหยก', description: 'เสิร์ฟจานละ 3 ชิ้น แป้งกรอบเหลืองทองพร้อมน้ำจิ้มบ๊วย', price: 59, unit: 'จาน', zone: 'fry', batchSize: 6, available: true, image: '' },
+      { id: 'm23', categoryId: 'cat_fried', name: 'ฟองเต้าหู้ทอด (ไส้กุ้ง/หมู)', description: 'เสิร์ฟจานละ 3 ชิ้น ฟองเต้าหู้กรอบไส้แน่น', price: 65, unit: 'จาน', zone: 'fry', batchSize: 6, available: true, image: '' },
+      { id: 'm24', categoryId: 'cat_fried', name: 'ขนมปังหน้ากุ้งซอสไข่เค็ม', description: 'เมนูซิกเนเจอร์ เสิร์ฟจานละ 3 ชิ้น พร้อมซอสไข่เค็ม', price: 69, unit: 'จาน', zone: 'fry', batchSize: 6, available: true, image: '' },
+
+      // 4. หมวดจานหลัก & ซุปตุ๋นยาจีน (Mains & Signature Bowls)
+      { id: 'm25', categoryId: 'cat_mains', name: 'ก๋วยเตี๋ยวหลอดหมูสับ', description: 'เมนูอิ่มท้อง เส้นนุ่มสดใหม่ราดซีอิ๊วฮ่องกง', price: 65, unit: 'จาน', zone: 'congee', batchSize: 8, available: true, image: '' },
+      { id: 'm26', categoryId: 'cat_mains', name: 'ขาไก่นึ่งเต้าซี่น้ำแดง', description: 'ขาไก่ตุ๋นนุ่มเปื่อย หอมเต้าซี่น้ำแดงรสเข้มข้น', price: 69, unit: 'ที่', zone: 'steam', batchSize: 8, available: true, image: '' },
+      { id: 'm27', categoryId: 'cat_mains', name: 'ขาไก่ต้มน้ำแดง', description: 'ขาไก่ต้มน้ำแดงสูตรต้นตำรับ เปื่อยนุ่มเข้มข้น', price: 69, unit: 'ชาม', zone: 'congee', batchSize: 8, available: true, image: '' },
+      { id: 'm28', categoryId: 'cat_mains', name: 'ซี่โครงหมูน้ำแดง', description: 'ซี่โครงหมูอ่อนตุ๋นน้ำแดงรสชาติเข้มข้นอิ่มท้อง', price: 79, unit: 'ที่', zone: 'congee', batchSize: 8, available: true, image: '' },
+      { id: 'm29', categoryId: 'cat_mains', name: 'บักกุ๊ดเต๊หม้อดิน', description: 'กระดูกหมูตุ๋นยาจีนเข้มข้น หอมสมุนไพรแท้', price: 129, unit: 'หม้อ', zone: 'congee', batchSize: 6, available: true, image: '' },
+      { id: 'm30', categoryId: 'cat_mains', name: 'ปลากระพงนึ่งซีอิ๊ว', description: 'ปลากระพงสดนึ่งซีอิ๊วฮ่องกง รสชาติเข้มข้น', price: 149, unit: 'จาน', zone: 'steam', batchSize: 5, available: true, image: '' }
+    ];
+
+    /* =========================================================================
+       Application State
+       ========================================================================= */
+    const state = {
+      currentRoleId: 'owner',
+      storeOpen: true,
+      activeStaffPage: 'เมนูและหมวด',
+      mobileSidebarOpen: false,
+      roleDropdownOpen: false,
+
+      // Customer shell state (for Shell A & Shell B preview)
+      customerSubMode: 'home', // 'home' | 'qr'
+      customerActiveSection: 'menu', // 'menu' | 'promo' | 'hours' | 'contact' | 'account'
+      customerMobileNavOpen: false,
+      customerMemberDropdownOpen: false,
+      cart: { 'm1': 2, 'm2': 1 },
+
+      // Menu & Category Page State
+      categories: JSON.parse(JSON.stringify(INITIAL_CATEGORIES)),
+      menus: JSON.parse(JSON.stringify(INITIAL_MENUS)),
+      selectedCategoryId: 'all',
+      selectedZone: 'all',
+      searchQuery: '',
+      draggedCategoryIndex: null,
+
+      // Price change audit logs
+      priceLogs: [
+        { time: '10:15', actor: 'สมชาย ใจดี', menuName: 'เสี่ยวหลงเปา', oldPrice: 60, newPrice: 65 }
+      ],
+
+      // Modals: null | { type: 'menu_form' | 'delete_menu' | 'category_form' | 'login_member' | 'qr_cart', ... }
+      modal: null
+    };
+
+    function loadPersistedState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+          state.categories = parsed.categories;
+        }
+        if (Array.isArray(parsed.menus) && parsed.menus.length > 0) {
+          state.menus = parsed.menus;
+        }
+        if (Array.isArray(parsed.priceLogs)) {
+          state.priceLogs = parsed.priceLogs;
+        }
+      } catch (err) {
+        // Ignore storage errors in restricted iframe
+      }
+    }
+
+    function savePersistedState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          categories: state.categories,
+          menus: state.menus,
+          priceLogs: state.priceLogs
+        }));
+      } catch (err) {
+        // Ignore storage errors in restricted iframe
+      }
+    }
+
+    function resetToDefaultData() {
+      state.categories = JSON.parse(JSON.stringify(INITIAL_CATEGORIES));
+      state.menus = JSON.parse(JSON.stringify(INITIAL_MENUS));
+      state.selectedCategoryId = 'all';
+      state.selectedZone = 'all';
+      state.searchQuery = '';
+      state.roleDropdownOpen = false;
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (err) {}
+      showToast('รีเซ็ตหมวดหมู่และเมนูกลับเป็นค่าเริ่มต้น (4 หมวด 30 เมนู) แล้ว', 'info');
+      renderAll();
+    }
+
+    function getCurrentRole() {
+      return ROLES.find(r => r.id === state.currentRoleId) || ROLES[0];
+    }
+
+    function getCategoryById(catId) {
+      return state.categories.find(c => c.id === catId);
+    }
+
+    function getCategoryEmoji(catId) {
+      const cat = getCategoryById(catId);
+      if (cat && cat.emoji) return cat.emoji;
+      return '🥟';
+    }
+
+    function getMenuCountByCategory(catId) {
+      return state.menus.filter(m => m.categoryId === catId).length;
+    }
+
+    /* =========================================================================
+       Toast System (ข้อ 5: มุมขวาบน / มือถือกลางบน การ์ดขาวขอบซ้าย 4px สีสถานะ หายเองใน 3 วินาที)
+       ========================================================================= */
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const borderColors = {
+        success: 'var(--status-success-text)',
+        danger: 'var(--status-danger-text)',
+        warning: 'var(--status-warning-text)',
+        info: 'var(--status-info-text)'
+      };
+      const badgeStyles = {
+        success: 'background: var(--status-success-bg); color: var(--status-success-text);',
+        danger: 'background: var(--status-danger-bg); color: var(--status-danger-text);',
+        warning: 'background: var(--status-warning-bg); color: var(--status-warning-text);',
+        info: 'background: var(--status-info-bg); color: var(--status-info-text);'
+      };
+      const badgeLabels = {
+        success: 'สำเร็จ',
+        danger: 'ผิดพลาด',
+        warning: 'แจ้งเตือน',
+        info: 'ข้อมูล'
+      };
+
+      const toastEl = document.createElement('div');
+      toastEl.className = 'pointer-events-auto bg-white rounded-control p-4 flex items-start gap-3 transition-all duration-200';
+      toastEl.style.border = '1.5px solid var(--cream-300)';
+      toastEl.style.borderLeft = `4px solid ${borderColors[type] || borderColors.success}`;
+      toastEl.style.boxShadow = 'var(--shadow-sticker)';
+
+      toastEl.innerHTML = `
+        <span class="ns-badge shrink-0" style="${badgeStyles[type] || badgeStyles.success}">${badgeLabels[type] || 'สำเร็จ'}</span>
+        <div class="ns-small text-brown-900 font-semibold flex-1">${message}</div>
+      `;
+
+      container.appendChild(toastEl);
+
+      setTimeout(() => {
+        toastEl.style.opacity = '0';
+        toastEl.style.transform = 'translateY(-8px)';
+        setTimeout(() => {
+          if (toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+        }, 200);
+      }, 3000);
+    }
+
+    /* =========================================================================
+       Logo Component (ข้อ 5: วงกลม 40px พื้น --cream-200 ขอบ 2px --red-600 มี 🥟 ตรงกลาง + ตัวอักษร "นิ่งสุข" Mitr 500 24px สี --red-600)
+       ========================================================================= */
+    function renderLogo() {
+      return `
+        <div class="inline-flex items-center gap-3 select-none">
+          <div class="w-[40px] h-[40px] rounded-pill bg-cream-200 flex items-center justify-center shrink-0" style="border: 2px solid var(--red-600);">
+            <span class="text-[20px] leading-none">🥟</span>
+          </div>
+          <span class="ns-h2 text-red-600">นิ่งสุข</span>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       Staff Page: "เมนูและหมวด" (เจ้าของร้าน / ผู้จัดการ / หัวหน้าเชฟ)
+       ========================================================================= */
+    function renderMenuAndCategoryPage() {
+      const role = getCurrentRole();
+      // โหมดหัวหน้าเชฟ/ผู้จัดการ: เห็นหน้านี้แบบใช้ได้แค่ switch เปิด/ปิดขาย (ปุ่มแก้/ลบซ่อน)
+      const isOwner = role.id === 'owner';
+      const isReadOnlyManage = !isOwner; // chef or manager can only toggle switch เปิด/ปิดขาย
+
+      // Filter menus
+      const filteredMenus = state.menus.filter(m => {
+        const cat = getCategoryById(m.categoryId);
+        if (cat && cat.hidden && state.selectedCategoryId === 'all') {
+          // If category is hidden, still visible when selecting that category directly, or shown in owner view
+        }
+        const matchCat = state.selectedCategoryId === 'all' || m.categoryId === state.selectedCategoryId;
+        const matchZone = state.selectedZone === 'all' || m.zone === state.selectedZone;
+        const q = state.searchQuery.trim().toLowerCase();
+        const matchSearch = !q || m.name.toLowerCase().includes(q) || m.description.toLowerCase().includes(q);
+        return matchCat && matchZone && matchSearch;
+      });
+
+      const totalMenuCount = state.menus.length;
+
+      return `
+        <div class="max-w-[1200px] mx-auto">
+          ${isReadOnlyManage ? `
+            <div class="mb-4 px-4 py-3 rounded-control flex items-center justify-between gap-3" style="background: var(--status-info-bg); color: var(--status-info-text); border: 1.5px solid var(--cream-300);">
+              <div class="flex items-center gap-2 ns-small font-semibold">
+                ${icon('alert-circle')}
+                <span>โหมด${role.label}: คุณสามารถเปิด/ปิดขายเมนูได้เท่านั้น (การเพิ่ม แก้ไข หรือลบเมนูและหมวดสงวนสิทธิ์เฉพาะเจ้าของร้าน)</span>
+              </div>
+              <button type="button" onclick="switchRole('owner')" class="ns-btn ns-btn-sm ns-btn-secondary shrink-0">สลับเป็นเจ้าของร้าน</button>
+            </div>
+          ` : ''}
+
+          <div class="flex flex-col lg:flex-row items-start gap-6">
+            <!-- ด้านซ้าย (280px บนคอม, เต็มกว้างบนมือถือ): รายการหมวด -->
+            <aside class="w-full lg:w-[280px] shrink-0 ns-card">
+              <div class="flex items-center justify-between gap-2 mb-4">
+                <h2 class="ns-h3 text-brown-900 m-0">หมวด</h2>
+                ${isOwner ? `
+                  <button type="button" onclick="openCategoryModal()" class="ns-btn ns-btn-sm ns-btn-primary">
+                    ${icon('plus')}
+                    <span>เพิ่มหมวด</span>
+                  </button>
+                ` : ''}
+              </div>
+
+              <!-- ปุ่มเลือก "ทั้งหมด" -->
+              <button
+                type="button"
+                onclick="selectCategory('all')"
+                class="w-full flex items-center justify-between px-4 py-3 rounded-control mb-2 text-left transition-colors ${
+                  state.selectedCategoryId === 'all'
+                    ? 'bg-red-50 text-red-600 font-semibold'
+                    : 'bg-transparent text-brown-900 hover:bg-cream-200'
+                }"
+              >
+                <span class="ns-body ${state.selectedCategoryId === 'all' ? 'font-semibold' : ''}">ทั้งหมด</span>
+                <span class="ns-small font-semibold ${state.selectedCategoryId === 'all' ? 'text-red-600' : 'text-brown-500'}">${totalMenuCount}</span>
+              </button>
+
+              <!-- รายการหมวด ลากเรียงลำดับได้ -->
+              <div id="category-list" class="flex flex-col gap-1">
+                ${state.categories.map((cat, idx) => {
+                  const count = getMenuCountByCategory(cat.id);
+                  const isSelected = state.selectedCategoryId === cat.id;
+                  return `
+                    <div
+                      draggable="${isOwner ? 'true' : 'false'}"
+                      data-cat-index="${idx}"
+                      ondragstart="handleCatDragStart(event, ${idx})"
+                      ondragover="handleCatDragOver(event, ${idx})"
+                      ondragleave="handleCatDragLeave(event)"
+                      ondrop="handleCatDrop(event, ${idx})"
+                      ondragend="handleCatDragEnd(event)"
+                      class="group flex items-center justify-between px-2 py-2.5 rounded-control transition-colors ${
+                        isSelected
+                          ? 'bg-red-50 text-red-600 font-semibold'
+                          : 'bg-transparent text-brown-900 hover:bg-cream-200'
+                      } ${cat.hidden ? 'opacity-60' : ''}"
+                    >
+                      <div class="flex items-center gap-2 min-w-0 flex-1">
+                        ${isOwner ? `
+                          <span
+                            class="cursor-grab active:cursor-grabbing text-bamboo hover:text-brown-900 p-1"
+                            title="ลากเพื่อเรียงลำดับหมวด"
+                          >
+                            ${icon('grip-vertical')}
+                          </span>
+                        ` : ''}
+                        <button
+                          type="button"
+                          onclick="selectCategory('${cat.id}')"
+                          class="flex items-center gap-2 min-w-0 flex-1 text-left bg-transparent border-0 p-0 cursor-pointer text-inherit"
+                        >
+                          <span class="text-[18px] leading-none shrink-0">${cat.emoji}</span>
+                          <span class="ns-body truncate ${isSelected ? 'font-semibold text-red-600' : 'text-brown-900'}">${cat.name}</span>
+                          ${cat.hidden ? `<span class="ns-badge" style="background: var(--status-disabled-bg); color: var(--status-disabled-text);">ซ่อน</span>` : ''}
+                        </button>
+                      </div>
+
+                      <div class="flex items-center gap-1 shrink-0 ml-2">
+                        <span class="ns-small ${isSelected ? 'text-red-600 font-semibold' : 'text-brown-500'} mr-1">${count}</span>
+                        ${isOwner ? `
+                          <button
+                            type="button"
+                            onclick="openCategoryModal('${cat.id}')"
+                            class="w-7 h-7 rounded-control flex items-center justify-center text-brown-500 hover:text-brown-900 hover:bg-cream-200 transition-colors"
+                            title="แก้ไขหมวด ${cat.name}"
+                            aria-label="แก้ไขหมวด ${cat.name}"
+                          >
+                            ${icon('pencil')}
+                          </button>
+                          <button
+                            type="button"
+                            onclick="toggleHideCategory('${cat.id}')"
+                            class="w-7 h-7 rounded-control flex items-center justify-center text-brown-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            title="${cat.hidden ? 'แสดงหมวด' : 'ซ่อนหมวด'} ${cat.name}"
+                            aria-label="${cat.hidden ? 'แสดงหมวด' : 'ซ่อนหมวด'} ${cat.name}"
+                          >
+                            ${icon(cat.hidden ? 'eye' : 'eye-off')}
+                          </button>
+                        ` : ''}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              ${isOwner ? `
+                <div class="mt-4 pt-3 flex items-center justify-between text-brown-500 ns-caption" style="border-top: 1px solid var(--cream-300);">
+                  <span>ลากที่ไอคอน ⋮⋮ เพื่อเรียงลำดับหมวด</span>
+                </div>
+              ` : ''}
+            </aside>
+
+            <!-- ด้านขวา: ช่องค้นหา + ปุ่มเพิ่มเมนู + ตัวกรองโซนครัว + Grid การ์ดเมนู -->
+            <section class="flex-1 w-full min-w-0">
+              <!-- แถวบนของเนื้อหา: ช่องค้นหาซ้าย ปุ่มหลักขวา -->
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-4">
+                <div class="relative flex-1">
+                  <span class="absolute left-4 top-1/2 -translate-y-1/2 text-brown-500 pointer-events-none">
+                    ${icon('search')}
+                  </span>
+                  <input
+                    id="menu-search-input"
+                    type="text"
+                    value="${escapeHtml(state.searchQuery)}"
+                    oninput="handleSearchInput(this.value)"
+                    placeholder="ค้นหาชื่อเมนู"
+                    class="ns-input pl-11"
+                  />
+                </div>
+                ${isOwner ? `
+                  <button type="button" onclick="openMenuModal()" class="ns-btn ns-btn-primary shrink-0">
+                    ${icon('plus')}
+                    <span>เพิ่มเมนู</span>
+                  </button>
+                ` : ''}
+              </div>
+
+              <!-- ตัวกรองโซนครัว (chip สีโซน) -->
+              <div class="flex flex-wrap items-center gap-2 mb-6">
+                <button
+                  type="button"
+                  onclick="selectZone('all')"
+                  class="h-[36px] px-4 rounded-pill ns-small font-semibold transition-all flex items-center gap-2 ${
+                    state.selectedZone === 'all'
+                      ? 'bg-white text-brown-900'
+                      : 'bg-cream-50 text-brown-900 hover:bg-cream-200'
+                  }"
+                  style="border: 1.5px solid var(--cream-300); ${state.selectedZone === 'all' ? 'box-shadow: var(--shadow-sticker);' : ''}"
+                >
+                  <span>ทุกโซน</span>
+                </button>
+                ${Object.values(ZONES).map(z => {
+                  const active = state.selectedZone === z.id;
+                  return `
+                    <button
+                      type="button"
+                      onclick="selectZone('${z.id}')"
+                      class="h-[36px] px-4 rounded-pill ns-small transition-all flex items-center gap-2 ${
+                        active ? 'bg-red-50 text-red-600 font-semibold' : 'bg-cream-50 text-brown-900 hover:bg-cream-200'
+                      }"
+                      style="border: ${active ? '2px solid var(--red-600)' : '1.5px solid var(--cream-300)'};"
+                    >
+                      <span class="w-[10px] h-[10px] rounded-pill shrink-0" style="background-color: ${z.color};"></span>
+                      <span>${z.name}</span>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Grid การ์ดเมนู (gap 16px) -->
+              ${filteredMenus.length === 0 ? `
+                <div class="ns-card py-12 flex flex-col items-center justify-center text-center">
+                  <div class="w-[96px] h-[96px] rounded-pill bg-cream-200 flex items-center justify-center mb-4">
+                    <span class="text-[40px] leading-none">🥟</span>
+                  </div>
+                  <p class="ns-body text-brown-500 mb-4">ไม่พบรายการเมนูที่ตรงกับเงื่อนไขการค้นหา</p>
+                  <button type="button" onclick="resetMenuFilters()" class="ns-btn ns-btn-secondary ns-btn-sm">
+                    ล้างตัวกรองทั้งหมด
+                  </button>
+                </div>
+              ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  ${filteredMenus.map(menu => renderMenuCard(menu, isOwner)).join('')}
+                </div>
+              `}
+            </section>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMenuCard(menu, isOwner) {
+      const zone = ZONES[menu.zone] || ZONES.steam;
+      const emoji = getCategoryEmoji(menu.categoryId);
+      const isOut = !menu.available;
+
+      return `
+        <article
+          class="ns-card flex flex-col justify-between transition-all"
+          style="border-left: 4px solid ${zone.color};"
+        >
+          <div>
+            <!-- รูปเมนู: อัตราส่วน 4:3 ขอบมน 12px ถ้าไม่มีรูปใช้พื้น --cream-200 + emoji ตามหมวด ขนาด 40px -->
+            <div class="relative w-full aspect-[4/3] rounded-control bg-cream-200 overflow-hidden mb-3 flex items-center justify-center">
+              ${menu.image ? `
+                <img src="${menu.image}" alt="${escapeHtml(menu.name)}" class="w-full h-full object-cover ${isOut ? 'opacity-50' : ''}" />
+              ` : `
+                <span class="text-[40px] leading-none select-none ${isOut ? 'opacity-50' : ''}">${emoji}</span>
+              `}
+              ${isOut ? `
+                <span
+                  class="ns-badge absolute top-2 right-2"
+                  style="background-color: var(--status-danger-bg); color: var(--status-danger-text);"
+                >หมด</span>
+              ` : ''}
+            </div>
+
+            <!-- ชื่อ 16px 600 + chip โซนครัว -->
+            <div class="flex items-start justify-between gap-2 mb-1 ${isOut ? 'opacity-50' : ''}">
+              <h3 class="ns-body font-semibold text-brown-900 m-0 truncate">${escapeHtml(menu.name)}</h3>
+              <span class="ns-badge bg-cream-200 text-brown-900 shrink-0" style="font-weight: 400;">
+                <span class="w-[10px] h-[10px] rounded-pill shrink-0" style="background-color: ${zone.color};"></span>
+                <span>${zone.name}</span>
+              </span>
+            </div>
+
+            <!-- คำอธิบาย 14px สีรอง 1 บรรทัด -->
+            <p class="ns-small text-brown-500 m-0 mb-3 truncate ${isOut ? 'opacity-50' : ''}">
+              ${escapeHtml(menu.description || 'เมนูติ่มซำทำสดใหม่ทุกวัน')}
+            </p>
+
+            <!-- แถวราคา (ซ้าย) และ ขนาดล็อต (ขวา) -->
+            <div class="flex items-baseline justify-between gap-2 pb-3 ${isOut ? 'opacity-50' : ''}" style="border-bottom: 1.5px solid var(--cream-300);">
+              <div>
+                <span class="ns-price ns-body">฿${menu.price}</span>
+                <span class="ns-small text-brown-500"> /${escapeHtml(menu.unit)}</span>
+              </div>
+              <span class="ns-caption text-brown-500">1 ล็อต = ${menu.batchSize} ${escapeHtml(menu.unit)}</span>
+            </div>
+          </div>
+
+          <!-- แถวล่าง: switch "เปิดขาย" ซ้าย / ปุ่ม แก้ไข & ลบ ขวา -->
+          <div class="pt-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                role="switch"
+                aria-checked="${menu.available ? 'true' : 'false'}"
+                aria-label="สลับสถานะเปิดขาย ${escapeHtml(menu.name)}"
+                onclick="toggleMenuAvailable('${menu.id}')"
+                class="ns-switch ${menu.available ? 'ns-switch-on' : 'ns-switch-off'}"
+              >
+                <span class="ns-switch-thumb"></span>
+              </button>
+              <span class="ns-small font-semibold ${menu.available ? 'text-brown-900' : 'text-brown-500'}">
+                เปิดขาย
+              </span>
+            </div>
+
+            ${isOwner ? `
+              <div class="flex items-center gap-1">
+                <button
+                  type="button"
+                  onclick="openMenuModal('${menu.id}')"
+                  class="w-9 h-9 rounded-control flex items-center justify-center text-brown-500 hover:text-brown-900 hover:bg-cream-200 transition-colors"
+                  title="แก้ไขเมนู ${escapeHtml(menu.name)}"
+                  aria-label="แก้ไขเมนู ${escapeHtml(menu.name)}"
+                >
+                  ${icon('pencil')}
+                </button>
+                <button
+                  type="button"
+                  onclick="openDeleteMenuModal('${menu.id}')"
+                  class="w-9 h-9 rounded-control flex items-center justify-center text-brown-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="ลบเมนู ${escapeHtml(menu.name)}"
+                  aria-label="ลบเมนู ${escapeHtml(menu.name)}"
+                >
+                  ${icon('trash-2')}
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </article>
+      `;
+    }
+
+    /* =========================================================================
+       Empty State Page ("กำลังพัฒนา" สำหรับหน้าอื่นๆ ใน Sidebar ตามข้อ 6C และ 8)
+       ========================================================================= */
+    function renderUnderDevelopmentPage(pageTitle) {
+      return `
+        <div class="max-w-[1200px] mx-auto">
+          <div class="ns-card py-12 px-6 flex flex-col items-center justify-center text-center">
+            <!-- Empty state: วงกลม --cream-200 ขนาด 96px มี emoji 🥟 ตรงกลาง + ข้อความ 16px สี --brown-500 -->
+            <div class="w-[96px] h-[96px] rounded-pill bg-cream-200 flex items-center justify-center mb-4">
+              <span class="text-[40px] leading-none">🥟</span>
+            </div>
+            <h3 class="ns-h3 text-brown-900 mb-2">หน้า "${escapeHtml(pageTitle)}" กำลังพัฒนา</h3>
+            <p class="ns-body text-brown-500 max-w-[460px] mb-6">
+              ส่วนงานนี้อยู่ในความรับผิดชอบของสมาชิกทีมคนอื่นในโปรเจกต์ร้านติ่มซำ "นิ่งสุข" รอบนี้สามารถทดสอบหน้า "เมนูและหมวด" ได้ครบทุกฟังก์ชัน
+            </p>
+            <button type="button" onclick="navigateStaffPage('เมนูและหมวด')" class="ns-btn ns-btn-primary">
+              ${icon('utensils')}
+              <span>ไปที่หน้า "เมนูและหมวด"</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       Shell C: โครงหน้าพนักงาน (Sidebar 248px + Topbar 64px)
+       ========================================================================= */
+    function renderStaffShell() {
+      const role = getCurrentRole();
+      const visibleGroups = SIDEBAR_GROUPS.filter(g => role.allowedGroups.includes(g.id));
+
+      return `
+        <div class="min-h-screen flex bg-cream-100">
+          <!-- Mobile Sidebar Backdrop -->
+          ${state.mobileSidebarOpen ? `
+            <div
+              onclick="toggleMobileSidebar(false)"
+              class="fixed inset-0 bg-brown-900/40 z-40 lg:hidden"
+            ></div>
+          ` : ''}
+
+          <!-- Sidebar ซ้ายกว้าง 248px พื้น --cream-50 เส้นขวา 1.5px --cream-300 -->
+          <aside
+            class="fixed lg:static inset-y-0 left-0 z-50 w-[248px] shrink-0 bg-cream-50 flex flex-col transition-transform duration-200 ${
+              state.mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+            }"
+            style="border-right: 1.5px solid var(--cream-300);"
+          >
+            <!-- บนสุดโลโก้ (สูง 64px) -->
+            <div class="h-[64px] px-5 flex items-center justify-between shrink-0" style="border-bottom: 1.5px solid var(--cream-300);">
+              <button type="button" onclick="navigateStaffPage('เมนูและหมวด')" class="bg-transparent border-0 p-0 cursor-pointer">
+                ${renderLogo()}
+              </button>
+              <button
+                type="button"
+                onclick="toggleMobileSidebar(false)"
+                class="lg:hidden w-9 h-9 rounded-control flex items-center justify-center text-brown-500 hover:bg-cream-200"
+                aria-label="ปิดเมนูด้านข้าง"
+              >
+                ${icon('x')}
+              </button>
+            </div>
+
+            <!-- รายการเมนูใน Sidebar แสดงตามบทบาท -->
+            <nav class="flex-1 overflow-y-auto p-3 flex flex-col gap-4">
+              ${visibleGroups.map(group => `
+                <div>
+                  <div class="ns-caption text-brown-500 px-3 mb-1">${group.title}</div>
+                  <div class="flex flex-col gap-1">
+                    ${group.items.map(item => {
+                      const active = state.activeStaffPage === item.name;
+                      return `
+                        <button
+                          type="button"
+                          onclick="navigateStaffPage('${item.name}')"
+                          class="w-full h-[44px] px-3 rounded-control flex items-center gap-3 text-left transition-colors ${
+                            active
+                              ? 'bg-red-50 text-red-600 font-semibold'
+                              : 'bg-transparent text-brown-900 hover:bg-cream-200'
+                          }"
+                        >
+                          ${icon(item.icon)}
+                          <span class="ns-body truncate ${active ? 'font-semibold' : ''}">${item.name}</span>
+                        </button>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+              `).join('')}
+
+              ${!role.allowedGroups.includes('owner') ? `
+                <div class="pt-2" style="border-top: 1.5px solid var(--cream-300);">
+                  <div class="ns-caption text-brown-500 px-3 mb-1">ทางลัดตรวจงานรอบนี้</div>
+                  <button
+                    type="button"
+                    onclick="navigateStaffPage('เมนูและหมวด')"
+                    class="w-full h-[44px] px-3 rounded-control flex items-center gap-3 text-left transition-colors ${
+                      state.activeStaffPage === 'เมนูและหมวด'
+                        ? 'bg-red-50 text-red-600 font-semibold'
+                        : 'bg-transparent text-brown-900 hover:bg-cream-200'
+                    }"
+                  >
+                    ${icon('utensils')}
+                    <span class="ns-body truncate ${state.activeStaffPage === 'เมนูและหมวด' ? 'font-semibold' : ''}">เมนูและหมวด</span>
+                  </button>
+                </div>
+              ` : ''}
+            </nav>
+          </aside>
+
+          <!-- ส่วนเนื้อหาหลักด้านขวา -->
+          <div class="flex-1 flex flex-col min-w-0">
+            <!-- Topbar สูง 64px พื้น --cream-50 -->
+            <header
+              class="h-[64px] bg-cream-50 px-4 lg:px-6 flex items-center justify-between gap-3 sticky top-0 z-30"
+              style="border-bottom: 1.5px solid var(--cream-300);"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  onclick="toggleMobileSidebar(true)"
+                  class="lg:hidden w-10 h-10 rounded-control flex items-center justify-center text-brown-900 hover:bg-cream-200 shrink-0"
+                  aria-label="เปิดเมนูด้านข้าง"
+                >
+                  ${icon('menu')}
+                </button>
+                <h1 class="ns-h2 text-brown-900 m-0 truncate">${escapeHtml(state.activeStaffPage)}</h1>
+              </div>
+
+              <!-- ขวา: chip สถานะร้าน + avatar ชื่อพนักงาน + บทบาท + ปุ่มออกจากระบบ -->
+              <div class="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onclick="toggleStoreStatus()"
+                  title="คลิกเพื่อสลับสถานะร้านเปิด/ปิด"
+                  class="ns-badge cursor-pointer border-0 transition-transform active:scale-95 hidden sm:inline-flex"
+                  style="${
+                    state.storeOpen
+                      ? 'background-color: var(--status-success-bg); color: var(--status-success-text); height: 32px; padding: 0 12px;'
+                      : 'background-color: var(--status-disabled-bg); color: var(--status-disabled-text); height: 32px; padding: 0 12px;'
+                  }"
+                >
+                  <span>● ${state.storeOpen ? 'เปิดอยู่ · กะเช้า · ปิดรับออเดอร์ 13:30' : 'ปิดอยู่'}</span>
+                </button>
+
+                <div class="flex items-center gap-2.5">
+                  <div class="w-[40px] h-[40px] rounded-pill bg-red-50 text-red-600 font-semibold flex items-center justify-center shrink-0">
+                    ${role.avatarChar}
+                  </div>
+                  <div class="hidden md:block text-left leading-tight">
+                    <div class="ns-small font-semibold text-brown-900">${role.staffName}</div>
+                    <div class="ns-caption text-brown-500">${role.roleTitle}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onclick="handleStaffLogout()"
+                    class="w-9 h-9 rounded-control flex items-center justify-center text-brown-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="ออกจากระบบ"
+                    aria-label="ออกจากระบบ"
+                  >
+                    ${icon('log-out')}
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <!-- เนื้อหา padding 24px (คอม) / 16px (มือถือ) พื้น --cream-100 -->
+            <main class="flex-1 p-4 lg:p-6 pb-20">
+              ${
+                state.activeStaffPage === 'เมนูและหมวด'
+                  ? renderMenuAndCategoryPage()
+                  : renderUnderDevelopmentPage(state.activeStaffPage)
+              }
+            </main>
+          </div>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       Shell A & B: โครงหน้าฝั่งลูกค้า (Home / สมาชิก / สั่งอาหารจาก QR โต๊ะ T05)
+       ========================================================================= */
+    function renderCustomerShell() {
+      const role = getCurrentRole();
+      if (state.customerSubMode === 'qr') {
+        return renderCustomerQrShell();
+      }
+
+      const visibleCategories = state.categories.filter(c => !c.hidden);
+      const filteredMenus = state.menus.filter(m => {
+        const cat = getCategoryById(m.categoryId);
+        if (cat && cat.hidden) return false;
+        if (state.selectedCategoryId !== 'all' && m.categoryId !== state.selectedCategoryId) return false;
+        return true;
+      });
+
+      return `
+        <div class="min-h-screen flex flex-col bg-cream-100">
+          <!-- Navbar สูง 64px พื้น --cream-50 เส้นล่าง 1.5px --cream-300 ติดบน -->
+          <header class="h-[64px] bg-cream-50 sticky top-0 z-30 px-4 lg:px-6" style="border-bottom: 1.5px solid var(--cream-300);">
+            <div class="max-w-[1200px] mx-auto h-full flex items-center justify-between gap-4">
+              <!-- ซ้าย: โลโก้ -->
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  onclick="toggleCustomerMobileNav()"
+                  class="md:hidden w-10 h-10 rounded-control flex items-center justify-center text-brown-900 hover:bg-cream-200"
+                  aria-label="เปิดเมนูนำทาง"
+                >
+                  ${icon('menu')}
+                </button>
+                <button type="button" onclick="setCustomerSection('menu')" class="bg-transparent border-0 p-0 cursor-pointer">
+                  ${renderLogo()}
+                </button>
+              </div>
+
+              <!-- กลาง (คอม): ลิงก์ เมนู · โปรโมชัน · เวลาเปิด-ปิด · ติดต่อ -->
+              <nav class="hidden md:flex items-center gap-6">
+                ${[
+                  { id: 'menu', label: 'เมนู' },
+                  { id: 'promo', label: 'โปรโมชัน' },
+                  { id: 'hours', label: 'เวลาเปิด-ปิด' },
+                  { id: 'contact', label: 'ติดต่อ' }
+                ].map(link => `
+                  <button
+                    type="button"
+                    onclick="setCustomerSection('${link.id}')"
+                    class="ns-body bg-transparent border-0 cursor-pointer py-1 transition-colors ${
+                      state.customerActiveSection === link.id
+                        ? 'text-red-600 font-semibold'
+                        : 'text-brown-900 hover:text-red-600'
+                    }"
+                  >
+                    ${link.label}
+                  </button>
+                `).join('')}
+                <button
+                  type="button"
+                  onclick="setCustomerSubMode('qr')"
+                  class="ns-badge bg-cream-200 text-brown-900 cursor-pointer border-0 hover:bg-red-50 hover:text-red-600"
+                >
+                  ${icon('qr-code')}
+                  <span>สั่งอาหาร QR (โต๊ะ T05)</span>
+                </button>
+              </nav>
+
+              <!-- ขวา: ยังไม่ล็อกอิน = ปุ่มรอง "เข้าสู่ระบบสมาชิก" / ล็อกอินแล้ว = avatar วงกลม 40px -->
+              <div class="relative flex items-center gap-2">
+                ${!role.isLoggedIn ? `
+                  <button type="button" onclick="switchRole('customer_member')" class="ns-btn ns-btn-sm ns-btn-secondary">
+                    เข้าสู่ระบบสมาชิก
+                  </button>
+                ` : `
+                  <div class="relative">
+                    <button
+                      type="button"
+                      onclick="toggleCustomerMemberDropdown()"
+                      class="w-[40px] h-[40px] rounded-pill bg-red-50 text-red-600 font-semibold flex items-center justify-center cursor-pointer"
+                      style="border: 1.5px solid var(--cream-300);"
+                      aria-label="เมนูสมาชิก"
+                    >
+                      ${role.avatarChar}
+                    </button>
+                    ${state.customerMemberDropdownOpen ? `
+                      <div
+                        class="absolute right-0 mt-2 w-48 bg-cream-50 rounded-card p-2 z-50"
+                        style="border: 1.5px solid var(--cream-300); box-shadow: var(--shadow-sticker);"
+                      >
+                        <div class="px-3 py-2 mb-1" style="border-bottom: 1px solid var(--cream-300);">
+                          <div class="ns-small font-semibold text-brown-900">${role.staffName}</div>
+                          <div class="ns-caption" style="color: var(--gold); font-weight: 600;">★ ${role.memberPoints} แต้ม (${role.memberTier})</div>
+                        </div>
+                        <button
+                          type="button"
+                          onclick="setCustomerSection('account')"
+                          class="w-full text-left px-3 py-2 rounded-control ns-small text-brown-900 hover:bg-cream-200"
+                        >
+                          บัญชีของฉัน
+                        </button>
+                        <button
+                          type="button"
+                          onclick="switchRole('customer_guest')"
+                          class="w-full text-left px-3 py-2 rounded-control ns-small text-red-600 hover:bg-red-50"
+                        >
+                          ออกจากระบบ
+                        </button>
+                      </div>
+                    ` : ''}
+                  </div>
+                `}
+              </div>
+            </div>
+          </header>
+
+          <!-- Mobile Navigation Drawer for Customer -->
+          ${state.customerMobileNavOpen ? `
+            <div class="md:hidden bg-cream-50 px-4 py-3 flex flex-col gap-2" style="border-bottom: 1.5px solid var(--cream-300);">
+              <button type="button" onclick="setCustomerSection('menu')" class="text-left py-2 ns-body font-semibold text-red-600">เมนู</button>
+              <button type="button" onclick="setCustomerSection('promo')" class="text-left py-2 ns-body text-brown-900">โปรโมชัน</button>
+              <button type="button" onclick="setCustomerSection('hours')" class="text-left py-2 ns-body text-brown-900">เวลาเปิด-ปิด</button>
+              <button type="button" onclick="setCustomerSection('contact')" class="text-left py-2 ns-body text-brown-900">ติดต่อ</button>
+              <button type="button" onclick="setCustomerSubMode('qr')" class="ns-btn ns-btn-sm ns-btn-secondary justify-start">
+                ${icon('qr-code')}
+                <span>จำลองหน้าสั่งอาหาร QR (โต๊ะ T05)</span>
+              </button>
+            </div>
+          ` : ''}
+
+          <!-- เนื้อหาหน้าลูกค้า -->
+          <main class="flex-1 p-4 md:p-6 max-w-[1200px] w-full mx-auto">
+            <!-- แบนเนอร์แนะนำร้าน & สมาชิก -->
+            <div class="ns-card mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-pill bg-red-50 text-red-600 ns-caption font-semibold mb-2">
+                  <span>🥟 ติ่มซำปั้นสด นึ่งร้อนทุกเข่ง</span>
+                </div>
+                <h1 class="ns-h1 text-brown-900 m-0 mb-2">ร้านติ่มซำ "นิ่งสุข" ยินดีต้อนรับ</h1>
+                <p class="ns-body text-brown-500 m-0">
+                  เปิดบริการ 10:00–14:00 และ 16:00–20:00 (ปิดรับออเดอร์ 13:30 / 19:30) · ราคารวม VAT 7% แล้ว ไม่มี service charge
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2 shrink-0">
+                <button type="button" onclick="setCustomerSubMode('qr')" class="ns-btn ns-btn-primary">
+                  ${icon('qr-code')}
+                  <span>สั่งอาหารที่โต๊ะ T05</span>
+                </button>
+                <button type="button" onclick="switchRole('owner')" class="ns-btn ns-btn-secondary">
+                  กลับหน้า "เมนูและหมวด"
+                </button>
+              </div>
+            </div>
+
+            ${role.isLoggedIn && state.customerActiveSection === 'account' ? `
+              <div class="ns-card mb-8">
+                <h2 class="ns-h2 text-brown-900 m-0 mb-4">บัญชีสมาชิกของฉัน</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="p-4 rounded-control bg-cream-200">
+                    <div class="ns-caption text-brown-500">ชื่อสมาชิก</div>
+                    <div class="ns-h3 text-brown-900 mt-1">${role.staffName}</div>
+                    <div class="ns-small text-brown-500">${role.memberPhone} · รหัส ${role.memberCode}</div>
+                  </div>
+                  <div class="p-4 rounded-control bg-cream-200">
+                    <div class="ns-caption text-brown-500">ระดับสมาชิกและแต้มสะสม</div>
+                    <div class="ns-h2 mt-1" style="color: var(--gold);">★ ${role.memberPoints} แต้ม</div>
+                    <div class="ns-small text-brown-900 font-semibold">${role.memberTier} (100฿ = 1 แต้ม)</div>
+                  </div>
+                  <div class="p-4 rounded-control bg-cream-200">
+                    <div class="ns-caption text-brown-500">รางวัลแลกแต้ม</div>
+                    <div class="ns-small text-brown-900 mt-1">• ขนมจีบฟรี 1 เข่ง (<span style="color: var(--gold); font-weight: 600;">50 แต้ม</span>)</div>
+                    <div class="ns-small text-brown-900">• ส่วนลด ฿100 (<span style="color: var(--gold); font-weight: 600;">200 แต้ม</span>)</div>
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- หมวดหมู่เมนูฝั่งลูกค้า (เชื่อมกับข้อมูลที่เจ้าของร้านตั้งค่าแบบเรียลไทม์) -->
+            <div class="mb-6">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="ns-h2 text-brown-900 m-0">รายการเมนูติ่มซำ</h2>
+                <span class="ns-small text-brown-500">ซิงก์ข้อมูลจากหน้า "เมนูและหมวด" ทันที</span>
+              </div>
+              <div class="flex flex-wrap gap-2 mb-6">
+                <button
+                  type="button"
+                  onclick="selectCategory('all')"
+                  class="h-[36px] px-4 rounded-pill ns-small font-semibold ${
+                    state.selectedCategoryId === 'all' ? 'bg-red-600 text-white' : 'bg-cream-50 text-brown-900'
+                  }"
+                  style="border: 1.5px solid ${state.selectedCategoryId === 'all' ? 'var(--red-600)' : 'var(--cream-300)'};"
+                >
+                  ทั้งหมด
+                </button>
+                ${visibleCategories.map(cat => `
+                  <button
+                    type="button"
+                    onclick="selectCategory('${cat.id}')"
+                    class="h-[36px] px-4 rounded-pill ns-small font-semibold ${
+                      state.selectedCategoryId === cat.id ? 'bg-red-600 text-white' : 'bg-cream-50 text-brown-900'
+                    }"
+                    style="border: 1.5px solid ${state.selectedCategoryId === cat.id ? 'var(--red-600)' : 'var(--cream-300)'};"
+                  >
+                    ${cat.emoji} ${escapeHtml(cat.name)}
+                  </button>
+                `).join('')}
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${filteredMenus.map(menu => {
+                  const emoji = getCategoryEmoji(menu.categoryId);
+                  const qty = state.cart[menu.id] || 0;
+                  const isOut = !menu.available;
+                  return `
+                    <div class="ns-card flex flex-col justify-between">
+                      <div>
+                        <div class="relative w-full aspect-[4/3] rounded-control bg-cream-200 overflow-hidden mb-3 flex items-center justify-center">
+                          ${menu.image ? `<img src="${menu.image}" alt="${escapeHtml(menu.name)}" class="w-full h-full object-cover ${isOut ? 'opacity-50' : ''}" />` : `<span class="text-[40px] ${isOut ? 'opacity-50' : ''}">${emoji}</span>`}
+                          ${isOut ? `<span class="ns-badge absolute top-2 right-2" style="background: var(--status-danger-bg); color: var(--status-danger-text);">หมด</span>` : ''}
+                        </div>
+                        <h3 class="ns-body font-semibold text-brown-900 m-0 mb-1 ${isOut ? 'opacity-50' : ''}">${escapeHtml(menu.name)}</h3>
+                        <p class="ns-small text-brown-500 m-0 mb-3 truncate ${isOut ? 'opacity-50' : ''}">${escapeHtml(menu.description)}</p>
+                      </div>
+                      <div class="flex items-center justify-between pt-2" style="border-top: 1.5px solid var(--cream-300);">
+                        <div class="${isOut ? 'opacity-50' : ''}">
+                          <span class="ns-price ns-body">฿${menu.price}</span>
+                          <span class="ns-small text-brown-500"> /${escapeHtml(menu.unit)}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button
+                            type="button"
+                            ${isOut || qty === 0 ? 'disabled' : ''}
+                            onclick="updateCartQty('${menu.id}', -1)"
+                            class="w-9 h-9 rounded-control flex items-center justify-center ${isOut || qty === 0 ? 'bg-cream-200 text-brown-500 cursor-not-allowed' : 'bg-cream-50 text-brown-900 hover:bg-cream-200'}"
+                            style="border: 1.5px solid var(--cream-300);"
+                            aria-label="ลดจำนวน ${escapeHtml(menu.name)}"
+                          >
+                            ${icon('minus')}
+                          </button>
+                          <span class="ns-body font-semibold w-6 text-center">${qty}</span>
+                          <button
+                            type="button"
+                            ${isOut ? 'disabled' : ''}
+                            onclick="updateCartQty('${menu.id}', 1)"
+                            class="w-9 h-9 rounded-control flex items-center justify-center ${isOut ? 'bg-cream-200 text-brown-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}"
+                            aria-label="เพิ่มจำนวน ${escapeHtml(menu.name)}"
+                          >
+                            ${icon('plus')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- โปรโมชันและคูปอง (ข้อมูลจำลองข้อ 7) -->
+            <div class="ns-card mb-4">
+              <h2 class="ns-h3 text-brown-900 m-0 mb-3">โปรโมชันและคูปองส่วนลด</h2>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 rounded-control bg-cream-200">
+                  <span class="ns-badge mb-2" style="background: var(--status-warning-bg); color: var(--status-warning-text);">HAPPYHOUR</span>
+                  <div class="ns-body font-semibold text-brown-900">ลด 10% ช่วงเวลาพิเศษ</div>
+                  <div class="ns-small text-brown-500">จ–ศ 10:00–12:00 (ไม่รวมวันหยุดราชการ)</div>
+                </div>
+                <div class="p-4 rounded-control bg-cream-200">
+                  <span class="ns-badge mb-2" style="background: var(--status-success-bg); color: var(--status-success-text);">WELCOME20</span>
+                  <div class="ns-body font-semibold text-brown-900">ลด ฿20 สำหรับสมาชิกใหม่</div>
+                  <div class="ns-small text-brown-500">เมื่อมียอดสั่งอาหารขั้นต่ำ ฿300</div>
+                </div>
+                <div class="p-4 rounded-control bg-cream-200">
+                  <span class="ns-badge mb-2" style="background: var(--red-50); color: var(--red-600);">BDAY</span>
+                  <div class="ns-body font-semibold text-brown-900">รับฟรี! ขนมจีบหมู 1 เข่ง</div>
+                  <div class="ns-small text-brown-500">สิทธิพิเศษเฉพาะสมาชิกในเดือนเกิด</div>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          <!-- Footer พื้น --cream-200: เวลาเปิด-ปิด ที่อยู่ เบอร์โทร -->
+          <footer class="bg-cream-200 py-6 px-4 pb-20" style="border-top: 1.5px solid var(--cream-300);">
+            <div class="max-w-[1200px] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                ${renderLogo()}
+                <p class="ns-small text-brown-500 mt-2 mb-0">
+                  ร้านติ่มซำนิ่งสุข · ถนนเยาวราช แขวงสัมพันธวงศ์ เขตสัมพันธวงศ์ กรุงเทพฯ 10100
+                </p>
+              </div>
+              <div class="ns-small text-brown-900 flex flex-col gap-1">
+                <div><strong>เวลาเปิด-ปิด:</strong> 10:00–14:00 และ 16:00–20:00 (ปิดรับออเดอร์ 13:30 / 19:30)</div>
+                <div><strong>โทรศัพท์:</strong> 02-000-0000 · ราคารวม VAT 7% แล้ว ไม่มี service charge</div>
+              </div>
+            </div>
+          </footer>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       Shell B: หน้าสั่งอาหารจาก QR (มือถือเท่านั้น Navbar 56px + โต๊ะ T05 + Sticky bar 72px)
+       ========================================================================= */
+    function renderCustomerQrShell() {
+      const visibleCategories = state.categories.filter(c => !c.hidden);
+      const filteredMenus = state.menus.filter(m => {
+        const cat = getCategoryById(m.categoryId);
+        if (cat && cat.hidden) return false;
+        if (state.selectedCategoryId !== 'all' && m.categoryId !== state.selectedCategoryId) return false;
+        return true;
+      });
+
+      let totalQty = 0;
+      let totalPrice = 0;
+      Object.entries(state.cart).forEach(([mId, qty]) => {
+        const item = state.menus.find(m => m.id === mId);
+        if (item && qty > 0) {
+          totalQty += qty;
+          totalPrice += item.price * qty;
+        }
+      });
+
+      return `
+        <div class="min-h-screen bg-cream-100 flex flex-col items-center">
+          <div class="w-full max-w-[430px] min-h-screen bg-cream-100 flex flex-col relative" style="border-left: 1.5px solid var(--cream-300); border-right: 1.5px solid var(--cream-300);">
+            <!-- Navbar 56px: โลโก้ซ้าย + chip "โต๊ะ T05" ขวา ไม่มีปุ่มล็อกอิน -->
+            <header class="h-[56px] bg-cream-50 px-4 flex items-center justify-between sticky top-0 z-30" style="border-bottom: 1.5px solid var(--cream-300);">
+              ${renderLogo()}
+              <div class="flex items-center gap-2">
+                <span class="ns-badge bg-red-50 text-red-600">โต๊ะ T05</span>
+                <button type="button" onclick="setCustomerSubMode('home')" class="ns-btn ns-btn-sm ns-btn-secondary">หน้าหลัก</button>
+              </div>
+            </header>
+
+            <main class="flex-1 p-4 pb-28">
+              <div class="ns-caption text-brown-500 mb-3">บิล B20261024-012 · โต๊ะ T05 (4 คน) · เปิด 11:05</div>
+
+              <!-- แถบเลือกหมวด -->
+              <div class="flex overflow-x-auto gap-2 pb-2 mb-4">
+                <button
+                  type="button"
+                  onclick="selectCategory('all')"
+                  class="h-[36px] px-4 rounded-pill ns-small font-semibold shrink-0 ${
+                    state.selectedCategoryId === 'all' ? 'bg-red-600 text-white' : 'bg-cream-50 text-brown-900'
+                  }"
+                  style="border: 1.5px solid var(--cream-300);"
+                >ทั้งหมด</button>
+                ${visibleCategories.map(cat => `
+                  <button
+                    type="button"
+                    onclick="selectCategory('${cat.id}')"
+                    class="h-[36px] px-4 rounded-pill ns-small font-semibold shrink-0 ${
+                      state.selectedCategoryId === cat.id ? 'bg-red-600 text-white' : 'bg-cream-50 text-brown-900'
+                    }"
+                    style="border: 1.5px solid var(--cream-300);"
+                  >${cat.emoji} ${escapeHtml(cat.name)}</button>
+                `).join('')}
+              </div>
+
+              <!-- รายการการ์ดเมนู -->
+              <div class="flex flex-col gap-4">
+                ${filteredMenus.map(menu => {
+                  const emoji = getCategoryEmoji(menu.categoryId);
+                  const qty = state.cart[menu.id] || 0;
+                  const isOut = !menu.available;
+                  return `
+                    <div class="ns-card">
+                      <div class="relative w-full aspect-[4/3] rounded-control bg-cream-200 overflow-hidden mb-3 flex items-center justify-center">
+                        ${menu.image ? `<img src="${menu.image}" alt="${escapeHtml(menu.name)}" class="w-full h-full object-cover ${isOut ? 'opacity-50' : ''}" />` : `<span class="text-[40px] ${isOut ? 'opacity-50' : ''}">${emoji}</span>`}
+                        ${isOut ? `<span class="ns-badge absolute top-2 right-2" style="background: var(--status-danger-bg); color: var(--status-danger-text);">หมด</span>` : ''}
+                      </div>
+                      <h3 class="ns-body font-semibold text-brown-900 m-0 mb-1 ${isOut ? 'opacity-50' : ''}">${escapeHtml(menu.name)}</h3>
+                      <p class="ns-small text-brown-500 m-0 mb-3 truncate ${isOut ? 'opacity-50' : ''}">${escapeHtml(menu.description)}</p>
+                      <div class="flex items-center justify-between pt-2" style="border-top: 1.5px solid var(--cream-300);">
+                        <div class="${isOut ? 'opacity-50' : ''}">
+                          <span class="ns-price ns-body">฿${menu.price}</span>
+                          <span class="ns-small text-brown-500"> /${escapeHtml(menu.unit)}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button
+                            type="button"
+                            ${isOut || qty === 0 ? 'disabled' : ''}
+                            onclick="updateCartQty('${menu.id}', -1)"
+                            class="w-9 h-9 rounded-control flex items-center justify-center ${isOut || qty === 0 ? 'bg-cream-200 text-brown-500' : 'bg-cream-50 text-brown-900'}"
+                            style="border: 1.5px solid var(--cream-300);"
+                          >${icon('minus')}</button>
+                          <span class="ns-body font-semibold w-6 text-center">${qty}</span>
+                          <button
+                            type="button"
+                            ${isOut ? 'disabled' : ''}
+                            onclick="updateCartQty('${menu.id}', 1)"
+                            class="w-9 h-9 rounded-control flex items-center justify-center ${isOut ? 'bg-cream-200 text-brown-500' : 'bg-red-600 text-white'}"
+                          >${icon('plus')}</button>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </main>
+
+            <!-- ปุ่มหลักติดล่างจอ (sticky bar สูง 72px พื้นขาว เงาขึ้นบน) -->
+            <div class="sticky bottom-0 left-0 right-0 h-[72px] bg-white px-4 flex items-center justify-between gap-4 z-30" style="border-top: 1.5px solid var(--cream-300); box-shadow: 0 -4px 0 #EBD3A8;">
+              <div>
+                <div class="ns-caption text-brown-500">ตะกร้าโต๊ะ T05 (${totalQty} รายการ)</div>
+                <div class="ns-price ns-h3">฿${totalPrice}</div>
+              </div>
+              <button
+                type="button"
+                ${totalQty === 0 ? 'disabled' : ''}
+                onclick="submitQrOrder()"
+                class="ns-btn ns-btn-primary"
+              >
+                ${icon('shopping-bag')}
+                <span>ส่งออเดอร์เข้าครัว</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       Modals (ข้อ 5: กว้าง 480px / ฟอร์มใหญ่ 640px ขอบมน 24px มือถือเป็น bottom sheet เต็มกว้าง)
+       ========================================================================= */
+    function renderModal() {
+      if (!state.modal) return '';
+
+      if (state.modal.type === 'menu_form') {
+        const d = state.modal.data;
+        const isEdit = Boolean(d.id);
+        const priceChanged = isEdit && Number(d.price) !== Number(d.originalPrice);
+        const emoji = getCategoryEmoji(d.categoryId);
+
+        return `
+          <div class="fixed inset-0 z-[70] bg-brown-900/40 flex items-end md:items-center justify-center p-0 md:p-4">
+            <div
+              class="bg-cream-50 w-full md:max-w-[640px] max-h-[92vh] overflow-y-auto rounded-t-[24px] md:rounded-[24px] p-6"
+              style="border: 1.5px solid var(--cream-300); box-shadow: var(--shadow-modal);"
+            >
+              <div class="flex items-center justify-between gap-2 mb-4">
+                <h3 class="ns-h3 text-brown-900 m-0">${isEdit ? 'แก้ไขเมนูอาหาร' : 'เพิ่มเมนูใหม่'}</h3>
+                <button
+                  type="button"
+                  onclick="closeModal()"
+                  class="w-9 h-9 rounded-control flex items-center justify-center text-brown-500 hover:bg-cream-200"
+                  aria-label="ปิดหน้าต่าง"
+                >
+                  ${icon('x')}
+                </button>
+              </div>
+
+              <form onsubmit="submitMenuForm(event)" class="flex flex-col gap-4">
+                <!-- อัปโหลดรูป (พรีวิว 4:3) -->
+                <div>
+                  <label class="ns-label">รูปเมนู (อัตราส่วน 4:3)</label>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                    <div class="w-full aspect-[4/3] rounded-control bg-cream-200 overflow-hidden flex items-center justify-center relative" style="border: 1.5px solid var(--cream-300);">
+                      ${d.image ? `
+                        <img id="menu-form-preview-img" src="${d.image}" alt="พรีวิวรูปเมนู" class="w-full h-full object-cover" />
+                      ` : `
+                        <div class="flex flex-col items-center gap-1">
+                          <span class="text-[40px] leading-none">${emoji}</span>
+                          <span class="ns-caption text-brown-500">ใช้ไอคอนหมวดหมู่เริ่มต้น</span>
+                        </div>
+                      `}
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="ns-btn ns-btn-secondary ns-btn-sm cursor-pointer w-full">
+                        ${icon('upload')}
+                        <span>อัปโหลดรูปภาพ...</span>
+                        <input type="file" accept="image/*" onchange="handleMenuImageUpload(event)" class="hidden" />
+                      </label>
+                      <button
+                        type="button"
+                        onclick="generateMenuIllustrationPreview()"
+                        class="ns-btn ns-btn-secondary ns-btn-sm w-full"
+                      >
+                        <span>ใช้ภาพวาดการ์ตูนตัวอย่าง</span>
+                      </button>
+                      ${d.image ? `
+                        <button
+                          type="button"
+                          onclick="clearMenuImagePreview()"
+                          class="ns-btn ns-btn-ghost ns-btn-sm w-full"
+                        >
+                          ล้างรูป (ใช้ Emoji หมวดหมู่)
+                        </button>
+                      ` : ''}
+                      <p class="ns-caption text-brown-500 m-0">
+                        หากไม่อัปโหลดรูป ระบบจะแสดงพื้นครีมพร้อม Emoji ประจำหมวดขนาด 40px อัตโนมัติ
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- หมวด และ ชื่อเมนู -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="ns-label" for="form-menu-cat">หมวดหมู่</label>
+                    <select
+                      id="form-menu-cat"
+                      onchange="updateMenuFormField('categoryId', this.value)"
+                      class="ns-input"
+                    >
+                      ${state.categories.map(c => `
+                        <option value="${c.id}" ${d.categoryId === c.id ? 'selected' : ''}>${c.emoji} ${escapeHtml(c.name)}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label class="ns-label" for="form-menu-name">ชื่อเมนู</label>
+                    <input
+                      id="form-menu-name"
+                      type="text"
+                      value="${escapeHtml(d.name)}"
+                      oninput="updateMenuFormField('name', this.value, false)"
+                      placeholder="เช่น ฮะเก๋ากุ้ง"
+                      class="ns-input"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <!-- คำอธิบาย -->
+                <div>
+                  <label class="ns-label" for="form-menu-desc">คำอธิบาย (1 บรรทัด)</label>
+                  <input
+                    id="form-menu-desc"
+                    type="text"
+                    value="${escapeHtml(d.description)}"
+                    oninput="updateMenuFormField('description', this.value, false)"
+                    placeholder="เช่น แป้งใสนุ่ม ไส้กุ้งเต็มคำ"
+                    class="ns-input"
+                  />
+                </div>
+
+                <!-- ราคา · หน่วย · ขนาดล็อต -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label class="ns-label" for="form-menu-price">ราคา (บาท)</label>
+                    <input
+                      id="form-menu-price"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value="${d.price}"
+                      oninput="handlePriceInputChange(this.value)"
+                      class="ns-input"
+                      required
+                    />
+                    <div
+                      id="price-log-notice"
+                      class="ns-caption mt-1 font-semibold ${isEdit || priceChanged ? '' : 'hidden'}"
+                      style="color: var(--red-600);"
+                    >
+                      * การแก้ราคาจะถูกบันทึก log
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="ns-label" for="form-menu-unit">หน่วย</label>
+                    <select
+                      id="form-menu-unit"
+                      onchange="updateMenuFormField('unit', this.value)"
+                      class="ns-input"
+                    >
+                      ${UNITS.map(u => `
+                        <option value="${u}" ${d.unit === u ? 'selected' : ''}>${u}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="ns-label" for="form-menu-batch">ขนาดล็อต (1 ล็อต = ${d.batchSize} ${escapeHtml(d.unit)})</label>
+                    <input
+                      id="form-menu-batch"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value="${d.batchSize}"
+                      oninput="updateMenuFormField('batchSize', this.value, false)"
+                      class="ns-input"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <!-- โซนครัว (ปุ่มเลือก 4 สี) -->
+                <div>
+                  <label class="ns-label">โซนครัว (ปุ่มเลือก 4 สี)</label>
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    ${Object.values(ZONES).map(z => {
+                      const selected = d.zone === z.id;
+                      return `
+                        <button
+                          type="button"
+                          onclick="updateMenuFormField('zone', '${z.id}')"
+                          class="h-[44px] px-3 rounded-control flex items-center justify-center gap-2 ns-small font-semibold transition-all ${
+                            selected ? 'bg-red-50 text-red-600' : 'bg-white text-brown-900 hover:bg-cream-200'
+                          }"
+                          style="border: ${selected ? '2px solid var(--red-600)' : '1.5px solid var(--cream-300)'};"
+                        >
+                          <span class="w-[10px] h-[10px] rounded-pill shrink-0" style="background-color: ${z.color};"></span>
+                          <span class="truncate">${z.name}</span>
+                        </button>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+
+                <!-- ปุ่ม [ยกเลิก (รอง)] [ยืนยัน (หลัก)] ชิดขวา -->
+                <div class="flex items-center justify-end gap-3 pt-4" style="border-top: 1.5px solid var(--cream-300);">
+                  <button type="button" onclick="closeModal()" class="ns-btn ns-btn-secondary">
+                    ยกเลิก
+                  </button>
+                  <button type="submit" class="ns-btn ns-btn-primary">
+                    ยืนยัน
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+      }
+
+      if (state.modal.type === 'delete_menu') {
+        const menu = state.menus.find(m => m.id === state.modal.menuId);
+        if (!menu) return '';
+        return `
+          <div class="fixed inset-0 z-[70] bg-brown-900/40 flex items-end md:items-center justify-center p-0 md:p-4">
+            <div
+              class="bg-cream-50 w-full md:max-w-[480px] rounded-t-[24px] md:rounded-[24px] p-6"
+              style="border: 1.5px solid var(--cream-300); box-shadow: var(--shadow-modal);"
+            >
+              <h3 class="ns-h3 text-brown-900 m-0 mb-2">ยืนยันการลบเมนู</h3>
+              <p class="ns-body text-brown-500 m-0 mb-6">
+                คุณต้องการลบเมนู <strong class="text-brown-900">"${escapeHtml(menu.name)}"</strong> (฿${menu.price}/${escapeHtml(menu.unit)}) ออกจากหมวดหมู่ใช่หรือไม่?
+              </p>
+              <div class="flex items-center justify-end gap-3">
+                <button type="button" onclick="closeModal()" class="ns-btn ns-btn-secondary">
+                  ยกเลิก
+                </button>
+                <button type="button" onclick="confirmDeleteMenu('${menu.id}')" class="ns-btn ns-btn-primary">
+                  ยืนยัน
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (state.modal.type === 'category_form') {
+        const d = state.modal.data;
+        const isEdit = Boolean(d.id);
+        const emojiChoices = ['🥟', '🍤', '🍜', '🧋', '🍮', '🥢', '🍲', '🍵'];
+
+        return `
+          <div class="fixed inset-0 z-[70] bg-brown-900/40 flex items-end md:items-center justify-center p-0 md:p-4">
+            <div
+              class="bg-cream-50 w-full md:max-w-[480px] rounded-t-[24px] md:rounded-[24px] p-6"
+              style="border: 1.5px solid var(--cream-300); box-shadow: var(--shadow-modal);"
+            >
+              <div class="flex items-center justify-between gap-2 mb-4">
+                <h3 class="ns-h3 text-brown-900 m-0">${isEdit ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่ใหม่'}</h3>
+                <button
+                  type="button"
+                  onclick="closeModal()"
+                  class="w-9 h-9 rounded-control flex items-center justify-center text-brown-500 hover:bg-cream-200"
+                  aria-label="ปิดหน้าต่าง"
+                >
+                  ${icon('x')}
+                </button>
+              </div>
+
+              <form onsubmit="submitCategoryForm(event)" class="flex flex-col gap-4">
+                <div>
+                  <label class="ns-label" for="form-cat-name">ชื่อหมวดหมู่</label>
+                  <input
+                    id="form-cat-name"
+                    type="text"
+                    value="${escapeHtml(d.name)}"
+                    oninput="state.modal.data.name = this.value"
+                    placeholder="เช่น เมนูนึ่งพิเศษ"
+                    class="ns-input"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label class="ns-label">ไอคอนหมวดหมู่ (Emoji)</label>
+                  <div class="flex flex-wrap gap-2">
+                    ${emojiChoices.map(em => `
+                      <button
+                        type="button"
+                        onclick="selectCategoryFormEmoji('${em}')"
+                        class="w-11 h-11 rounded-control text-[22px] flex items-center justify-center ${
+                          d.emoji === em ? 'bg-red-50' : 'bg-white hover:bg-cream-200'
+                        }"
+                        style="border: ${d.emoji === em ? '2px solid var(--red-600)' : '1.5px solid var(--cream-300)'};"
+                      >${em}</button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-4" style="border-top: 1.5px solid var(--cream-300);">
+                  <button type="button" onclick="closeModal()" class="ns-btn ns-btn-secondary">
+                    ยกเลิก
+                  </button>
+                  <button type="submit" class="ns-btn ns-btn-primary">
+                    ยืนยัน
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+      }
+
+      return '';
+    }
+
+    /* =========================================================================
+       Role Simulator Floating Button (ข้อ 6D: ปุ่มจำลองบทบาท มุมขวาล่าง "โหมดจำลอง ▾")
+       ========================================================================= */
+    function renderRoleSimulator() {
+      const currentRole = getCurrentRole();
+      return `
+        <div class="relative">
+          ${state.roleDropdownOpen ? `
+            <div
+              class="absolute bottom-14 right-0 w-64 bg-cream-50 rounded-card p-2 mb-1"
+              style="border: 1.5px solid var(--cream-300); box-shadow: var(--shadow-modal);"
+            >
+              <div class="px-3 py-1.5 ns-caption text-brown-500 font-semibold" style="border-bottom: 1px solid var(--cream-300);">
+                สลับบทบาทจำลอง (6 โหมด)
+              </div>
+              <div class="flex flex-col gap-1 mt-1">
+                ${ROLES.map(r => {
+                  const active = r.id === currentRole.id;
+                  return `
+                    <button
+                      type="button"
+                      onclick="switchRole('${r.id}')"
+                      class="w-full px-3 py-2 rounded-control text-left flex items-center justify-between ns-small transition-colors ${
+                        active ? 'bg-red-50 text-red-600 font-semibold' : 'text-brown-900 hover:bg-cream-200'
+                      }"
+                    >
+                      <div>
+                        <div>${r.label}</div>
+                        ${r.staffName ? `<div class="ns-caption text-brown-500">${r.staffName}</div>` : ''}
+                      </div>
+                      ${active ? icon('check') : ''}
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+              <div class="mt-2 pt-2" style="border-top: 1px solid var(--cream-300);">
+                <button
+                  type="button"
+                  onclick="resetToDefaultData()"
+                  class="w-full px-3 py-2 rounded-control text-left ns-caption text-red-600 font-semibold hover:bg-red-50 transition-colors"
+                >
+                  ↺ รีเซ็ตข้อมูลเมนูเริ่มต้น (30 เมนู)
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <button
+            type="button"
+            onclick="toggleRoleDropdown()"
+            class="h-[44px] px-5 rounded-pill bg-brown-900 text-white ns-small font-semibold flex items-center gap-2 cursor-pointer transition-transform active:translate-y-[1px]"
+            style="box-shadow: var(--shadow-modal);"
+            title="ปัจจุบัน: ${currentRole.label}"
+          >
+            <span>โหมดจำลอง</span>
+            ${icon(state.roleDropdownOpen ? 'chevron-up' : 'chevron-down')}
+          </button>
+        </div>
+      `;
+    }
+
+    /* =========================================================================
+       Interactive Event Handlers
+       ========================================================================= */
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function toggleRoleDropdown() {
+      state.roleDropdownOpen = !state.roleDropdownOpen;
+      renderAll();
+    }
+
+    function switchRole(roleId) {
+      const target = ROLES.find(r => r.id === roleId);
+      if (!target) return;
+      state.currentRoleId = roleId;
+      state.roleDropdownOpen = false;
+      state.mobileSidebarOpen = false;
+      state.customerMemberDropdownOpen = false;
+
+      if (target.shell === 'staff') {
+        // Keep user on เมนูและหมวด for Owner, Manager, Chef so they can test role permissions directly
+        if (roleId === 'owner' || roleId === 'manager' || roleId === 'chef') {
+          state.activeStaffPage = 'เมนูและหมวด';
+        } else {
+          state.activeStaffPage = target.defaultPage || 'ผังโต๊ะ';
+        }
+      } else {
+        state.customerSubMode = 'home';
+      }
+
+      showToast(`สลับเป็นโหมด "${target.label}" ${target.staffName ? `(${target.staffName})` : ''}`, 'info');
+      renderAll();
+    }
+
+    function toggleStoreStatus() {
+      state.storeOpen = !state.storeOpen;
+      showToast(
+        state.storeOpen
+          ? 'เปลี่ยนสถานะร้านเป็น "เปิดอยู่ · กะเช้า · ปิดรับออเดอร์ 13:30"'
+          : 'เปลี่ยนสถานะร้านเป็น "ปิดอยู่"',
+        state.storeOpen ? 'success' : 'warning'
+      );
+      renderAll();
+    }
+
+    function handleStaffLogout() {
+      state.currentRoleId = 'customer_guest';
+      state.customerSubMode = 'home';
+      showToast('ออกจากระบบพนักงานเรียบร้อยแล้ว', 'info');
+      renderAll();
+    }
+
+    function toggleMobileSidebar(open) {
+      state.mobileSidebarOpen = Boolean(open);
+      renderAll();
+    }
+
+    function navigateStaffPage(pageName) {
+      state.activeStaffPage = pageName;
+      state.mobileSidebarOpen = false;
+      renderAll();
+    }
+
+    function selectCategory(catId) {
+      state.selectedCategoryId = catId;
+      renderAll();
+    }
+
+    function selectZone(zoneId) {
+      state.selectedZone = zoneId;
+      renderAll();
+    }
+
+    function handleSearchInput(val) {
+      state.searchQuery = val;
+      renderAll();
+      const input = document.getElementById('menu-search-input');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }
+
+    function resetMenuFilters() {
+      state.selectedCategoryId = 'all';
+      state.selectedZone = 'all';
+      state.searchQuery = '';
+      showToast('ล้างตัวกรองการค้นหาทั้งหมดแล้ว', 'info');
+      renderAll();
+    }
+
+    function toggleMenuAvailable(menuId) {
+      const item = state.menus.find(m => m.id === menuId);
+      if (!item) return;
+      item.available = !item.available;
+      showToast(
+        item.available
+          ? `เปิดขายเมนู "${item.name}" แล้ว`
+          : `ปิดขายเมนู "${item.name}" (ขึ้นสถานะ "หมด")`,
+        item.available ? 'success' : 'warning'
+      );
+      renderAll();
+    }
+
+    /* Category Hide / Edit / Add & Drag-and-Drop */
+    function toggleHideCategory(catId) {
+      const cat = getCategoryById(catId);
+      if (!cat) return;
+      const count = getMenuCountByCategory(catId);
+      if (!cat.hidden && count > 0) {
+        // ข้อกำหนด: ซ่อนหมวดที่ยังมีเมนูไม่ได้ → toast แดงอธิบาย
+        showToast(`ซ่อนหมวด "${cat.name}" ไม่ได้ เนื่องจากยังมีเมนูในหมวดนี้อยู่ ${count} รายการ`, 'danger');
+        return;
+      }
+      cat.hidden = !cat.hidden;
+      showToast(
+        cat.hidden ? `ซ่อนหมวด "${cat.name}" เรียบร้อยแล้ว` : `แสดงหมวด "${cat.name}" เรียบร้อยแล้ว`,
+        cat.hidden ? 'warning' : 'success'
+      );
+      renderAll();
+    }
+
+    function handleCatDragStart(e, index) {
+      state.draggedCategoryIndex = index;
+      if (e.currentTarget) e.currentTarget.classList.add('cat-row-dragging');
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(index));
+      }
+    }
+
+    function handleCatDragOver(e, index) {
+      e.preventDefault();
+      if (e.currentTarget && state.draggedCategoryIndex !== index) {
+        e.currentTarget.classList.add('cat-row-dragover');
+      }
+    }
+
+    function handleCatDragLeave(e) {
+      if (e.currentTarget) e.currentTarget.classList.remove('cat-row-dragover');
+    }
+
+    function handleCatDrop(e, dropIndex) {
+      e.preventDefault();
+      const fromIndex = state.draggedCategoryIndex;
+      state.draggedCategoryIndex = null;
+      if (fromIndex === null || fromIndex === dropIndex) {
+        renderAll();
+        return;
+      }
+      const moved = state.categories.splice(fromIndex, 1)[0];
+      state.categories.splice(dropIndex, 0, moved);
+      showToast(`จัดเรียงหมวด "${moved.name}" ไปลำดับที่ ${dropIndex + 1} แล้ว`, 'success');
+      renderAll();
+    }
+
+    function handleCatDragEnd(e) {
+      state.draggedCategoryIndex = null;
+      renderAll();
+    }
+
+    function openCategoryModal(catId = null) {
+      if (catId) {
+        const cat = getCategoryById(catId);
+        if (!cat) return;
+        state.modal = {
+          type: 'category_form',
+          data: { id: cat.id, name: cat.name, emoji: cat.emoji }
+        };
+      } else {
+        state.modal = {
+          type: 'category_form',
+          data: { id: null, name: '', emoji: '🥟' }
+        };
+      }
+      renderAll();
+    }
+
+    function selectCategoryFormEmoji(emoji) {
+      if (state.modal && state.modal.type === 'category_form') {
+        state.modal.data.emoji = emoji;
+        renderModalOnly();
+      }
+    }
+
+    function submitCategoryForm(e) {
+      e.preventDefault();
+      if (!state.modal || state.modal.type !== 'category_form') return;
+      const d = state.modal.data;
+      const cleanName = (d.name || '').trim();
+      if (!cleanName) {
+        showToast('กรุณากรอกชื่อหมวดหมู่', 'danger');
+        return;
+      }
+      if (d.id) {
+        const cat = getCategoryById(d.id);
+        if (cat) {
+          cat.name = cleanName;
+          cat.emoji = d.emoji || '🥟';
+          showToast(`แก้ไขหมวดหมู่ "${cleanName}" เรียบร้อยแล้ว`, 'success');
+        }
+      } else {
+        const newId = 'cat_' + Date.now();
+        state.categories.push({
+          id: newId,
+          name: cleanName,
+          emoji: d.emoji || '🥟',
+          hidden: false
+        });
+        showToast(`เพิ่มหมวดหมู่ "${cleanName}" เรียบร้อยแล้ว (0 เมนู — สามารถทดสอบกดซ่อนหมวดได้)`, 'success');
+      }
+      state.modal = null;
+      renderAll();
+    }
+
+    /* Menu Add / Edit / Delete Modals */
+    function openMenuModal(menuId = null) {
+      if (menuId) {
+        const item = state.menus.find(m => m.id === menuId);
+        if (!item) return;
+        state.modal = {
+          type: 'menu_form',
+          data: {
+            id: item.id,
+            categoryId: item.categoryId,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            originalPrice: item.price,
+            unit: item.unit,
+            zone: item.zone,
+            batchSize: item.batchSize,
+            image: item.image || ''
+          }
+        };
+      } else {
+        const defaultCat = state.selectedCategoryId !== 'all' ? state.selectedCategoryId : state.categories[0].id;
+        state.modal = {
+          type: 'menu_form',
+          data: {
+            id: null,
+            categoryId: defaultCat,
+            name: '',
+            description: '',
+            price: 45,
+            originalPrice: 45,
+            unit: 'เข่ง',
+            zone: 'steam',
+            batchSize: 10,
+            image: ''
+          }
+        };
+      }
+      renderAll();
+    }
+
+    function updateMenuFormField(field, value, shouldRender = true) {
+      if (!state.modal || state.modal.type !== 'menu_form') return;
+      state.modal.data[field] = value;
+      if (shouldRender) renderModalOnly();
+    }
+
+    function handlePriceInputChange(val) {
+      if (!state.modal || state.modal.type !== 'menu_form') return;
+      state.modal.data.price = val;
+      const notice = document.getElementById('price-log-notice');
+      if (notice) {
+        notice.classList.remove('hidden');
+      }
+    }
+
+    function handleMenuImageUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !state.modal || state.modal.type !== 'menu_form') return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        state.modal.data.image = evt.target.result;
+        renderModalOnly();
+        showToast('อัปโหลดรูปพรีวิว 4:3 เรียบร้อยแล้ว', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function generateMenuIllustrationPreview() {
+      if (!state.modal || state.modal.type !== 'menu_form') return;
+      const emoji = getCategoryEmoji(state.modal.data.categoryId);
+      const title = state.modal.data.name || 'ติ่มซำนิ่งสุข';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#F6E6C8"/>
+        <circle cx="200" cy="135" r="78" fill="#FFFBF3" stroke="#D9A961" stroke-width="4"/>
+        <circle cx="200" cy="135" r="66" fill="none" stroke="#EBD3A8" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="200" y="152" font-size="56" text-anchor="middle">${emoji}</text>
+        <text x="200" y="248" font-family="Sarabun, sans-serif" font-weight="600" font-size="20" fill="#4A2C22" text-anchor="middle">${escapeHtml(title)}</text>
+      </svg>`;
+      state.modal.data.image = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+      renderModalOnly();
+      showToast('สร้างภาพพรีวิวสติกเกอร์ติ่มซำ 4:3 แล้ว', 'info');
+    }
+
+    function clearMenuImagePreview() {
+      if (!state.modal || state.modal.type !== 'menu_form') return;
+      state.modal.data.image = '';
+      renderModalOnly();
+    }
+
+    function submitMenuForm(e) {
+      e.preventDefault();
+      if (!state.modal || state.modal.type !== 'menu_form') return;
+      const d = state.modal.data;
+      const cleanName = (d.name || '').trim();
+      const numPrice = Number(d.price);
+      const numBatch = Number(d.batchSize) || 10;
+
+      if (!cleanName || isNaN(numPrice) || numPrice <= 0) {
+        showToast('กรุณากรอกชื่อเมนูและราคาที่ถูกต้อง', 'danger');
+        return;
+      }
+
+      if (d.id) {
+        const existing = state.menus.find(m => m.id === d.id);
+        if (existing) {
+          const priceChanged = existing.price !== numPrice;
+          const oldPrice = existing.price;
+          existing.categoryId = d.categoryId;
+          existing.name = cleanName;
+          existing.description = (d.description || '').trim();
+          existing.price = numPrice;
+          existing.unit = d.unit;
+          existing.zone = d.zone;
+          existing.batchSize = numBatch;
+          existing.image = d.image || '';
+
+          if (priceChanged) {
+            state.priceLogs.unshift({
+              time: new Date().toTimeString().slice(0, 5),
+              actor: getCurrentRole().staffName || 'สมชาย ใจดี',
+              menuName: cleanName,
+              oldPrice,
+              newPrice: numPrice
+            });
+            showToast(`บันทึกเมนู "${cleanName}" และบันทึก Log แก้ราคา (฿${oldPrice} → ฿${numPrice}) แล้ว`, 'success');
+          } else {
+            showToast(`บันทึกการแก้ไขเมนู "${cleanName}" เรียบร้อยแล้ว`, 'success');
+          }
+        }
+      } else {
+        const newId = 'm_' + Date.now();
+        state.menus.push({
+          id: newId,
+          categoryId: d.categoryId,
+          name: cleanName,
+          description: (d.description || '').trim() || 'เมนูติ่มซำทำสดใหม่ทุกวัน',
+          price: numPrice,
+          unit: d.unit,
+          zone: d.zone,
+          batchSize: numBatch,
+          available: true,
+          image: d.image || ''
+        });
+        showToast(`เพิ่มเมนูใหม่ "${cleanName}" (฿${numPrice}/${d.unit}) เรียบร้อยแล้ว`, 'success');
+      }
+
+      state.modal = null;
+      renderAll();
+    }
+
+    function openDeleteMenuModal(menuId) {
+      state.modal = { type: 'delete_menu', menuId };
+      renderAll();
+    }
+
+    function confirmDeleteMenu(menuId) {
+      const idx = state.menus.findIndex(m => m.id === menuId);
+      if (idx !== -1) {
+        const removed = state.menus.splice(idx, 1)[0];
+        showToast(`ลบเมนู "${removed.name}" เรียบร้อยแล้ว`, 'success');
+      }
+      state.modal = null;
+      renderAll();
+    }
+
+    function closeModal() {
+      state.modal = null;
+      renderAll();
+    }
+
+    /* Customer Shell Handlers */
+    function setCustomerSection(sec) {
+      state.customerActiveSection = sec;
+      state.customerMobileNavOpen = false;
+      state.customerMemberDropdownOpen = false;
+      renderAll();
+    }
+
+    function setCustomerSubMode(mode) {
+      state.customerSubMode = mode;
+      state.customerMobileNavOpen = false;
+      showToast(
+        mode === 'qr' ? 'เปิดหน้าสั่งอาหารจาก QR (โต๊ะ T05)' : 'กลับสู่หน้าหลักฝั่งลูกค้า',
+        'info'
+      );
+      renderAll();
+    }
+
+    function toggleCustomerMobileNav() {
+      state.customerMobileNavOpen = !state.customerMobileNavOpen;
+      renderAll();
+    }
+
+    function toggleCustomerMemberDropdown() {
+      state.customerMemberDropdownOpen = !state.customerMemberDropdownOpen;
+      renderAll();
+    }
+
+    function updateCartQty(menuId, delta) {
+      const item = state.menus.find(m => m.id === menuId);
+      if (!item || !item.available) return;
+      const current = state.cart[menuId] || 0;
+      const next = current + delta;
+      if (next > 10) {
+        showToast('สั่งได้ไม่เกิน 10 ต่อเมนูต่อครั้ง', 'warning');
+        return;
+      }
+      if (next <= 0) {
+        delete state.cart[menuId];
+      } else {
+        state.cart[menuId] = next;
+      }
+      renderAll();
+    }
+
+    function submitQrOrder() {
+      state.cart = {};
+      showToast('ส่งออเดอร์โต๊ะ T05 เข้าครัวเรียบร้อยแล้ว (สถานะ: รอทำ)', 'success');
+      renderAll();
+    }
+
+    /* =========================================================================
+       Render Functions
+       ========================================================================= */
+    function renderModalOnly() {
+      const modalRoot = document.getElementById('modal-root');
+      if (modalRoot) modalRoot.innerHTML = renderModal();
+    }
+
+    function renderAll() {
+      savePersistedState();
+      const appRoot = document.getElementById('app-root');
+      const modalRoot = document.getElementById('modal-root');
+      const roleRoot = document.getElementById('role-simulator-root');
+
+      const role = getCurrentRole();
+      if (appRoot) {
+        appRoot.innerHTML = role.shell === 'staff' ? renderStaffShell() : renderCustomerShell();
+      }
+      if (modalRoot) {
+        modalRoot.innerHTML = renderModal();
+      }
+      if (roleRoot) {
+        roleRoot.innerHTML = renderRoleSimulator();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadPersistedState();
+      renderAll();
+    });
+  </script>
+</body>
+</html>

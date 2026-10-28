@@ -72,8 +72,7 @@ app.use((req, res) => {
 });
 
 app.listen(config.port, () => {
-  const baseWeb = `http://localhost:${config.port}`;
-  console.log(`หน้าเว็บร้านติ่มซำ เปิดที่ ${baseWeb}/`);
-  console.log(`หน้าเว็บสำหรับทางร้าน ${baseWeb}/owner`);
-  console.log(`หน้าเว็บลูกค้าสั่งอาหารผ่าน qr ${baseWeb}/menu`);
+  const base = `http://localhost:${config.port}`;
+  console.log(`หน้าเว็บร้านนึ่งสุข เปิดที่ ${base}/`);
+  console.log(`หน้าพนักงาน ${base}/admin/login.html`);
 });

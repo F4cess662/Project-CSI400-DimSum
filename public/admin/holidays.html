@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>วันหยุดราชการ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <section class="section">
+      <div class="toolbar">
+        <div class="row">
+          <label class="label" for="yearSelect">ปี พ.ศ.</label>
+          <select class="select" id="yearSelect" aria-label="เลือกปี พ.ศ."></select>
+        </div>
+        <button class="btn" id="addBtn" type="button">+ เพิ่มวันหยุด</button>
+      </div>
+      <p class="muted small">รายการวันหยุดใช้ประกอบการตรวจสอบเงื่อนไขคูปองที่ยกเว้นวันหยุดราชการ</p>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>วันที่</th><th>ชื่อวันหยุด</th><th>จัดการ</th></tr>
+          </thead>
+          <tbody id="holidayRows">
+            <tr><td colspan="3" class="loading">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'วันหยุดราชการ', roles: ['owner'] });
+      if (!me) return;
+
+      const yearSelect = document.getElementById('yearSelect');
+      const rowsEl = document.getElementById('holidayRows');
+      const addBtn = document.getElementById('addBtn');
+      const currentYear = new Date().getFullYear();
+      for (let year = currentYear - 3; year <= currentYear + 5; year += 1) {
+        const option = document.createElement('option');
+        option.value = String(year);
+        option.textContent = String(year + 543);
+        if (year === currentYear) option.selected = true;
+        yearSelect.appendChild(option);
+      }
+
+      function thaiDate(dateText) {
+        if (!dateText) return '-';
+        const parts = String(dateText).slice(0, 10).split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return fmt.esc(dateText);
+        return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('th-TH', {
+          day: 'numeric', month: 'short', year: 'numeric'
+        });
+      }
+
+      async function load() {
+        rowsEl.innerHTML = '<tr><td colspan="3" class="loading">กำลังโหลดข้อมูล...</td></tr>';
+        const data = await run(() => api.get('holidays', { year: yearSelect.value }));
+        if (!data) {
+          rowsEl.innerHTML = '<tr><td colspan="3"><div class="empty"><div class="empty-icon">⚠️</div>โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่</div></td></tr>';
+          return;
+        }
+        if (!data.length) {
+          rowsEl.innerHTML = '<tr><td colspan="3"><div class="empty"><div class="empty-icon">📅</div>ยังไม่มีวันหยุดในปีนี้</div></td></tr>';
+          return;
+        }
+        rowsEl.innerHTML = data.map((item) => `
+          <tr>
+            <td>${fmt.esc(thaiDate(item.holiday_date))}</td>
+            <td>${fmt.esc(item.name)}</td>
+            <td><button class="btn btn-danger btn-sm" type="button" data-delete="${Number(item.id)}">ลบ</button></td>
+          </tr>`).join('');
+      }
+
+      function showAddModal() {
+        const today = new Date();
+        const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const modal = openModal({
+          title: 'เพิ่มวันหยุดราชการ',
+          body: `
+            <form id="holidayForm">
+              <div class="field">
+                <label for="holidayDate">วันที่</label>
+                <input class="input" id="holidayDate" name="holiday_date" type="date" required value="${localToday}">
+              </div>
+              <div class="field">
+                <label for="holidayName">ชื่อวันหยุด</label>
+                <input class="input" id="holidayName" name="name" maxlength="100" required placeholder="เช่น วันจักรี">
+              </div>
+              <p class="muted small">วันที่ซ้ำกับรายการเดิมจะไม่สามารถบันทึกได้</p>
+            </form>`,
+          footer: '<button class="btn btn-secondary" type="button" data-close>ยกเลิก</button><button class="btn" type="submit" form="holidayForm">บันทึก</button>'
+        });
+        const form = modal.el.querySelector('#holidayForm');
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const submit = modal.el.querySelector('button[type="submit"]');
+          submit.disabled = true;
+          const result = await run(() => api.post('holidays', {
+            action: 'create',
+            holiday_date: form.elements.holiday_date.value,
+            name: form.elements.name.value.trim()
+          }));
+          if (result) {
+            modal.close();
+            const newYear = form.elements.holiday_date.value.slice(0, 4);
+            if (![...yearSelect.options].some((option) => option.value === newYear)) {
+              const option = document.createElement('option');
+              option.value = newYear;
+              option.textContent = String(Number(newYear) + 543);
+              yearSelect.appendChild(option);
+            }
+            yearSelect.value = newYear;
+            await load();
+          } else {
+            submit.disabled = false;
+          }
+        });
+      }
+
+      addBtn.addEventListener('click', showAddModal);
+      yearSelect.addEventListener('change', load);
+      rowsEl.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-delete]');
+        if (!button) return;
+        const row = button.closest('tr');
+        const date = row && row.children[0] ? row.children[0].textContent : '';
+        const name = row && row.children[1] ? row.children[1].textContent : '';
+        if (!await confirmModal(`ต้องการลบวันหยุด “${fmt.esc(name)}” วันที่ ${fmt.esc(date)} หรือไม่?`, 'ลบวันหยุด', true)) return;
+        const result = await run(() => api.post('holidays', { action: 'delete', id: Number(button.dataset.delete) }));
+        if (result) await load();
+      });
+
+      await load();
+    })();
+  </script>
+</body>
+</html>
