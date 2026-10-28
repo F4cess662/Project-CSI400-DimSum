@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Home Page</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../customer/web_HomePage.css">
+    <script src="/customer/web_homePage.js" defer></script>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <a href="/" class="logo" aria-label="หน้าแรก"></a>
+
+        <div class="nav-menu">
+            <a href="/">หน้าแรก</a>
+            <a href="/customer/web_menu.html">เมนู</a>
+            <a href="/customer/web_catering.html">จัดเลี้ยง</a>
+        </div>
+        <div class="nav-login">
+            <a href="/owner">เข้าสู่ระบบ</a>
+        </div>
+    </nav>
+    <main class="page">
+        <section class="details">
+            <div class="slider">
+                <div class="slides">
+                    <img src="/assets/img/banners/banner_1.jpg" class="slide active" alt="banner1">
+
+                    <img src="/assets/img/banners/banner_2.jpg" class="slide" alt="banner2">
+
+                </div>
+                <button type="button" class="slider-btn prev" onclick="plusSlides(-1)" aria-label="รูปก่อนหน้า">
+                    &#10094;
+                </button>
+                <button type="button" class="slider-btn next" onclick="plusSlides(1)" aria-label="รูปถัดไป">
+                    &#10095;
+                </button>
+
+                <div class="indicators">
+                    <button type="button" class="dot active" onclick="showSlide(0)" aria-label="แสดงรูปที่ 1">
+                    </button>
+
+                    <button type="button" class="dot" onclick="showSlide(1)" aria-label="แสดงรูปที่ 2">
+                    </button>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- แผ่นเมนูอาหาร -->
+        <main class="menu-page">
+
+            <section class="menu-poster-section">
+
+                <div class="menu-poster-heading">
+                    <h1>เมนูอาหารร้านนึ่งสุข</h1>
+                </div>
+
+                <div class="menu-poster">
+                    <img src="/assets/img/menuTimsum.jpg" alt="แผ่นเมนูอาหารร้านนึ่งสุข" id="menuPoster">
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- หน้าต่างขยายภาพ -->
+        <div class="poster-modal" id="posterModal">
+            <button type="button" class="poster-close" id="closePoster" aria-label="ปิดภาพ">&times;</button>
+
+            <img src="/assets/img/menu/menu-poster.jpg" alt="แผ่นเมนูอาหารขนาดใหญ่">
+        </div>
+
+        <script>
+            const menuPoster = document.getElementById("menuPoster");
+            const posterModal = document.getElementById("posterModal");
+            const closePoster = document.getElementById("closePoster");
+
+            menuPoster.addEventListener("click", function () {
+                posterModal.classList.add("show");
+                document.body.style.overflow = "hidden";
+            });
+
+            closePoster.addEventListener("click", function () {
+                posterModal.classList.remove("show");
+                document.body.style.overflow = "";
+            });
+
+            posterModal.addEventListener("click", function (event) {
+                if (event.target === posterModal) {
+                    posterModal.classList.remove("show");
+                    document.body.style.overflow = "";
+                }
+            });
+
+            document.addEventListener("keydown", function (event) {
+                if (event.key === "Escape") {
+                    posterModal.classList.remove("show");
+                    document.body.style.overflow = "";
+                }
+            });
+        </script>
+
+        <footer class="footer">
+            <div>
+                <div class="logo"></div>
+                <h1>นึ่งสุข</h1>
+            </div>
+            <div>
+                <h1>เวลาเปิด-ปิด</h1>
+                <p>
+                    10:00 - 14:00 (ปิดรับออเดอร์ 13:30)
+                    16:00 - 20:00 (ปิดรับออเดอร์ 19:30)
+                </p>
+            </div>
+            <div>
+                <h1>ติดต่อ</h1>
+                <p>ร้านนิ่งสุข</p>
+                <p>โทร 02-000-0000</p>
+            </div>
+        </footer>
+</body>
+
+</html>

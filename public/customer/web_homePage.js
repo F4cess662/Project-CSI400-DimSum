@@ -12,6 +12,10 @@ function showSlide(index) {
     dots[currentSlide].classList.add("active");
 }
 
+function plusSlides(step) {
+    showSlide(currentSlide + step);
+}
+
 setInterval(() => {
     showSlide(currentSlide + 1);
 }, 4000);
