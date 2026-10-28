@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ประวัติ Log · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <section class="card">
+      <div class="toolbar">
+        <div>
+          <h3>ประวัติการทำงานของระบบ</h3>
+          <p class="muted small">ผู้จัดการเห็นเฉพาะรายการปฏิบัติงาน เจ้าของร้านเห็นรายการทั้งหมด · ข้อมูลตัวอย่างจะแสดงเมื่อรัน SQL seed logs</p>
+        </div>
+        <button class="btn btn-secondary" id="resetFilters" type="button">ล้างตัวกรอง</button>
+      </div>
+
+      <div class="grid-4">
+        <div class="field">
+          <label for="actionFilter">การกระทำ</label>
+          <select class="select" id="actionFilter">
+            <option value="">ทุกการกระทำ</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="userFilter">พนักงาน</label>
+          <select class="select" id="userFilter">
+            <option value="">พนักงานทุกคน</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fromFilter">ตั้งแต่วันที่</label>
+          <input class="input" id="fromFilter" type="date">
+        </div>
+        <div class="field">
+          <label for="toFilter">ถึงวันที่</label>
+          <input class="input" id="toFilter" type="date">
+        </div>
+      </div>
+
+
+      <div class="toolbar">
+        <span class="muted small" id="resultCount">กำลังโหลดรายการ...</span>
+        <button class="btn" id="applyFilters" type="button">ค้นหา</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>เวลา</th>
+              <th>พนักงาน</th>
+              <th>การกระทำ</th>
+              <th>รายละเอียด</th>
+            </tr>
+          </thead>
+          <tbody id="logRows">
+            <tr><td colspan="4"><div class="empty"><div class="empty-icon">🕘</div>กำลังโหลดรายการ...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="toolbar" style="margin-top:16px">
+        <span class="muted small" id="pageInfo">หน้า 1</span>
+        <div class="row">
+          <button class="btn btn-secondary btn-sm" id="prevPage" type="button" disabled>ก่อนหน้า</button>
+          <button class="btn btn-secondary btn-sm" id="nextPage" type="button" disabled>ถัดไป</button>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'ประวัติ Log', roles: ['manager', 'owner'] });
+      if (!me) return;
+
+      const el = (id) => document.getElementById(id);
+      const state = { page: 1, totalPages: 1, usersLoaded: false, actionsLoaded: false };
+      const actionFilter = el('actionFilter');
+      const userFilter = el('userFilter');
+      const fromFilter = el('fromFilter');
+      const toFilter = el('toFilter');
+      const logRows = el('logRows');
+
+      function levelBadge(level) {
+        if (level === 'operation') return badge('active', 'การปฏิบัติงาน');
+        return badge('inactive', 'ระบบ');
+      }
+
+      function safeDetail(detail) {
+        if (detail === null || detail === undefined || detail === '') return 'ไม่มีรายละเอียด';
+        try {
+          const parsed = typeof detail === 'string' ? JSON.parse(detail) : detail;
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          return String(detail);
+        }
+      }
+
+      function showDetail(log) {
+        const detail = safeDetail(log.detail);
+        const body = `<div class="field"><label>เวลา</label><div>${fmt.esc(fmt.datetime(log.created_at))}</div></div>
+          <div class="field"><label>พนักงาน</label><div>${fmt.esc(log.user_name || 'ระบบ/ไม่มีผู้ใช้')}${log.username ? ` (${fmt.esc(log.username)})` : ''}</div></div>
+          <div class="field"><label>ระดับ</label><div>${levelBadge(log.log_level)}</div></div>
+          <div class="field"><label>การกระทำ</label><div>${fmt.esc(actionLabels[log.action] || log.action || '-')} <span class="muted small">(${fmt.esc(log.action || '-')})</span></div></div>
+          <div class="field"><label>เป้าหมาย</label><div>${fmt.esc(log.target_type || '-')}${log.target_id !== null ? ` #${fmt.esc(log.target_id)}` : ''}</div></div>
+          <div class="field"><label>รายละเอียด</label><pre>${fmt.esc(detail)}</pre></div>`;
+        openModal({ title: `รายละเอียด Log #${fmt.esc(log.id)}`, body, size: 'lg' });
+      }
+
+      // แสดงชื่อการกระทำเป็นภาษาไทย แต่ส่งค่า action จริงไปให้ API ใช้กรอง
+      const actionLabels = {
+        'user.login': 'เข้าสู่ระบบ',
+        'order.create': 'สร้างรายการสั่งอาหาร',
+        'order.update': 'แก้ไขรายการสั่งอาหาร',
+        'payment.create': 'บันทึกการชำระเงิน',
+        'order.cancel': 'ยกเลิกรายการสั่งอาหาร',
+        'stock.update': 'ปรับปรุงสต็อก',
+        'promotion.create': 'เพิ่มโปรโมชัน',
+        'stock.low': 'แจ้งเตือนสต็อกใกล้หมด',
+        // รองรับชื่อ action ที่ใช้ในข้อมูล mockup รุ่นก่อน
+        'LOGIN': 'เข้าสู่ระบบ',
+        'CREATE_ORDER': 'สร้างรายการสั่งอาหาร',
+        'UPDATE_ORDER': 'แก้ไขรายการสั่งอาหาร',
+        'PAYMENT_SUCCESS': 'บันทึกการชำระเงิน',
+        'CANCEL_ORDER': 'ยกเลิกรายการสั่งอาหาร',
+        'UPDATE_STOCK': 'ปรับปรุงสต็อก',
+        'CREATE_PROMOTION': 'เพิ่มโปรโมชัน',
+        'LOW_STOCK_ALERT': 'แจ้งเตือนสต็อกใกล้หมด'
+      };
+      const preferredActions = [
+        ['user.login', 'เข้าสู่ระบบ'],
+        ['order.create', 'สร้างรายการสั่งอาหาร'],
+        ['order.update', 'แก้ไขรายการสั่งอาหาร'],
+        ['payment.create', 'บันทึกการชำระเงิน'],
+        ['order.cancel', 'ยกเลิกรายการสั่งอาหาร'],
+        ['stock.update', 'ปรับปรุงสต็อก'],
+        ['promotion.create', 'เพิ่มโปรโมชัน'],
+        ['stock.low', 'แจ้งเตือนสต็อกใกล้หมด']
+      ];
+
+      function fillActions(actions) {
+        const current = actionFilter.value;
+        const available = new Set(actions);
+        // แสดง 8 รายการตามที่ร้องขอเสมอ และเพิ่ม action จริงอื่น ๆ หากมีในฐานข้อมูล
+        const options = preferredActions.map(([value, label]) => [value, label]);
+        actions.forEach((action) => {
+          if (!options.some(([value]) => value === action)) {
+            options.push([action, actionLabels[action] || action]);
+          }
+        });
+        actionFilter.innerHTML = '<option value="">ทุกการกระทำ</option>' + options.map(([value, label]) =>
+          `<option value="${fmt.esc(value)}">${fmt.esc(label)}</option>`
+        ).join('');
+        actionFilter.value = options.some(([value]) => value === current) ? current : '';
+        state.actionsLoaded = true;
+      }
+
+      function fillUsers(users) {
+        if (state.usersLoaded) return;
+        const current = userFilter.value;
+        userFilter.innerHTML = '<option value="">พนักงานทุกคน</option>' + users.map((u) =>
+          `<option value="${fmt.esc(u.id)}">${fmt.esc(u.full_name)} (${fmt.esc(u.username)})</option>`
+        ).join('');
+        userFilter.value = current;
+        state.usersLoaded = true;
+      }
+
+      function renderRows(items) {
+        if (!items.length) {
+          logRows.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon">🕘</div>ไม่พบรายการ Log ตามตัวกรอง</div></td></tr>';
+          return;
+        }
+        logRows.innerHTML = items.map((log, index) => {
+          const target = `${log.target_type || '-'}${log.target_id !== null ? ` #${log.target_id}` : ''}`;
+          const detail = safeDetail(log.detail);
+          const preview = detail.length > 90 ? `${detail.slice(0, 87)}...` : detail;
+          return `<tr data-index="${index}" class="log-row">
+            <td>${fmt.esc(fmt.datetime(log.created_at))}</td>
+            <td>${fmt.esc(log.user_name || 'ระบบ/ไม่มีผู้ใช้')}</td>
+            <td>${fmt.esc(actionLabels[log.action] || log.action || '-')}</td>
+            <td><button class="btn btn-ghost btn-sm detail-btn" data-index="${index}" type="button">${fmt.esc(preview)}</button></td>
+          </tr>`;
+        }).join('');
+        logRows.querySelectorAll('.detail-btn').forEach((button) => {
+          button.addEventListener('click', () => showDetail(items[Number(button.dataset.index)]));
+        });
+        logRows.querySelectorAll('.log-row').forEach((row) => {
+          row.addEventListener('click', (event) => {
+            if (event.target.closest('button')) return;
+            showDetail(items[Number(row.dataset.index)]);
+          });
+        });
+      }
+
+      async function loadLogs() {
+        const params = {
+          action: actionFilter.value,
+          user_id: userFilter.value,
+          from: fromFilter.value,
+          to: toFilter.value,
+          page: state.page,
+        };
+        if (fromFilter.value && toFilter.value && fromFilter.value > toFilter.value) {
+          toast('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', 'error');
+          return;
+        }
+        const data = await run(() => api.get('logs', params));
+        if (!data) return;
+        fillUsers(data.users || []);
+        if (!state.actionsLoaded) fillActions(data.actions || []);
+        state.totalPages = Math.max(1, Number(data.total_pages || 1));
+        el('resultCount').textContent = `พบ ${fmt.num(data.total)} รายการ · แสดงหน้าละ ${fmt.num(data.page_size)} รายการ`;
+        el('pageInfo').textContent = `หน้า ${fmt.num(data.page)} จาก ${fmt.num(state.totalPages)}`;
+        el('prevPage').disabled = state.page <= 1;
+        el('nextPage').disabled = state.page >= state.totalPages;
+        renderRows(data.items || []);
+      }
+
+      el('applyFilters').addEventListener('click', () => { state.page = 1; loadLogs(); });
+      el('resetFilters').addEventListener('click', () => {
+        actionFilter.value = '';
+        userFilter.value = '';
+        fromFilter.value = '';
+        toFilter.value = '';
+        state.page = 1;
+        loadLogs();
+      });
+      el('prevPage').addEventListener('click', () => {
+        if (state.page > 1) { state.page -= 1; loadLogs(); }
+      });
+      el('nextPage').addEventListener('click', () => {
+        if (state.page < state.totalPages) { state.page += 1; loadLogs(); }
+      });
+      loadLogs();
+    })();
+  </script>
+</body>
+</html>
