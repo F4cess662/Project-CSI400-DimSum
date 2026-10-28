@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- ผังโต๊ะ (คนที่ 4 · เฟส 1) — หน้าแรกของพนักงาน -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ผังโต๊ะ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="row">
+        <span class="badge badge-ok" id="cntFree">ว่าง -</span>
+        <span class="badge badge-bad" id="cntBusy">มีลูกค้า -</span>
+        <span class="small muted" id="cntVip"></span>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="refreshBtn">🔄 รีเฟรช</button>
+    </div>
+
+    <div class="split">
+      <div id="floor"><div class="loading">กำลังโหลดผังโต๊ะ...</div></div>
+      <aside class="side-panel" id="sidePanel">
+        <div class="empty"><div class="empty-icon">🥟</div>เลือกโต๊ะจากผังเพื่อเริ่มต้น</div>
+      </aside>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <!-- bill-panel.js เป็นของคนที่ 5 (ถ้ายังไม่มีไฟล์ ผังจะแสดงข้อมูลโต๊ะอย่างเดียว) -->
+  <script src="/assets/js/bill-panel.js"></script>
+  <script src="/assets/js/tables.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<!-- ตั้งค่าร้าน (คนที่ 4 · เฟส 1) — เจ้าของร้านเท่านั้น -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ตั้งค่าร้าน · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <form id="form" class="stack" style="max-width:860px" autocomplete="off">
+      <div class="card">
+        <h3 class="card-title">🏪 ข้อมูลร้าน</h3>
+        <div class="field"><label for="shop_name">ชื่อร้าน</label><input class="input" id="shop_name" maxlength="100" required></div>
+        <div class="grid grid-2">
+          <div class="field"><label for="phone">เบอร์โทร</label><input class="input" id="phone" maxlength="20"></div>
+          <div class="field"><label for="email">อีเมล</label><input class="input" id="email" type="email" maxlength="100"></div>
+        </div>
+        <div class="field"><label for="address">ที่อยู่</label><textarea class="textarea" id="address" rows="2" maxlength="255"></textarea></div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">🕙 เวลาเปิด-ปิด 2 กะ</h3>
+        <div class="bold" style="margin-bottom:8px">รอบเช้า</div>
+        <div class="grid grid-3">
+          <div class="field"><label for="morning_open">เวลาเปิด</label><input class="input" id="morning_open" type="time" required></div>
+          <div class="field"><label for="morning_last_order">ปิดรับออเดอร์</label><input class="input" id="morning_last_order" type="time" required></div>
+          <div class="field"><label for="morning_close">เวลาปิด</label><input class="input" id="morning_close" type="time" required></div>
+        </div>
+        <div class="bold" style="margin-bottom:8px">รอบเย็น</div>
+        <div class="grid grid-3">
+          <div class="field"><label for="evening_open">เวลาเปิด</label><input class="input" id="evening_open" type="time" required></div>
+          <div class="field"><label for="evening_last_order">ปิดรับออเดอร์</label><input class="input" id="evening_last_order" type="time" required></div>
+          <div class="field"><label for="evening_close">เวลาปิด</label><input class="input" id="evening_close" type="time" required></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">🧾 การสั่งอาหาร</h3>
+        <div class="field" style="max-width:320px"><label for="max_qty_per_item">จำนวนสูงสุดต่อรายการ (ต่อครั้งที่สั่ง)</label>
+          <input class="input" id="max_qty_per_item" type="number" min="1" max="99" required></div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">👑 ห้อง VIP</h3>
+        <div class="grid grid-3">
+          <div class="field"><label for="vip_min_spend">ยอดสั่งขั้นต่ำ (บาท)</label><input class="input" id="vip_min_spend" type="number" min="0" step="1" required></div>
+          <div class="field"><label for="vip_deposit_percent">มัดจำ (%)</label><input class="input" id="vip_deposit_percent" type="number" min="0" max="100" required></div>
+          <div class="field"><label for="vip_max_hours">ใช้ห้องได้สูงสุด (ชั่วโมง)</label><input class="input" id="vip_max_hours" type="number" min="1" max="24" required></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn btn-lg" type="submit" id="saveBtn">บันทึกการตั้งค่า</button>
+        <button class="btn btn-secondary btn-lg" type="button" id="resetBtn">คืนค่าที่บันทึกไว้</button>
+      </div>
+    </form>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'ตั้งค่าร้าน', roles: ['owner'] });
+      if (!me) return;
+
+      const TEXT = ['shop_name', 'phone', 'email', 'address'];
+      const TIME = ['morning_open', 'morning_last_order', 'morning_close', 'evening_open', 'evening_last_order', 'evening_close'];
+      const NUM = ['max_qty_per_item', 'vip_min_spend', 'vip_deposit_percent', 'vip_max_hours'];
+      const $ = (id) => document.getElementById(id);
+
+      function fill(s) {
+        TEXT.forEach((k) => { $(k).value = s[k] || ''; });
+        TIME.forEach((k) => { $(k).value = (s[k] || '').slice(0, 5); });
+        NUM.forEach((k) => { $(k).value = s[k] ?? ''; });
+      }
+
+      async function load() {
+        const s = await run(() => api.get('settings'));
+        if (s) fill(s);
+      }
+
+      $('resetBtn').onclick = load;
+      $('form').onsubmit = async (e) => {
+        e.preventDefault();
+        const body = { action: 'update' };
+        TEXT.forEach((k) => { body[k] = $(k).value.trim(); });
+        TIME.forEach((k) => { body[k] = $(k).value; });
+        NUM.forEach((k) => { body[k] = $(k).value === '' ? '' : Number($(k).value); });
+        $('saveBtn').disabled = true;
+        const saved = await run(() => api.post('settings', body));
+        $('saveBtn').disabled = false;
+        if (saved) { fill(saved); window.SHOP = saved; }
+      };
+      load();
+    })();
+  </script>
+</body>
+</html>
