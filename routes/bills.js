@@ -91,7 +91,8 @@ async function openBill(req, res, b) {
   if (!isVip && (b.table_ids === undefined || b.table_ids === null || b.table_ids === '')) {
     throw fail('กรุณาเลือกโต๊ะ', 422);
   }
-  if (!(await isOpenNow())) throw fail('ร้านปิดอยู่ เปิดโต๊ะได้เฉพาะเวลาเปิดร้าน', 409); // BR-01
+  // TODO: ปิดเช็กเวลาร้านไว้ชั่วคราวเพื่อทดสอบ เปิดกลับก่อนส่งงาน
+  // if (!(await isOpenNow())) throw fail('ร้านปิดอยู่ เปิดโต๊ะได้เฉพาะเวลาเปิดร้าน', 409); // BR-01
 
   const token = crypto.randomBytes(16).toString('hex'); // 32 ตัวอักษร
 

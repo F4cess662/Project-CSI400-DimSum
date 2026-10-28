@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>บิลที่เปิด · นึ่งสุข</title>
+  <title>บิลที่เปิดอยู่ · นึ่งสุข</title>
   <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
@@ -30,7 +30,7 @@
   <script src="/assets/js/bill-panel.js"></script>
   <script>
     (async () => {
-      const me = await initStaffPage({ title: 'บิลที่เปิด', roles: ['staff', 'manager', 'owner'] });
+      const me = await initStaffPage({ title: 'บิลที่เปิดอยู่', roles: ['staff', 'manager', 'owner'] });
       if (!me) return;
       const canPay = ['manager', 'owner'].includes(me.role_code) || me.can_payment === 1;
 
