@@ -1,0 +1,130 @@
+<!doctype html>
+<!-- ตั้งค่าโต๊ะและห้อง VIP (คนที่ 4 · เฟส 1) — เจ้าของร้านเท่านั้น -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>โต๊ะและห้อง VIP · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="tabs">
+        <button class="tab active" data-tab="tables">🪑 โต๊ะ</button>
+        <button class="tab" data-tab="rooms">👑 ห้อง VIP</button>
+      </div>
+      <button class="btn" id="addBtn">+ เพิ่มโต๊ะ</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead id="head"></thead>
+        <tbody id="rows"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody>
+      </table>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'โต๊ะและห้อง VIP', roles: ['owner'] });
+      if (!me) return;
+
+      const TYPE_LABEL = { bar: 'บาร์', small: 'โต๊ะเล็ก', large: 'โต๊ะใหญ่' };
+      let tab = 'tables';
+      let list = [];
+      const apiName = () => (tab === 'tables' ? 'tables' : 'vip_rooms');
+
+      const head = document.getElementById('head');
+      const rows = document.getElementById('rows');
+      const addBtn = document.getElementById('addBtn');
+
+      async function load() {
+        const data = await run(() => api.get(apiName(), { include_inactive: 1 }));
+        if (!data) return;
+        list = data;
+        draw();
+      }
+
+      function draw() {
+        const isTable = tab === 'tables';
+        addBtn.textContent = isTable ? '+ เพิ่มโต๊ะ' : '+ เพิ่มห้อง VIP';
+        head.innerHTML = isTable
+          ? '<tr><th>รหัสโต๊ะ</th><th>ประเภท</th><th>ที่นั่ง</th><th>ตำแหน่ง (X, Y)</th><th>สถานะ</th><th></th></tr>'
+          : '<tr><th>ชื่อห้อง</th><th>ที่นั่ง</th><th>สถานะ</th><th></th></tr>';
+        const cols = isTable ? 6 : 4;
+        rows.innerHTML = list.length ? list.map((r) => {
+          const state = r.is_active ? badge(r.status) : badge('inactive');
+          const action = r.is_active
+            ? `<button class="btn btn-danger btn-sm" data-off="${r.id}">ปิดใช้</button>`
+            : `<button class="btn btn-secondary btn-sm" data-on="${r.id}">เปิดใช้</button>`;
+          const btns = `<div class="row" style="gap:8px;flex-wrap:nowrap">
+              <button class="btn btn-secondary btn-sm" data-edit="${r.id}">แก้ไข</button>${action}</div>`;
+          return isTable
+            ? `<tr><td class="bold">${fmt.esc(r.code)}</td><td>${TYPE_LABEL[r.table_type] || ''}</td><td>${r.seats}</td>
+                 <td>${r.pos_x}, ${r.pos_y}</td><td>${state}</td><td>${btns}</td></tr>`
+            : `<tr><td class="bold">${fmt.esc(r.name)}</td><td>${r.seats}</td><td>${state}</td><td>${btns}</td></tr>`;
+        }).join('')
+          : `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">🪑</div>ยังไม่มีข้อมูล</div></td></tr>`;
+
+        rows.querySelectorAll('[data-edit]').forEach((b) => { b.onclick = () => openForm(list.find((x) => x.id === Number(b.dataset.edit))); });
+        rows.querySelectorAll('[data-off]').forEach((b) => { b.onclick = () => toggle(Number(b.dataset.off), false); });
+        rows.querySelectorAll('[data-on]').forEach((b) => { b.onclick = () => toggle(Number(b.dataset.on), true); });
+      }
+
+      async function toggle(id, on) {
+        const r = list.find((x) => x.id === id);
+        const name = r.code || r.name;
+        if (!on && !(await confirmModal(`ปิดใช้งาน ${fmt.esc(name)}? จะไม่แสดงในผังโต๊ะอีก`, 'ปิดใช้งาน', true))) return;
+        const done = await run(() => api.post(apiName(), { action: on ? 'activate' : 'deactivate', id }));
+        if (done !== null) load();
+      }
+
+      function openForm(r) {
+        const isTable = tab === 'tables';
+        const editing = !!r;
+        const body = isTable ? `
+          <div class="field"><label>รหัสโต๊ะ</label><input class="input" id="fCode" maxlength="10" value="${fmt.esc(r ? r.code : '')}" placeholder="เช่น T09"></div>
+          <div class="field"><label>ประเภท</label>
+            <select class="select" id="fType">${Object.entries(TYPE_LABEL).map(([k, v]) =>
+              `<option value="${k}" ${r && r.table_type === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div class="field"><label>จำนวนที่นั่ง</label><input class="input" id="fSeats" type="number" min="1" max="30" value="${r ? r.seats : 4}"></div>
+          <div class="grid grid-2">
+            <div class="field"><label>ตำแหน่ง X</label><input class="input" id="fX" type="number" min="0" value="${r ? r.pos_x : 0}"></div>
+            <div class="field"><label>ตำแหน่ง Y</label><input class="input" id="fY" type="number" min="0" value="${r ? r.pos_y : 0}"></div>
+          </div>` : `
+          <div class="field"><label>ชื่อห้อง</label><input class="input" id="fName" maxlength="50" value="${fmt.esc(r ? r.name : '')}" placeholder="เช่น VIP 7"></div>
+          <div class="field"><label>จำนวนที่นั่ง (ไม่เกิน 15)</label><input class="input" id="fSeats" type="number" min="1" max="15" value="${r ? r.seats : 15}"></div>`;
+
+        const m = openModal({
+          title: (editing ? 'แก้ไข' : 'เพิ่ม') + (isTable ? 'โต๊ะ' : 'ห้อง VIP'),
+          body,
+          footer: '<button class="btn btn-secondary" data-close>ยกเลิก</button><button class="btn" data-save>บันทึก</button>',
+        });
+        const val = (id) => m.el.querySelector('#' + id).value;
+        m.el.querySelector('[data-save]').onclick = async () => {
+          const payload = isTable
+            ? { code: val('fCode'), table_type: val('fType'), seats: Number(val('fSeats')), pos_x: Number(val('fX')), pos_y: Number(val('fY')) }
+            : { name: val('fName'), seats: Number(val('fSeats')) };
+          const done = await run(() => api.post(apiName(), { action: editing ? 'update' : 'create', ...(editing ? { id: r.id } : {}), ...payload }));
+          if (done !== null) { m.close(); load(); }
+        };
+      }
+
+      document.querySelectorAll('[data-tab]').forEach((b) => {
+        b.onclick = () => {
+          tab = b.dataset.tab;
+          document.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
+          rows.innerHTML = '<tr><td colspan="6" class="loading">กำลังโหลด...</td></tr>';
+          load();
+        };
+      });
+      addBtn.onclick = () => openForm(null);
+      load();
+    })();
+  </script>
+</body>
+</html>
