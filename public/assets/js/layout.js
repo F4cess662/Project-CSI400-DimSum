@@ -36,7 +36,7 @@ const STAFF_MENU = [
     { file: 'logs.html',            icon: '🕘', label: 'Log',               roles: ['manager', 'owner'] },
   ]},
   { group: 'เจ้าของร้าน', items: [
-    { file: 'users.html',           icon: '👥', label: 'พนักงาน',           roles: ['owner'] },
+    { file: 'staff-management.html',icon: '👥', label: 'พนักงาน',           roles: ['owner'] },
     { file: 'menus.html',           icon: '🍽️', label: 'เมนูและหมวด',       roles: ['owner'] },
     { file: 'tables-setup.html',    icon: '🛠️', label: 'โต๊ะและห้อง VIP',    roles: ['owner'] },
     { file: 'settings.html',        icon: '⚙️', label: 'ตั้งค่าร้าน',        roles: ['owner'] },
