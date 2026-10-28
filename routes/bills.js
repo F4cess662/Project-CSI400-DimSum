@@ -18,7 +18,7 @@ const STAFF_UP = ['staff', 'manager', 'owner'];
 const MANAGER_UP = ['manager', 'owner'];
 
 /** ลิงก์ที่ลูกค้าสแกนจาก QR (ใช้ BASE_URL ใน config.js วัน demo เปลี่ยนเป็น IP เครื่อง) */
-const qrUrl = (token) => config.baseUrl + '/customer/order.html?token=' + token;
+const qrUrl = (token) => config.baseUrl + '/customer/menu.html?token=' + token;
 
 /** วันนี้ของไทยเป็น 'YYYYMMDD' ใช้ทำเลขบิล */
 const todayCode = () => new Date().toLocaleDateString('sv-SE', { timeZone: config.timezone }).replace(/-/g, '');
