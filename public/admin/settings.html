@@ -14,7 +14,7 @@
     <form id="form" class="stack" style="max-width:860px" autocomplete="off">
       <div class="card">
         <h3 class="card-title">🏪 ข้อมูลร้าน</h3>
-        <div class="field"><label for="shop_name">ชื่อร้าน</label><input class="input" id="shop_name" maxlength="100" required></div>
+        <div class="field"><label for="shop_name">ชื่อร้าน</label><input class="input" id="shop_name" readonly tabindex="-1" style="background:var(--surface-2,#f3ede2);color:var(--muted,#8a7a6a);cursor:not-allowed" title="ชื่อร้านแก้ไม่ได้"><div class="caption muted">ชื่อร้านเป็นชื่อแบรนด์ แก้ไขในระบบไม่ได้</div></div>
         <div class="grid grid-2">
           <div class="field"><label for="phone">เบอร์โทร</label><input class="input" id="phone" maxlength="20"></div>
           <div class="field"><label for="email">อีเมล</label><input class="input" id="email" type="email" maxlength="100"></div>
@@ -67,12 +67,13 @@
       const me = await initStaffPage({ title: 'ตั้งค่าร้าน', roles: ['owner'] });
       if (!me) return;
 
-      const TEXT = ['shop_name', 'phone', 'email', 'address'];
+      const TEXT = ['phone', 'email', 'address']; // ส่งตอนบันทึก (ชื่อร้านดูได้อย่างเดียว)
       const TIME = ['morning_open', 'morning_last_order', 'morning_close', 'evening_open', 'evening_last_order', 'evening_close'];
       const NUM = ['max_qty_per_item', 'vip_min_spend', 'vip_deposit_percent', 'vip_max_hours'];
       const $ = (id) => document.getElementById(id);
 
       function fill(s) {
+        $('shop_name').value = s.shop_name || '';
         TEXT.forEach((k) => { $(k).value = s[k] || ''; });
         TIME.forEach((k) => { $(k).value = (s[k] || '').slice(0, 5); });
         NUM.forEach((k) => { $(k).value = s[k] ?? ''; });
