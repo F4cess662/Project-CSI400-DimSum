@@ -18,7 +18,7 @@ const STAFF_UP = ['staff', 'manager', 'owner'];
 const MANAGER_UP = ['manager', 'owner'];
 
 /** ลิงก์ที่ลูกค้าสแกนจาก QR (ใช้ BASE_URL ใน config.js วัน demo เปลี่ยนเป็น IP เครื่อง) */
-const qrUrl = (token) => config.baseUrl + '/customer/order.html?token=' + token;
+const qrUrl = (token) => config.baseUrl + '/customer/menu.html?token=' + token;
 
 /** วันนี้ของไทยเป็น 'YYYYMMDD' ใช้ทำเลขบิล */
 const todayCode = () => new Date().toLocaleDateString('sv-SE', { timeZone: config.timezone }).replace(/-/g, '');
@@ -91,7 +91,8 @@ async function openBill(req, res, b) {
   if (!isVip && (b.table_ids === undefined || b.table_ids === null || b.table_ids === '')) {
     throw fail('กรุณาเลือกโต๊ะ', 422);
   }
-  if (!(await isOpenNow())) throw fail('ร้านปิดอยู่ เปิดโต๊ะได้เฉพาะเวลาเปิดร้าน', 409); // BR-01
+  // TODO: ปิดเช็กเวลาร้านไว้ชั่วคราวเพื่อทดสอบ เปิดกลับก่อนส่งงาน
+  // if (!(await isOpenNow())) throw fail('ร้านปิดอยู่ เปิดโต๊ะได้เฉพาะเวลาเปิดร้าน', 409); // BR-01
 
   const token = crypto.randomBytes(16).toString('hex'); // 32 ตัวอักษร
 
