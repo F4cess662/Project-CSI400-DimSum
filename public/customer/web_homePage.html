@@ -20,33 +20,25 @@
 
     <!-- Navbar -->
     <nav class="navbar">
-        <a href="#" class="logo" aria-label="หน้าแรก"></a>
+        <a href="/" class="logo" aria-label="หน้าแรก"></a>
 
         <div class="nav-menu">
-            <a href="#">หน้าแรก</a>
-            <a href="#">เมนู</a>
-            <a href="#">จัดเลี้ยง</a>
-            <a href="#">เซ็ตเมนู</a>
-            <a href="#">ติดต่อสอบถาม</a>
+            <a href="/">หน้าแรก</a>
+            <a href="/customer/web_menu.html">เมนู</a>
+            <a href="/customer/web_catering.html">จัดเลี้ยง</a>
         </div>
         <div class="nav-login">
-            <a href="/customer/member.html">เข้าสู่ระบบ</a>
+            <a href="/owner">เข้าสู่ระบบ</a>
         </div>
     </nav>
     <main class="page">
         <section class="details">
             <div class="slider">
                 <div class="slides">
-                    <img src="/assets/img/banners/special-menu.webp" class="slide active" alt="เมนู Special ร้านนึ่งสุข">
+                    <img src="/assets/img/banners/banner_1.jpg" class="slide active" alt="banner1">
 
-                    <img src="https://www.regent-holidays.co.uk/upload-files/blog-sections/section-214_1975.jpg"
-                        class="slide" alt="ปราสาทญี่ปุ่นและภูเขาฟูจิ">
+                    <img src="/assets/img/banners/banner_2.jpg" class="slide" alt="banner2">
 
-                    <img src="https://res.klook.com/image/upload/q_85/c_fill,w_750/v1674030135/blog/bnbtltnp5nqbdevfcbmn.jpg"
-                        class="slide" alt="สถานที่ท่องเที่ยวในญี่ปุ่น">
-
-                    <img src="https://www.nippon.com/en/ncommon/contents/guide-to-japan/133214/133214.jpg" class="slide"
-                        alt="บรรยากาศประเทศญี่ปุ่น">
                 </div>
                 <button type="button" class="slider-btn prev" onclick="plusSlides(-1)" aria-label="รูปก่อนหน้า">
                     &#10094;
@@ -62,13 +54,25 @@
                     <button type="button" class="dot" onclick="showSlide(1)" aria-label="แสดงรูปที่ 2">
                     </button>
 
-                    <button type="button" class="dot" onclick="showSlide(2)" aria-label="แสดงรูปที่ 3">
-                    </button>
-
-                    <button type="button" class="dot" onclick="showSlide(3)" aria-label="แสดงรูปที่ 4">
-                    </button>
                 </div>
 
+            </div>
+        </section>
+                <!-- แนะนำร้าน -->
+        <section class="about-shop">
+            <div class="about-content">
+                <p class="section-label">WELCOME TO NUENG SUK</p>
+
+                <h1>นึ่งสุข ความสุขที่นึ่งสดใหม่ทุกวัน</h1>
+
+                <p>
+                    เติมเต็มทุกมื้อด้วยความอร่อยจากติ่มซำและซาลาเปา
+                    เลือกเมนูโปรดของคุณ แล้วมาอิ่มอร่อยไปด้วยกัน
+                </p>
+
+                <a href="/customer/web_menu.html" class="about-btn">
+                    เลือกชมเมนูอาหาร
+                </a>
             </div>
         </section>
 
@@ -131,16 +135,18 @@
         </section>
 
 
-        <section class="menu" id="menu">
-            <div class="title-menu">
+
+        <!-- <section class="menu" id="menu">
+
+          <div class="title-menu">
                 <h1>เมนูแนะนำ</h1>&nbsp;
                 <p>อร่อยสดใหม่จากร้านนึ่งสุข</p>
             </div>
             <div class="type-timsum" id="categories"></div>
             <div class="menu-list" id="menu-list">
                 <p>กำลังโหลดเมนู...</p>
-            </div>
-        </section>
+            </div> 
+        </section> -->
     </main>
     <footer class="footer">
         <div>
