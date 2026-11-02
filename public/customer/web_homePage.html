@@ -12,8 +12,8 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/customer/web_HomePage.css">
-    <script src="/customer/web_homePage.js" defer></script>
+    <link rel="stylesheet" href="/assets/css/web_HomePage.css">
+    <script src="/assets/js/web_homePage.js" defer></script>
 </head>
 
 <body>
@@ -27,8 +27,10 @@
             <a href="/customer/web_menu.html">เมนู</a>
             <a href="/customer/web_catering.html">จัดเลี้ยง</a>
         </div>
+
         <div class="nav-login">
-            <a href="/owner">เข้าสู่ระบบ</a>
+            <a href="/owner" id="navLogin" hidden>เข้าสู่ระบบ</a>
+            <a href="/owner" id="navAccount" hidden>บัญชีสมาชิก</a>
         </div>
     </nav>
     <main class="page">
@@ -58,7 +60,7 @@
 
             </div>
         </section>
-                <!-- แนะนำร้าน -->
+        <!-- แนะนำร้าน -->
         <section class="about-shop">
             <div class="about-content">
                 <p class="section-label">WELCOME TO NUENG SUK</p>
@@ -166,6 +168,20 @@
             <p>โทร 02-000-0000</p>
         </div>
     </footer>
+    <script>
+        (async () => {
+            const login = document.getElementById('navLogin');
+            const account = document.getElementById('navAccount');
+            let loggedIn = false;
+            try {
+                const res = await fetch('/api/auth', { credentials: 'same-origin' });
+                const json = await res.json();
+                loggedIn = res.ok && json.success;
+            } catch (e) { /* ถือว่ายังไม่ล็อกอิน */ }
+            login.hidden = loggedIn;
+            account.hidden = !loggedIn;
+        })();
+    </script>
 </body>
 
 </html>
