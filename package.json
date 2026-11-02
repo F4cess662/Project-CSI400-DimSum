@@ -7,6 +7,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "dev:all": "node scripts/run-all.js --watch",
+    "start:all": "node scripts/run-all.js",
+    "dev:kitchen": "node --watch services/kitchen/index.js",
+    "dev:inventory": "node --watch services/inventory/index.js",
+    "dev:notify": "node --watch services/notify/index.js",
     "setup-owner": "node scripts/setup-owner.js"
   },
   "dependencies": {

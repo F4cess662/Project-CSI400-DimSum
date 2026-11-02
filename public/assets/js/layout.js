@@ -34,6 +34,8 @@ const STAFF_MENU = [
     { file: 'stock.html',           icon: '⚖️', label: 'ปรับสต็อก',         roles: ['manager', 'owner'] },
     { file: 'reports.html',         icon: '📈', label: 'รายงาน',            roles: ['manager', 'owner'] },
     { file: 'logs.html',            icon: '🕘', label: 'Log',               roles: ['manager', 'owner'] },
+    { file: 'notifications.html',   icon: '🔔', label: 'การแจ้งเตือน',      roles: ['manager', 'owner'] },
+    { file: 'system.html',          icon: '🩺', label: 'สถานะระบบ',         roles: ['manager', 'owner'] },
   ]},
   { group: 'เจ้าของร้าน', items: [
     { file: 'staff-management.html',icon: '👥', label: 'พนักงาน',           roles: ['owner'] },
