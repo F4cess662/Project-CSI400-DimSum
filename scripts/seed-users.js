@@ -17,7 +17,7 @@ async function main() {
   const passwordHash = await bcrypt.hash('1234', 10);
   for (const user of USERS) {
     const role = await queryOne('SELECT id FROM roles WHERE role_code = ?', [user.role_code]);
-    if (!role) throw new Error(`ไม่พบ role_code=${user.role_code} กรุณารัน database/dimsum_schema.sql ก่อน`);
+    if (!role) throw new Error(`ไม่พบ role_code=${user.role_code} กรุณา import database/dimsum_full.sql ก่อน`);
 
     await query(
       `INSERT INTO users (username, password_hash, full_name, role_id, can_payment, can_vip_booking, is_active)

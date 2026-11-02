@@ -1,6 +1,6 @@
 # รายการ API ทั้งระบบ — ระบบร้านติ่มซำ (CSI400) v5
 
-อ้างอิง: **Requirement v5**, **dimsum_schema.sql** (32 ตาราง), ชุดเริ่มต้น **dimsum_node.zip**
+อ้างอิง: **Requirement v5**, **database/dimsum_full.sql** (โครงตาราง + ข้อมูลตัวอย่าง ไฟล์เดียว), ชุดเริ่มต้น **dimsum_node.zip**
 ทุก FR ใน Requirement v5 มี API รองรับครบ
 
 ## สิ่งที่เปลี่ยนจากเอกสาร API ฉบับก่อน
@@ -39,8 +39,51 @@
 | lib/auth.js | `requireLogin`, `requireRole([...])`, `requirePerm('payment' / 'vip_booking')`, `mustBe()`, `mustHavePerm()`, `requireMember` | เช็กสิทธิ์ ปิดบัญชีแล้วใช้งานไม่ได้ทันที |
 | lib/log.js | `writeLog(req, action, targetType, targetId, detail, level)` | บันทึก activity_logs |
 | lib/shop.js | `isOpenNow()`, `isOrderOpenNow()`, `currentShift()`, `closedMessage()` | เวลาเปิดร้านและเวลาปิดรับออเดอร์ (BR-01) |
+| lib/queue.js | `publish(topic, payload, conn?)`, `consume(topic, handler)` | Message Queue (ตาราง event_queue) — publish ได้ทุกที่ · consume ใช้ใน worker ของ service |
+| lib/gateway.js | `callService(req, name, path, { method, body })` | เรียก API ของ service อื่น (ส่ง cookie ต่อให้) · service ดับ = throw 503 |
+| lib/session.js, lib/service.js | (ใช้ภายใน) | session ร่วมทุก service (ตาราง sessions) · ตัวสร้าง service — ไม่ต้องเรียกเอง |
 
 `routes/auth.js` เสร็จแล้ว · `routes/_template.js` คือแม่แบบ
+
+---
+
+## Microservices
+
+ระบบหลัก (port 3000) เป็น **API Gateway**: หน้าเว็บเรียก `/api/...` ที่เดียว Gateway ส่งต่อ path ของ service แยกไปยัง port ของมัน
+service ดับ → path นั้นตอบ `503 "ระบบ...ขัดข้องชั่วคราว ส่วนอื่นของร้านยังใช้งานได้"` ส่วนอื่นทำงานต่อ (Fault Isolation)
+
+| service | port | path ที่ Gateway ส่งต่อ | ไฟล์ API | ตารางที่ใช้ได้ |
+| --- | --- | --- | --- | --- |
+| main (Gateway) | 3000 | ที่เหลือทั้งหมด | `routes/*.js` | ทุกตาราง ยกเว้นตารางคลังและ notifications |
+| kitchen | 4001 | /api/kitchen | `services/kitchen/routes/kitchen.js` | orders, order_items, menu_items, bills, bill_tables, dining_tables, vip_rooms (ฐานข้อมูลร่วม) |
+| inventory | 4002 | /api/ingredients, suppliers, purchase_orders, goods_receipts, stock | `services/inventory/routes/<api>.js` | ingredients, suppliers, supplier_prices, purchase_orders, purchase_order_items, goods_receipts, stock_movements |
+| notify | 4003 | /api/notifications | `services/notify/routes/notifications.js` + `worker.js` | notifications |
+
+**คิวงาน (topic)**
+
+| topic | ใครส่ง (publish) | ใครรับ (consume) | payload |
+| --- | --- | --- | --- |
+| notify | members (OTP, สมัคร) · vip_bookings (จอง, รับมัดจำ) · purchase_orders (ส่ง PO) · ingredients/stock (ใกล้หมด) | notify-service | `{ channel: 'sms'\|'line'\|'system', to, title, message }` |
+
+ข้อจำกัด: ทุก service ใช้ฐานข้อมูล MySQL ก้อนเดียว (XAMPP) แต่แบ่งสิทธิ์ใช้ตารางตามตารางบน · ระบบจริงจะแยกฐานข้อมูลต่อ service (Database per Service)
+
+**API ระบบ (ไฟล์ส่วนกลาง)**
+
+| API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ |
+| --- | --- | --- | --- | --- |
+| /api/system | GET | — | `{ main, services: [{ name, label, port, paths, up, ms, uptime }], queue: [{ topic, pending, processing, done, failed }] }` | manager+ |
+| /api/system | POST retry_failed | topic (ไม่ส่ง = ทุก topic) | งาน failed กลับเป็น pending | owner |
+| /api/system | POST crash | service | ปิด service นั้นเพื่อสาธิต (`npm run start:all` เปิดกลับเอง) | owner |
+| /api/notifications | GET | channel, from, to | ประวัติข้อความที่ส่ง (notify-service) · P3 · คน 2 | manager+ |
+
+**API เพิ่มตาม Feedback เฟส 1**
+
+| API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ | คน |
+| --- | --- | --- | --- | --- | --- |
+| /api/bills | POST move | bill_id, to_table_ids[] | ย้ายบิลไปโต๊ะว่าง เมื่อยังไม่มีออเดอร์ · QR เดิมใช้ต่อ · log bill.move | staff+ | 5 |
+| /api/menus | GET | + q, min_price, max_price, category_id | ค้นหาแบบ "มีคำนี้อยู่" ในชื่อ/คำอธิบาย (ตัด "ไส้", "เมนู" · ทุกคำต้องเจอ) | ตามเดิม | 3 |
+| /api/public | GET action=home / menu | + q, min_price, max_price | กติกาค้นหาเดียวกับ /api/menus · เมนูมี unit เสมอ | สาธารณะ | 6 |
+| /api/dashboard | GET | — | + tables_by_zone, menus_by_category, bills_by_hour (สำหรับกราฟ) | manager+ | 7 |
 
 ---
 
@@ -113,7 +156,7 @@
 
 | API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ | FR | เฟส | คน |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| /api/members | GET | action=lookup, code (**เบอร์โทร** หรือบาร์โค้ด) | สมาชิก + แต้มคงเหลือ + รางวัลที่แลกได้ + คูปองในบัญชีที่ยังไม่ใช้ | staff+ [รับเงิน] | FR-26 | P3 | 2 |
+| /api/members | GET | action=lookup, code (**เบอร์โทร** หรือบาร์โค้ด) | สมาชิก + แต้มคงเหลือ + รางวัลที่แลกได้ + คูปองในบัญชีที่ยังไม่ใช้ | staff+ [รับเงิน] | FR-26 | P3 | 6 |
 | /api/checkout | POST preview | bill_ids[], member_id, reward_ids[], coupon_code | คำนวณให้ดูก่อน (ไม่บันทึก) ตาม BR-10 · **suggested_coupons** = คูปองที่ใช้ได้ตอนนั้น (เช่น Happy Hour) · points_to_earn | staff+ [รับเงิน] | FR-26, 27 | P2 / P3 | 5 |
 | /api/checkout | POST pay | bill_ids[], payment_method, member_id, reward_ids[], coupon_code | ปิดบิล + โต๊ะว่าง + QR หมดอายุ (FR-29) · ถ้ามี member_id: ตัดแต้มที่แลก + **บวกแต้มเข้าบัญชีทันที** (BR-18) · ไม่มี member_id ไม่ได้แต้ม · ได้ข้อมูลใบเสร็จ + points_earned (FR-28) · เฟส 2 ส่งแค่ bill_ids + payment_method | staff+ [รับเงิน] | FR-25–29, 41 | P2 / P3 | 5 |
 | /api/shifts | GET | date, shift | ยอดเงินสดในระบบของกะ | staff+ [รับเงิน] | FR-31 | P2 | 2 |
@@ -139,17 +182,17 @@
 
 | API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ | FR | เฟส | คน |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| /api/members | POST request_otp | phone | รหัส OTP (จำลอง: ส่งกลับมาแสดงบนจอ เก็บใน session) | สาธารณะ | FR-38 | P3 | 2 |
-| /api/members | POST register | phone, otp, name, birth_date | สมาชิกใหม่ + **แจกคูปองต้อนรับเข้าบัญชีอัตโนมัติ** (FR-43) + ล็อกอินให้เลย | สาธารณะ | FR-38, 43 | P3 | 2 |
-| /api/members | POST login / logout | phone, otp | session สมาชิก | สาธารณะ | FR-38 | P3 | 2 |
-| /api/members | GET | action=me | แต้มคงเหลือ, ประวัติแต้ม, คูปองในบัญชี, ค่าบาร์โค้ด, เตือน "แต้มจะหมดอายุ 31 ธ.ค." ตั้งแต่ 1 ธ.ค. | สมาชิก | FR-39 | P3 | 2 |
+| /api/members | POST request_otp | phone | รหัส OTP (จำลอง: ส่งกลับมาแสดงบนจอ เก็บใน session) | สาธารณะ | FR-38 | P3 | 6 |
+| /api/members | POST register | phone, otp, name, birth_date | สมาชิกใหม่ + **แจกคูปองต้อนรับเข้าบัญชีอัตโนมัติ** (FR-43) + ล็อกอินให้เลย | สาธารณะ | FR-38, 43 | P3 | 6 |
+| /api/members | POST login / logout | phone, otp | session สมาชิก | สาธารณะ | FR-38 | P3 | 6 |
+| /api/members | GET | action=me | แต้มคงเหลือ, ประวัติแต้ม, คูปองในบัญชี, ค่าบาร์โค้ด, เตือน "แต้มจะหมดอายุ 31 ธ.ค." ตั้งแต่ 1 ธ.ค. | สมาชิก | FR-39 | P3 | 6 |
 | /api/rewards | GET | — | รางวัลที่ใช้งาน | พนักงาน | FR-41 | P3 | 1 |
 | /api/rewards | POST create / update / deactivate | name, points_cost, reward_type, menu_item_id, discount_value | — | manager+ | FR-41 | P3 | 1 |
-| /api/coupons | GET | — · `?code=` = เช็กคูปองใบเดียว | คูปองทั้งหมด / ใช้ได้หรือไม่ + เหตุผล | manager+ / staff+ [รับเงิน] | FR-42 | P3 | 6 |
-| /api/coupons | POST create / update / deactivate | code, coupon_type, value, free_menu_item_id, min_spend, start_date, end_date, valid_time_start, valid_time_end, **valid_weekdays**, **exclude_holidays**, member_only, usage_limit, per_member_limit | 1 บิลใช้ได้ 1 ใบ (BR-23) · เช็กวันในสัปดาห์ ช่วงเวลา และวันหยุดราชการ (BR-27) | manager+ | FR-42 | P3 | 6 |
-| /api/banners | GET | — · `?all=1` = รวมที่ปิดอยู่ (manager+) | แบนเนอร์ที่เปิดใช้ เรียงตาม sort_order (ใช้ทำสไลด์หน้า Home) | สาธารณะ | — | P3 | 6 |
-| /api/banners | POST create / update | form-data: title, image, link_url, is_active | อัปโหลดรูปได้ทีละรูป เพิ่มได้หลายรายการ · รูปเก็บที่ public/assets/uploads · update ไม่ส่งรูป = ใช้รูปเดิม | manager+ | — | P3 | 6 |
-| /api/banners | POST delete / reorder | id · ids[] เรียงตามลำดับใหม่ | ลบ = ลบแถวจริงได้ (ไม่มีข้อมูลอื่นอ้างอิง) · reorder ตั้ง sort_order ตามลำดับ | manager+ | — | P3 | 6 |
+| /api/coupons | GET | — · `?code=` = เช็กคูปองใบเดียว | คูปองทั้งหมด / ใช้ได้หรือไม่ + เหตุผล | manager+ / staff+ [รับเงิน] | FR-42 | P3 | 2 |
+| /api/coupons | POST create / update / deactivate | code, coupon_type, value, free_menu_item_id, min_spend, start_date, end_date, valid_time_start, valid_time_end, **valid_weekdays**, **exclude_holidays**, member_only, usage_limit, per_member_limit | 1 บิลใช้ได้ 1 ใบ (BR-23) · เช็กวันในสัปดาห์ ช่วงเวลา และวันหยุดราชการ (BR-27) | manager+ | FR-42 | P3 | 2 |
+| /api/banners | GET | — · `?all=1` = รวมที่ปิดอยู่ (manager+) | แบนเนอร์ที่เปิดใช้ เรียงตาม sort_order (ใช้ทำสไลด์หน้า Home) | สาธารณะ | — | P3 | 2 |
+| /api/banners | POST create / update | form-data: title, image, link_url, is_active | อัปโหลดรูปได้ทีละรูป เพิ่มได้หลายรายการ · รูปเก็บที่ public/assets/uploads · update ไม่ส่งรูป = ใช้รูปเดิม | manager+ | — | P3 | 2 |
+| /api/banners | POST delete / reorder | id · ids[] เรียงตามลำดับใหม่ | ลบ = ลบแถวจริงได้ (ไม่มีข้อมูลอื่นอ้างอิง) · reorder ตั้ง sort_order ตามลำดับ | manager+ | — | P3 | 2 |
 | /api/tasks | POST birthday_coupons | month | แจกคูปองเดือนเกิดเข้าบัญชีสมาชิกที่เกิดเดือนนั้น (ไม่แจกซ้ำในเดือนเดียวกัน) | owner | FR-43 | P3 | 1 |
 | /api/tasks | POST year_end_reset | — | ตั้งแต้มทุกคนเป็น 0 + บันทึก expire (BR-21) | owner | FR-44 | P3 | 1 |
 

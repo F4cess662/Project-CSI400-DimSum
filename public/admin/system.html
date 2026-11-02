@@ -1,0 +1,90 @@
+<!doctype html>
+<!-- สถานะระบบ Microservices (ไฟล์ส่วนกลาง คนที่ 1 ดูแล) -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>สถานะระบบ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="stack">
+      <div class="alert alert-wait small">
+        ระบบแยกเป็น service อิสระ ถ้า service หนึ่งดับ เฉพาะส่วนนั้นใช้ไม่ได้ ส่วนอื่นของร้านยังทำงานต่อ ·
+        งานที่ส่งผ่านคิวจะรออยู่จนกว่า service ปลายทางกลับมา
+      </div>
+      <div class="grid grid-4" id="services"><div class="loading">กำลังโหลด...</div></div>
+
+      <div class="card">
+        <div class="row-between">
+          <h3 class="card-title" style="margin:0">คิวงาน (Message Queue)</h3>
+          <button class="btn btn-secondary btn-sm" id="retryBtn" hidden>ส่งงานที่ล้มเหลวกลับเข้าคิว</button>
+        </div>
+        <div class="table-wrap" style="margin-top:12px">
+          <table class="table">
+            <thead><tr><th>หัวข้อ (topic)</th><th>รอทำ</th><th>กำลังทำ</th><th>สำเร็จ</th><th>ล้มเหลว</th></tr></thead>
+            <tbody id="queue"><tr><td colspan="5" class="loading">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'สถานะระบบ', roles: ['manager', 'owner'] });
+      if (!me) return;
+      const isOwner = me.role_code === 'owner';
+      const $ = (id) => document.getElementById(id);
+      $('retryBtn').hidden = !isOwner;
+
+      const upBadge = (up) => `<span class="badge badge-${up ? 'ok' : 'bad'}">${up ? 'ทำงานปกติ' : 'ดับ'}</span>`;
+      const uptime = (s) => (s == null ? '-' : s < 60 ? `${s} วินาที` : s < 3600 ? `${Math.floor(s / 60)} นาที` : `${Math.floor(s / 3600)} ชม.`);
+
+      function serviceCard(s, isMain) {
+        return `
+          <div class="card stack" style="gap:8px">
+            <div class="row-between"><span class="bold">${fmt.esc(s.label)}</span>${upBadge(s.up)}</div>
+            <div class="caption muted">port ${fmt.esc(s.port)} · ทำงานมา ${uptime(s.uptime)}${s.ms != null ? ` · ตอบใน ${s.ms} ms` : ''}</div>
+            <div class="caption muted" style="word-break:break-all">${isMain ? 'หน้าเว็บ + API อื่นทั้งหมด' : s.paths.map((p) => '/api/' + p).join(' ')}</div>
+            ${isOwner && !isMain && s.up ? `<button class="btn btn-danger btn-sm" data-crash="${s.name}">ปิด service (สาธิต)</button>` : ''}
+          </div>`;
+      }
+
+      async function load() {
+        let data;
+        try { data = await api.get('system'); } catch (e) { return toast(e.message, 'error'); }
+        $('services').innerHTML = serviceCard(data.main, true) + data.services.map((s) => serviceCard(s, false)).join('');
+        $('queue').innerHTML = data.queue.length
+          ? data.queue.map((q) => `<tr><td class="bold">${fmt.esc(q.topic)}</td><td>${fmt.num(q.pending)}</td>
+              <td>${fmt.num(q.processing)}</td><td>${fmt.num(q.done)}</td>
+              <td>${q.failed ? `<span class="badge badge-bad">${fmt.num(q.failed)}</span>` : 0}</td></tr>`).join('')
+          : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>ยังไม่มีงานในคิว</div></td></tr>`;
+
+        document.querySelectorAll('[data-crash]').forEach((btn) => {
+          btn.onclick = async () => {
+            const s = data.services.find((x) => x.name === btn.dataset.crash);
+            const yes = await confirmModal(`ปิดระบบ${fmt.esc(s.label)}เพื่อสาธิต?<br>
+              <span class="small muted">ระหว่างนี้หน้าที่ใช้ระบบนี้จะขึ้น "ขัดข้องชั่วคราว" ส่วนอื่นยังใช้ได้ ·
+              ถ้ารันด้วย npm run start:all จะเปิดกลับเองใน ~3 วินาที</span>`, 'ปิด service', true);
+            if (!yes) return;
+            await run(() => api.post('system', { action: 'crash', service: s.name }));
+            setTimeout(load, 500);
+          };
+        });
+      }
+
+      $('retryBtn').onclick = async () => {
+        await run(() => api.post('system', { action: 'retry_failed' }));
+        load();
+      };
+      poll(load, 3);
+    })();
+  </script>
+</body>
+</html>

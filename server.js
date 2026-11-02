@@ -1,20 +1,19 @@
 const express = require('express');
-const session = require('express-session');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const { errorHandler } = require('./lib/response');
+const { sessionMiddleware } = require('./lib/session');
+const { mountServices } = require('./lib/gateway');
 
 const app = express();
+
+// API Gateway: path ของ service แยก (ครัว คลังสินค้า แจ้งเตือน) ส่งต่อไปยัง port ของมัน — ต้องอยู่ก่อน express.json
+mountServices(app);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(session({
-  name: 'dimsum.sid',
-  secret: config.sessionSecret,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: 'lax' },
-}));
+app.use(sessionMiddleware()); // session เก็บใน MySQL ใช้ร่วมกับทุก service
 
 // หน้าเว็บทั้งหมด (HTML, CSS, JS, รูป) อยู่ใน public/
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
@@ -73,4 +72,6 @@ app.listen(config.port, () => {
   console.log(`หน้าเว็บร้านนึ่งสุข เปิดที่ ${base}/`);
   console.log(`หน้า QR สั่งเปิดที่ ${base}/menu`);
   console.log(`หน้าพนักงาน ${base}/admin/login.html`);
+  console.log('Gateway ส่งต่อ: ' + Object.entries(config.services)
+    .map(([n, s]) => `${s.paths.map((p) => '/api/' + p).join(' ')} → ${n}:${s.port}`).join(' · '));
 });
