@@ -21,7 +21,7 @@
     <div class="table-wrap">
       <table class="table">
         <thead id="head"></thead>
-        <tbody id="rows"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody>
+        <tbody id="rows"><tr><td colspan="5" class="loading">กำลังโหลด...</td></tr></tbody>
       </table>
     </div>
   </template>
@@ -53,9 +53,9 @@
         const isTable = tab === 'tables';
         addBtn.textContent = isTable ? '+ เพิ่มโต๊ะ' : '+ เพิ่มห้อง VIP';
         head.innerHTML = isTable
-          ? '<tr><th>รหัสโต๊ะ</th><th>ประเภท</th><th>ที่นั่ง</th><th>ตำแหน่ง (X, Y)</th><th>สถานะ</th><th></th></tr>'
+          ? '<tr><th>รหัสโต๊ะ</th><th>ประเภท</th><th>ที่นั่ง</th><th>สถานะ</th><th></th></tr>'
           : '<tr><th>ชื่อห้อง</th><th>ที่นั่ง</th><th>สถานะ</th><th></th></tr>';
-        const cols = isTable ? 6 : 4;
+        const cols = isTable ? 5 : 4;
         rows.innerHTML = list.length ? list.map((r) => {
           const state = r.is_active ? badge(r.status) : badge('inactive');
           const action = r.is_active
@@ -65,7 +65,7 @@
               <button class="btn btn-secondary btn-sm" data-edit="${r.id}">แก้ไข</button>${action}</div>`;
           return isTable
             ? `<tr><td class="bold">${fmt.esc(r.code)}</td><td>${TYPE_LABEL[r.table_type] || ''}</td><td>${r.seats}</td>
-                 <td>${r.pos_x}, ${r.pos_y}</td><td>${state}</td><td>${btns}</td></tr>`
+                 <td>${state}</td><td>${btns}</td></tr>`
             : `<tr><td class="bold">${fmt.esc(r.name)}</td><td>${r.seats}</td><td>${state}</td><td>${btns}</td></tr>`;
         }).join('')
           : `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">🪑</div>ยังไม่มีข้อมูล</div></td></tr>`;
@@ -92,7 +92,7 @@
             <select class="select" id="fType">${Object.entries(TYPE_LABEL).map(([k, v]) =>
               `<option value="${k}" ${r && r.table_type === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
           <div class="field"><label>จำนวนที่นั่ง</label><input class="input" id="fSeats" type="number" min="1" max="30" value="${r ? r.seats : 4}"></div>
-          <div class="grid grid-2">
+          <div hidden><!-- ตำแหน่ง X, Y ยังไม่ใช้ในผังโต๊ะ ซ่อนไว้แต่เก็บค่าเดิม -->
             <div class="field"><label>ตำแหน่ง X</label><input class="input" id="fX" type="number" min="0" value="${r ? r.pos_x : 0}"></div>
             <div class="field"><label>ตำแหน่ง Y</label><input class="input" id="fY" type="number" min="0" value="${r ? r.pos_y : 0}"></div>
           </div>` : `
@@ -118,7 +118,7 @@
         b.onclick = () => {
           tab = b.dataset.tab;
           document.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('active', x === b));
-          rows.innerHTML = '<tr><td colspan="6" class="loading">กำลังโหลด...</td></tr>';
+          rows.innerHTML = '<tr><td colspan="5" class="loading">กำลังโหลด...</td></tr>';
           load();
         };
       });
