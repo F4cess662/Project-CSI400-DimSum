@@ -2,7 +2,7 @@
  * /api/settings — ตั้งค่าร้าน (คนที่ 4 · เฟส 1)
  * GET  → ตั้งค่าร้านทั้งหมด (สาธารณะ ไม่ต้องล็อกอิน · หน้าลูกค้าใช้แสดงเวลาเปิด-ปิด)
  * POST {"action":"update", ...เฉพาะฟิลด์ที่ต้องการแก้}   (owner · log ระดับ system)
- *   ข้อมูลร้าน : shop_name, phone, email, address
+ *   ข้อมูลร้าน : phone, email, address (shop_name ดูได้อย่างเดียว)
  *   เวลา 2 กะ  : morning_open, morning_last_order, morning_close, evening_open, evening_last_order, evening_close ("HH:MM")
  *   อื่นๆ      : max_qty_per_item, vip_min_spend, vip_deposit_percent, vip_max_hours
  */
@@ -13,7 +13,8 @@ const { mustBe } = require('../lib/auth');
 const { writeLog } = require('../lib/log');
 const { shopSettings } = require('../lib/shop');
 
-const TEXT = { shop_name: ['ชื่อร้าน', 100, true], phone: ['เบอร์โทร', 20, false], email: ['อีเมล', 100, false], address: ['ที่อยู่', 255, false] };
+// shop_name แก้ผ่าน API ไม่ได้ (ชื่อแบรนด์)
+const TEXT = { phone: ['เบอร์โทร', 20, false], email: ['อีเมล', 100, false], address: ['ที่อยู่', 255, false] };
 const TIMES = {
   morning_open: 'เวลาเปิดรอบเช้า', morning_last_order: 'เวลาปิดรับออเดอร์รอบเช้า', morning_close: 'เวลาปิดรอบเช้า',
   evening_open: 'เวลาเปิดรอบเย็น', evening_last_order: 'เวลาปิดรับออเดอร์รอบเย็น', evening_close: 'เวลาปิดรอบเย็น',
