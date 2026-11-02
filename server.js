@@ -58,9 +58,6 @@ if (fs.existsSync(mockRoutes)) {
 }
 
 // API 
-app.use('/api', require('./routes/menu'));
-
-
 app.use('/api', (req, res) => res.status(404).json({ success: false, data: null, message: 'ไม่พบ API นี้' }));
 app.use(errorHandler);
 
@@ -74,5 +71,6 @@ app.use((req, res) => {
 app.listen(config.port, () => {
   const base = `http://localhost:${config.port}`;
   console.log(`หน้าเว็บร้านนึ่งสุข เปิดที่ ${base}/`);
+  console.log(`หน้า QR สั่งเปิดที่ ${base}/menu`);
   console.log(`หน้าพนักงาน ${base}/admin/login.html`);
 });
