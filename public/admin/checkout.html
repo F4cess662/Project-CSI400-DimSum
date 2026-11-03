@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- ชำระเงิน (คนที่ 5 · เฟส 2) · เปิดจากผังโต๊ะได้ด้วย ?bill_id=5 -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ชำระเงิน · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="split-60">
+      <!-- ซ้าย: เลือกบิล + รายการ -->
+      <div class="stack">
+        <div class="card">
+          <div class="row-between" style="margin-bottom:12px">
+            <h3 class="card-title" style="margin:0">เลือกบิล</h3>
+            <span class="small muted">เลือกได้หลายบิล เพื่อจ่ายรวมครั้งเดียว</span>
+          </div>
+          <div class="row" id="billChips"><span class="muted">กำลังโหลด...</span></div>
+        </div>
+        <!-- สมาชิก แต้ม คูปอง (เฟส 3) -->
+        <div class="card hidden" id="memberCard"></div>
+        <div id="items"></div>
+      </div>
+
+      <!-- ขวา: สรุปยอด + วิธีชำระ -->
+      <div class="side-panel stack" id="summary">
+        <div class="empty"><div class="empty-icon">💳</div>เลือกบิลทางซ้ายเพื่อชำระเงิน</div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/checkout.js"></script>
+</body>
+</html>

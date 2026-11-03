@@ -97,7 +97,7 @@ function confirmModal(message, confirmText = 'ยืนยัน', danger = fals
 
 /* ---------- แปลงค่าแสดงผล ---------- */
 const fmt = {
-  baht: (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 }),
+  baht: (n) => Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 }) + ' ฿',
   num: (n) => Number(n || 0).toLocaleString('th-TH'),
   time: (d) => d ? new Date(String(d).replace(' ', 'T')).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-',
   date: (d) => d ? new Date(String(d).replace(' ', 'T')).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '-',
