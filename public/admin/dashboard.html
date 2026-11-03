@@ -17,11 +17,15 @@
 
     <div class="alert alert-bad hidden" id="loadError" style="margin-bottom:16px"></div>
 
-    <!-- ตัวเลขสรุป -->
+    <!-- ตัวเลขสรุป 4 ใบ -->
     <div class="grid grid-4 section">
       <div class="card stat">
         <div class="stat-icon">🪑</div>
         <div><div class="stat-value" id="statTables">-</div><div class="stat-label">โต๊ะมีลูกค้า</div></div>
+      </div>
+      <div class="card stat">
+        <div class="stat-icon">👑</div>
+        <div><div class="stat-value" id="statVip">-</div><div class="stat-label">ห้อง VIP มีลูกค้า</div></div>
       </div>
       <div class="card stat">
         <div class="stat-icon">🧾</div>
@@ -29,56 +33,68 @@
       </div>
       <div class="card stat">
         <div class="stat-icon">🚫</div>
-        <div><div class="stat-value" id="statMenus">-</div><div class="stat-label">เมนูปิดขาย</div></div>
-      </div>
-      <div class="card stat">
-        <div class="stat-icon">👥</div>
-        <div><div class="stat-value" id="statStaff">-</div><div class="stat-label" id="statStaffSub">พนักงานใช้งาน</div></div>
+        <div><div class="stat-value" id="statMenus">-</div><div class="stat-label">เมนูขายไม่ได้</div></div>
       </div>
     </div>
 
-    <div class="split section">
-      <!-- ผังโต๊ะย่อ -->
+    <!-- กราฟโต๊ะ -->
+    <div class="grid grid-2 section">
       <div class="card">
-        <div class="row-between" style="margin-bottom:12px">
-          <h3 class="card-title" style="margin:0">ผังโต๊ะ</h3>
-          <div class="row">
-            <span class="badge badge-ok">ว่าง</span>
-            <span class="badge badge-bad">มีลูกค้า</span>
-            <a class="btn btn-ghost btn-sm" href="/admin/tables.html">ไปผังโต๊ะ →</a>
-          </div>
+        <div class="row-between">
+          <h3 class="card-title">โต๊ะตอนนี้</h3>
+          <a class="btn btn-ghost btn-sm" href="/admin/tables.html">ผังโต๊ะ →</a>
         </div>
-        <div id="tableMap"><div class="loading">กำลังโหลด...</div></div>
+        <div id="chartDonut"><div class="loading">กำลังโหลด...</div></div>
       </div>
-
-      <div class="stack">
-        <!-- เมนูปิดขาย -->
-        <div class="card">
-          <div class="row-between" style="margin-bottom:12px">
-            <h3 class="card-title" style="margin:0">เมนูปิดขาย</h3>
-            <a class="btn btn-ghost btn-sm" href="/admin/stock-today.html">จัดการ →</a>
-          </div>
-          <div id="menuList"><div class="loading">กำลังโหลด...</div></div>
-        </div>
-
-        <!-- พนักงาน -->
-        <div class="card">
-          <div class="row-between" style="margin-bottom:12px">
-            <h3 class="card-title" style="margin:0">พนักงาน</h3>
-            <a class="btn btn-ghost btn-sm hidden" id="usersLink" href="/admin/users.html">จัดการ →</a>
-          </div>
-          <div id="staffList"><div class="loading">กำลังโหลด...</div></div>
-        </div>
+      <div class="card">
+        <h3 class="card-title">โต๊ะตามโซน</h3>
+        <div id="chartZones"><div class="loading">กำลังโหลด...</div></div>
       </div>
     </div>
 
-    <!-- เผื่อเฟสหน้า: ยอดขาย / เมนูใกล้หมด / VIP วันนี้ / วัตถุดิบ -->
+    <!-- สถานะเมนูวันนี้ ตามหมวด -->
     <div class="card section">
-      <h3 class="card-title">เร็วๆ นี้</h3>
-      <div class="empty">
-        <div class="empty-icon">🥟</div>
-        <div class="bold">ยอดขายวันนี้ · เมนูใกล้หมด · การจองห้อง VIP วันนี้ · วัตถุดิบต่ำกว่าจุดสั่งซื้อ</div>
-        <div class="small">จะแสดงที่นี่เมื่อระบบส่วนนั้นพร้อมใช้งาน</div>
+      <div class="row-between">
+        <h3 class="card-title">สถานะเมนูวันนี้ ตามหมวด</h3>
+        <a class="btn btn-ghost btn-sm" href="/admin/stock-today.html">จัดการ →</a>
+      </div>
+      <div class="row-between" style="margin-bottom:16px">
+        <div class="bold" id="menuSummary">กำลังโหลด...</div>
+        <div id="menuLegend"></div>
+      </div>
+      <div class="grid grid-3" id="menuCategories"></div>
+      <div class="alert alert-bad hidden" id="soldoutAll" style="margin-top:16px"></div>
+    </div>
+
+    <!-- บิลรายชั่วโมง -->
+    <div class="card section">
+      <h3 class="card-title">บิลที่เปิดวันนี้ รายชั่วโมง</h3>
+      <div id="chartHours"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+
+    <!-- รายการย่อ -->
+    <div class="grid grid-3 section">
+      <div class="card">
+        <div class="row-between">
+          <h3 class="card-title">เมนูขายไม่ได้</h3>
+          <a class="btn btn-ghost btn-sm" href="/admin/stock-today.html">จัดการ →</a>
+        </div>
+        <div id="menuList"><div class="loading">กำลังโหลด...</div></div>
+      </div>
+      <div class="card">
+        <div class="row-between">
+          <h3 class="card-title">พนักงาน</h3>
+          <a class="btn btn-ghost btn-sm hidden" id="usersLink" href="/admin/staff-management.html">จัดการ →</a>
+        </div>
+        <div class="small muted" id="staffSummary" style="margin-bottom:8px"></div>
+        <div id="staffList"><div class="loading">กำลังโหลด...</div></div>
+      </div>
+      <div class="card">
+        <h3 class="card-title">เร็วๆ นี้</h3>
+        <div class="empty" style="padding:16px">
+          <div class="empty-icon">🥟</div>
+          <div class="small">ยอดขายวันนี้ · เมนูใกล้หมด · ห้อง VIP วันนี้ · วัตถุดิบ</div>
+        </div>
       </div>
     </div>
   </template>
