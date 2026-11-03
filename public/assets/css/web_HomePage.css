@@ -33,7 +33,7 @@ body {
     width: 80px;
     height: 80px;
     flex-shrink: 0;
-    background-image: url("../assets/img/logo_rantimsum.png");
+    background-image: url(../img/logo_rantimsum.png);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -80,6 +80,11 @@ body {
     background-color: #e8c45a;
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(150, 110, 20, 0.15);
+}
+
+/* ทำให้ attribute hidden ทำงานจริง ทุกขนาดจอ */
+.nav-login a[hidden] {
+    display: none !important;
 }
 
 .page {
@@ -393,7 +398,6 @@ body {
     .nav-login a {
         padding: 10px 18px;
     }
-    .nav-login a[hidden] { display: none; }
 
     .member-card {
         padding: 20px 16px;
@@ -530,10 +534,14 @@ body {
         font-size: 19px;
     }
 }
-.title-menu{
+
+.title-menu {
     display: flex;
 }
-.title-menu >p{margin-top: 1rem; }
+
+.title-menu > p {
+    margin-top: 1rem;
+}
 
 .menu {
     border-radius: 10px;
@@ -627,6 +635,7 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
 .footer {
     display: grid;
     grid-template-columns: 1.2fr 1.5fr 1fr;
@@ -692,7 +701,6 @@ body {
     }
 }
 
-
 .about-shop {
     position: relative;
     width: 90%;
@@ -711,7 +719,6 @@ body {
     overflow: hidden;
     isolation: isolate;
 }
-
 
 .about-shop::before,
 .about-shop::after {
@@ -738,14 +745,12 @@ body {
     background: rgba(239, 193, 95, 0.18);
 }
 
-
 .about-content {
     position: relative;
     max-width: 760px;
     margin: 0 auto;
     text-align: center;
 }
-
 
 .about-content .section-label {
     display: inline-block;
@@ -760,7 +765,6 @@ body {
     letter-spacing: 2px;
 }
 
-
 .about-content h1 {
     margin: 0 0 22px;
     color: #654324;
@@ -768,7 +772,6 @@ body {
     font-weight: 700;
     line-height: 1.5;
 }
-
 
 .about-content > p:not(.section-label) {
     max-width: 620px;
@@ -778,7 +781,6 @@ body {
     font-weight: 400;
     line-height: 2;
 }
-
 
 .about-btn {
     display: inline-flex;
@@ -803,13 +805,11 @@ body {
         box-shadow 0.25s ease;
 }
 
-
 .about-btn::after {
     content: "→";
     font-size: 19px;
     transition: transform 0.25s ease;
 }
-
 
 .about-btn:hover {
     color: #80551f;
@@ -822,13 +822,10 @@ body {
     transform: translateX(4px);
 }
 
-
 .about-btn:focus-visible {
     outline: 3px solid #d7a64d;
     outline-offset: 4px;
 }
-
-
 
 @media (max-width: 768px) {
     .about-shop {
@@ -872,7 +869,6 @@ body {
     }
 }
 
-
 @media (prefers-reduced-motion: reduce) {
     .about-btn,
     .about-btn::after {
@@ -885,9 +881,7 @@ body {
     position: fixed;
     inset: 0;
     z-index: 9999;
-
     padding: 55px 25px 25px;
-
     background: rgba(75, 55, 29, 0.92);
     overflow: auto;
 }
@@ -911,22 +905,16 @@ body {
     position: fixed;
     top: 12px;
     right: 25px;
-
     width: 45px;
     height: 45px;
-
     border: 1px solid #e8d29b;
     border-radius: 50%;
-
     color: #694521;
     background: #fff2c4;
-
     font-size: 32px;
     line-height: 1;
-
     cursor: pointer;
     z-index: 10000;
-
     transition: background 0.2s ease;
 }
 
@@ -934,9 +922,7 @@ body {
     background: #ffe49a;
 }
 
-
 @media (max-width: 768px) {
-
     .menu-page {
         padding: 20px 12px 30px;
     }

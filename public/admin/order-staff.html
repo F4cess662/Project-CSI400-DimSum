@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>staff add order</title>
+
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/staffAddOrder.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="app"></div>
+
+    <template id="page">
+        <main class="layout">
+            <section class="card">
+                <h2>เลือกเมนู</h2>
+                <input type="search" class="search" id="search" placeholder="ค้นหาเมนู...">
+                <div class="categories" id="categories"></div>
+                <div class="menu-grid" id="menuGrid">
+                    <p class="empty">กำลังโหลดเมนู...</p>
+                </div>
+            </section>
+
+            <aside class="card">
+                <h2>ออเดอร์ใหม่</h2>
+
+                <div class="field">
+                    <label for="table">โต๊ะ / ห้อง</label>
+                    <select id="table" class="table-select" required>
+                        <option value="">กำลังโหลดโต๊ะและห้อง...</option>
+                    </select>
+                </div>
+
+                <ul class="cart-list" id="cartList"></ul>
+
+                <div class="field">
+                    <label for="note">หมายเหตุ</label>
+                    <textarea id="note" placeholder="เช่น ไม่ใส่ผัก"></textarea>
+                </div>
+
+                <div class="total">
+                    <span>รวม</span>
+                    <span id="total">0 ฿</span>
+                </div>
+
+                <button type="button" class="btn-submit" id="submitBtn">ส่งออเดอร์</button>
+                <button type="button" class="btn-clear" id="clearBtn">ล้างตะกร้า</button>
+
+                <div id="message" role="status" hidden></div>
+            </aside>
+        </main>
+    </template>
+
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/layout.js"></script>
+    <script src="/assets/js/order-staff.js"></script>
+    <script>
+        (async () => {
+            const me = await initStaffPage({
+                title: 'สั่งแทนลูกค้า',
+                roles: ['staff', 'manager', 'owner']
+            });
+            if (me) await initStaffOrder();
+        })();
+    </script>
+</body>
+
+</html>

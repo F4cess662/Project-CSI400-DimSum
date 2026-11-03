@@ -22,6 +22,7 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'customer', 'web_homePage.html'));
 });
+
 app.get('/menu', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'customer', 'menu.html'));
 });

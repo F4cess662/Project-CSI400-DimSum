@@ -1,19 +1,22 @@
 const API = '/api/menu';
 const ORDER_API = '/api/orders';
+const MAX_QTY = 10; // สั่งได้สูงสุดต่อเมนู ต่อรอบ
 
-const CAT_ICON = {
-    'ซาลาเปา': 'bun', 'ขนมจีบ': 'dumpling', 'ห่อสาหร่าย': 'rice', 'ฮะเก๋า': 'dumpling',
-    'เมนูจานหลัก': 'rice', 'เมนูทอด': 'fried', 'หมี่หยก': 'noodle', 'ชุดเซ็ต': 'box',
-    'เครื่องดื่ม': 'drink', 'ของหวาน': 'dessert'
+// หน่วยตามหมวด (ถ้า API ส่ง m.unit มาจะใช้ค่านั้นก่อน)
+const UNIT_BY_CAT = {
+    'ซาลาเปา': 'เข่ง', 'ขนมจีบ': 'เข่ง', 'ห่อสาหร่าย': 'เข่ง', 'ฮะเก๋า': 'เข่ง',
+    'เมนูจานหลัก': 'จาน', 'เมนูทอด': 'จาน', 'หมี่หยก': 'จาน', 'ของหวาน': 'จาน',
+    'ชุดเซ็ต': 'ชุด', 'เครื่องดื่ม': 'แก้ว'
 };
+const unitOf = m => m.unit || UNIT_BY_CAT[m.category_name] || 'จาน';
 
 const icon = (name, cls = '') => `<svg class="ic ${cls}"><use href="#i-${name}"/></svg>`;
-const FIRST_CAT = 'ชุดเซ็ต';
 const idOf = m => m.menu_id ?? m.id;
 const $ = id => document.getElementById(id);
 
 let allItems = [];
 let activeCat = 'all';
+let searchText = '';
 const cart = new Map();
 const tableNo = new URLSearchParams(location.search).get('table') || localStorage.getItem('tableNo') || '-';
 
@@ -22,9 +25,7 @@ async function init() {
     tickClock(); setInterval(tickClock, 30000);
     const res = await fetch(API).then(r => r.json());
     if (!res.success) return;
-    allItems = [...res.data].sort((a, b) => (b.category_name === FIRST_CAT) - (a.category_name === FIRST_CAT));
-    const first = allItems.find(m => m.category_name === FIRST_CAT);
-    if (first) activeCat = first.category_id;
+    allItems = res.data;
     renderTabs(); renderMenu(); renderCart();
 }
 
@@ -37,24 +38,22 @@ function tickClock() {
 function renderTabs() {
     const cats = new Map();
     allItems.forEach(m => cats.set(m.category_id, m.category_name));
-    const catTabs = [...cats].map(([id, name]) => ({ id, name, icon: CAT_ICON[name] || 'rice' }));
-    const firstTab = catTabs.filter(t => t.name === FIRST_CAT);
-    const restTabs = catTabs.filter(t => t.name !== FIRST_CAT);
-    const tabs = [...firstTab, { id: 'all', name: 'ทั้งหมด', icon: 'star' }, ...restTabs];
+    const tabs = [{ id: 'all', name: 'ทั้งหมด' }, ...[...cats].map(([id, name]) => ({ id, name }))];
 
     $('catTabs').innerHTML = tabs.map(t => `
-    <button class="tab ${String(t.id) === String(activeCat) ? 'active' : ''}" onclick="selectCat('${t.id}')">
-      ${icon(t.icon, t.id === 'all' ? 'filled' : '')}<span>${t.name}</span>
-    </button>`).join('');
-    const cur = tabs.find(t => String(t.id) === String(activeCat));
-    $('catTitle').innerHTML = `${icon(cur.icon, cur.id === 'all' ? 'filled' : '')}<span>${cur.name}</span>`;
+    <button class="chip ${String(t.id) === String(activeCat) ? 'active' : ''}" onclick="selectCat('${t.id}')">${t.name}</button>
+  `).join('');
 }
 
 function selectCat(id) { activeCat = id; renderTabs(); renderMenu(); }
+function onSearch(v) { searchText = v.trim().toLowerCase(); renderMenu(); }
 
 function renderMenu() {
-    const items = activeCat === 'all' ? allItems : allItems.filter(m => String(m.category_id) === String(activeCat));
-    if (!items.length) { $('menuGrid').innerHTML = '<div class="empty">ยังไม่มีเมนูในหมวดนี้</div>'; return; }
+    const items = allItems.filter(m =>
+        (activeCat === 'all' || String(m.category_id) === String(activeCat)) &&
+        (!searchText || m.name.toLowerCase().includes(searchText))
+    );
+    if (!items.length) { $('menuGrid').innerHTML = '<div class="empty">ไม่พบเมนูที่ค้นหา</div>'; return; }
 
     $('menuGrid').innerHTML = items.map(m => {
         const id = idOf(m), q = cart.get(id) || 0;
@@ -66,7 +65,7 @@ function renderMenu() {
       </div>
       <div class="body">
         <div class="name">${m.name}</div>
-        <div class="price">${Number(m.price).toLocaleString()} บาท</div>
+        <div class="price">${Number(m.price).toLocaleString()} บาท <span class="unit">/ ${unitOf(m)}</span></div>
         ${stepper(id, q, m.is_sold_out)}
       </div>
     </div>`;
@@ -74,15 +73,19 @@ function renderMenu() {
 }
 
 function stepper(id, q, disabled = false) {
+    const maxed = q >= MAX_QTY;
     return `<div class="stepper">
     <button onclick="changeQty(${id}, -1)" ${q === 0 || disabled ? 'disabled' : ''} aria-label="ลดจำนวน">−</button>
     <span class="qty">${q}</span>
-    <button class="plus ${q > 0 ? 'on' : ''}" onclick="changeQty(${id}, 1)" ${disabled ? 'disabled' : ''} aria-label="เพิ่มจำนวน">+</button>
+    <button class="plus ${q > 0 ? 'on' : ''}" onclick="changeQty(${id}, 1)" ${disabled || maxed ? 'disabled' : ''}
+      ${maxed ? 'title="สั่งได้สูงสุด 10 ต่อรอบ"' : ''} aria-label="เพิ่มจำนวน">+</button>
   </div>`;
 }
 
 function changeQty(id, d) {
-    const q = Math.max(0, (cart.get(id) || 0) + d);
+    const m = allItems.find(x => idOf(x) === id);
+    if (!m || (d > 0 && m.is_sold_out)) return;
+    const q = Math.min(MAX_QTY, Math.max(0, (cart.get(id) || 0) + d));
     q ? cart.set(id, q) : cart.delete(id);
     renderMenu(); renderCart();
 }
@@ -103,7 +106,7 @@ function renderCart() {
       <div class="thumb"><img src="${m.image_path || ''}" alt=""></div>
       <div>
         <div class="nm">${m.name}</div>
-        <div class="pr">${Number(m.price).toLocaleString()} บาท</div>
+        <div class="pr">${Number(m.price).toLocaleString()} บาท <span class="unit">/ ${unitOf(m)}</span></div>
         ${stepper(idOf(m), q)}
       </div>
       <div class="right">
@@ -114,7 +117,9 @@ function renderCart() {
 }
 
 async function confirmOrder() {
-    const items = [...cart].map(([menu_id, quantity]) => ({ menu_id, quantity }));
+    const items = [...cart]
+        .filter(([id]) => !allItems.find(x => idOf(x) === id)?.is_sold_out)   // กันเมนูที่เพิ่งหมด
+        .map(([menu_id, quantity]) => ({ menu_id, quantity: Math.min(quantity, MAX_QTY) }));
     if (!items.length) return;
     try {
         const res = await fetch(ORDER_API, {
