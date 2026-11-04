@@ -13,6 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/web_HomePage.css">
+    <link rel="stylesheet" href="/assets/css/customer-background.css">
+    <script src="/assets/js/customerNavbar.js" defer></script>
     <script src="/assets/js/web_homePage.js" defer></script>
 </head>
 
@@ -26,12 +28,12 @@
             <a href="/">หน้าแรก</a>
             <a href="/customer/web_menu.html">เมนู</a>
             <a href="/customer/web_catering.html">จัดเลี้ยง</a>
+            <a href="/customer/web_coupon.html" id="navCoupon" hidden>คูปองส่วนลด</a>
         </div>
 
         <div class="nav-login">
-            <!-- แสดง "เข้าสู่ระบบ" เป็นค่าเริ่มต้น แล้วให้ JS สลับเป็น "บัญชีสมาชิก" ตอนล็อกอินแล้ว -->
             <a href="/loginMember" id="navLogin">เข้าสู่ระบบ</a>
-            <a href="/loginMember" id="navAccount" hidden>บัญชีสมาชิก</a>
+            <a href="/memberAccount" id="navAccount" hidden>บัญชีสมาชิก</a>
         </div>
     </nav>
 
@@ -105,9 +107,9 @@
                         </div>
                     </div>
 
-                    <button type="button" class="register-btn" id="member">
+                    <a href="/registerMember" class="register-btn" id="member">
                         สมัครสมาชิกฟรี
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -166,19 +168,6 @@
         </div>
     </footer>
 
-    <script>
-        function updateNavAuth() {
-
-            let isLoggedIn = false;
-            try {
-                isLoggedIn = !!localStorage.getItem('token');
-            } catch (e) { }
-
-            document.getElementById('navLogin').hidden = isLoggedIn;
-            document.getElementById('navAccount').hidden = !isLoggedIn;
-        }
-        updateNavAuth();
-    </script>
 </body>
 
 </html>

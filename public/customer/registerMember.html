@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สมัครสมาชิก | นึ่งสุข</title>
+    <link rel="stylesheet" href="/assets/css/loginMember.css">
+    <link rel="stylesheet" href="/assets/css/customer-background.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="auth-page">
+    <main class="login-container">
+        <section class="auth-card register-card">
+            <section class="auth-form-panel">
+                <div class="auth-form">
+                    <p class="form-eyebrow">NUENG SUK MEMBER</p>
+                    <h2>สมัครสมาชิก</h2>
+                    <p class="subtitle">เข้าร่วมกับเรา รับสิทธิพิเศษและสะสมแต้มทุกมื้อ</p>
+
+                    <form id="registerForm">
+                        <label for="name">ชื่อ-นามสกุล</label>
+                        <input type="text" id="name" name="name" maxlength="100" autocomplete="name" required>
+
+                        <label for="phone">เบอร์โทรศัพท์</label>
+                        <input type="tel" id="phone" name="phone" inputmode="numeric" maxlength="10"
+                            pattern="0[0-9]{9}" placeholder="08XXXXXXXX" autocomplete="tel" required>
+
+                        <label for="birthDate">วันเกิด <span class="optional">(ไม่บังคับ)</span></label>
+                        <input type="date" id="birthDate" name="birth_date">
+
+                        <p id="formMessage" class="form-message" role="status" aria-live="polite"></p>
+                        <button type="submit" id="registerButton">สมัครสมาชิก</button>
+                    </form>
+
+                </div>
+            </section>
+
+            <aside class="auth-visual">
+                <a class="auth-home" href="/" aria-label="กลับหน้าหลัก">
+                    <img src="/assets/img/logo_rantimsum.png" alt="">
+                    <span>นึ่งสุข</span>
+                </a>
+                <div class="visual-copy">
+                    <p class="visual-eyebrow">FRESHLY STEAMED, ALWAYS</p>
+                    <h1>สมัครวันนี้<br>รับความสุขทุกวัน</h1>
+                    <p>ทุกมื้ออร่อยยิ่งขึ้น เมื่อเป็นสมาชิกนึ่งสุข</p>
+                </div>
+                <div class="visual-action">
+                    <span>เป็นสมาชิกอยู่แล้ว?</span>
+                    <a href="/loginMember">เข้าสู่ระบบ</a>
+                </div>
+            </aside>
+        </section>
+    </main>
+    <script src="/assets/js/registerMember.js"></script>
+</body>
+
+</html>

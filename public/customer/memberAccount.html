@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บัญชีสมาชิก | นึ่งสุข</title>
+    <link rel="stylesheet" href="/assets/css/web_HomePage.css">
+    <link rel="stylesheet" href="/assets/css/memberAccount.css">
+    <link rel="stylesheet" href="/assets/css/customer-background.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/assets/js/customerNavbar.js" defer></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo" aria-label="หน้าแรก"></a>
+
+        <div class="nav-menu">
+            <a href="/">หน้าแรก</a>
+            <a href="/customer/web_menu.html">เมนู</a>
+            <a href="/customer/web_catering.html">จัดเลี้ยง</a>
+            <a href="/customer/web_coupon.html" id="navCoupon" hidden>คูปองส่วนลด</a>
+        </div>
+
+        <div class="nav-login">
+            <a href="/loginMember" id="navLogin">เข้าสู่ระบบ</a>
+            <a href="/memberAccount" id="navAccount" hidden>บัญชีสมาชิก</a>
+            <button class="nav-logout" id="navLogout" type="button" hidden>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10 17l5-5-5-5m5 5H3" />
+                    <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+                </svg>
+                ออกจากระบบ
+            </button>
+        </div>
+    </nav>
+
+    <div class="layout">
+        <nav class="side" aria-label="เมนูสมาชิก">
+            <a href="#coupons" data-v="coupons">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                        d="M4 7.5A2.5 2.5 0 0 0 6.5 5h11A2.5 2.5 0 0 0 20 7.5v2a2.5 2.5 0 0 0 0 5v2a2.5 2.5 0 0 0-2.5 2.5h-11A2.5 2.5 0 0 0 4 16.5v-2a2.5 2.5 0 0 0 0-5z" />
+                    <path d="M12 8v1m0 3v1m0 3v.01" />
+                </svg>
+                คูปองของฉัน<span class="count" id="cc"></span>
+            </a>
+            <a href="#points" data-v="points">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z" />
+                </svg>
+                ประวัติแต้ม
+            </a>
+            <a href="#usage" data-v="usage">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M7 3h7l4 4v14H7z" />
+                    <path d="M14 3v5h5M10 12h5m-5 4h5" />
+                </svg>
+                ประวัติการใช้คูปอง
+            </a>
+        </nav>
+
+        <main>
+            <section class="member">
+                <img class="dump" src="/assets/img/logo_rantimsum.png" alt="โลโก้ร้านนึ่งสุข">
+                <div>
+                    <small>นึ่งสุข • <span id="memberTier">สมาชิก</span></small>
+                    <h2 id="memberName">กำลังโหลด...</h2>
+                    <small class="phone">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+                            <path d="M11 18h2" />
+                        </svg>
+                        <span id="memberPhone">กำลังโหลด...</span>
+                    </small>
+                    <div style="margin-top:var(--s3)">
+                        <small>แต้มสะสม</small>
+                        <div class="pts"><span id="memberPoints">0</span><small>แต้ม</small></div>
+                    </div>
+                </div>
+                <div class="bar">
+                    <div></div><span id="memberCode">กำลังโหลด...</span>
+                </div>
+            </section>
+
+            <h1 id="title"></h1>
+            <div id="view"></div>
+        </main>
+    </div>
+
+    <footer>
+        <div>
+            <h4>นึ่งสุข</h4>
+            <p>ความสุขที่นึ่งสดใหม่ทุกวัน</p>
+        </div>
+        <div>
+            <h4>เวลาเปิด-ปิด</h4>
+            <p>10:00 - 14:00 (ปิดรับออเดอร์ 13:30)<br>16:00 - 20:00 (ปิดรับออเดอร์ 19:30)</p>
+        </div>
+        <div>
+            <h4>ติดต่อ</h4>
+            <p>ร้านนึ่งสุข<br>โทร 02-000-0000</p>
+        </div>
+    </footer>
+    <script src="/assets/js/memberAccount.js"></script>
+</body>
+
+</html>
