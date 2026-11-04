@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>คูปองส่วนลด | นึ่งสุข</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/web_HomePage.css">
+    <link rel="stylesheet" href="/assets/css/web_coupon.css">
+    <link rel="stylesheet" href="/assets/css/customer-background.css">
+    <script src="/assets/js/customerNavbar.js" defer></script>
+    <script src="/assets/js/web_coupons.js" defer></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo" aria-label="หน้าแรก"></a>
+
+        <div class="nav-menu">
+            <a href="/">หน้าแรก</a>
+            <a href="/customer/web_menu.html">เมนู</a>
+            <a href="/customer/web_catering.html">จัดเลี้ยง</a>
+            <a href="/customer/web_coupon.html" id="navCoupon" hidden>คูปองส่วนลด</a>
+        </div>
+
+        <div class="nav-login">
+            <a href="/loginMember" id="navLogin">เข้าสู่ระบบ</a>
+            <a href="/memberAccount" id="navAccount" hidden>บัญชีสมาชิก</a>
+            <button class="nav-logout" id="navLogout" type="button" hidden>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10 17l5-5-5-5m5 5H3" />
+                    <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" />
+                </svg>
+                ออกจากระบบ
+            </button>
+        </div>
+    </nav>
+
+    <main class="coupon-page">
+        <div class="coupon-banner">
+            <img src="/assets/img/coupon-banner.png" alt="คูปองส่วนลดจากร้านนึ่งสุข">
+        </div>
+        <section class="coupon-section" aria-labelledby="coupon-title">
+            <h1 id="coupon-title">คูปองส่วนลด</h1>
+            <div id="list" aria-live="polite">กำลังโหลดคูปอง...</div>
+        </section>
+    </main>
+</body>
+
+</html>

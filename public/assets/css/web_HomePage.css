@@ -8,7 +8,7 @@ body {
     min-height: 100vh;
     font-family: "Prompt", sans-serif;
     color: #38251e;
-    background-image: url("../assets/img/background.png");
+    background-image: url("../img/background.png");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -56,6 +56,10 @@ body {
     text-decoration: none;
     white-space: nowrap;
     transition: color 0.3s ease;
+}
+
+.nav-menu a[hidden] {
+    display: none !important;
 }
 
 .nav-menu a:hover {
@@ -278,6 +282,9 @@ body {
 }
 
 .register-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
     padding: 14px 20px;
     border: none;
@@ -922,26 +929,96 @@ body {
     background: #ffe49a;
 }
 
+.menu-page {
+    width: 100%;
+    padding: 28px 20px 44px;
+}
+
+.menu-poster-section {
+    width: 100%;
+}
+
+.menu-poster-heading {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto 24px;
+    padding: 18px 30px;
+    border: 1px solid #e8c99a;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #fffaf0, #fff1d8);
+    box-shadow: 0 8px 22px rgba(91, 52, 29, 0.1);
+    text-align: center;
+}
+
+.menu-poster-heading h1 {
+    margin: 0 0 12px;
+    color: #713524;
+    font-size: clamp(24px, 3.2vw, 36px);
+    line-height: 1.3;
+}
+
+.menu-serving-note {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    border-radius: 999px;
+    background: #8f3528;
+    color: #fffaf0;
+    font-size: clamp(14px, 2vw, 17px);
+    line-height: 1.4;
+}
+
+.menu-serving-note svg {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    fill: none;
+    stroke: #f5d27c;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.menu-serving-note strong {
+    color: #f8d77f;
+}
+
+.menu-poster {
+    width: min(100%, 860px);
+    margin: 0 auto;
+}
+
+.menu-poster img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0 auto;
+    object-fit: contain;
+    cursor: zoom-in;
+}
+
 @media (max-width: 768px) {
     .menu-page {
         padding: 20px 12px 30px;
     }
 
     .menu-poster-heading {
-        margin-bottom: 15px;
+        margin-bottom: 18px;
+        padding: 15px 18px;
+        border-radius: 16px;
     }
 
-    .menu-poster-heading p {
-        font-size: 13px;
+    .menu-poster-heading h1 {
+        margin-bottom: 10px;
     }
 
     .menu-poster {
-        padding: 5px;
-        border-radius: 12px;
-    }
-
-    .menu-poster img {
-        border-radius: 8px;
+        width: 100%;
     }
 
     .menu-note {

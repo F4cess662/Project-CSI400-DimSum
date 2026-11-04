@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบสมาชิก | นึ่งสุข</title>
+    <link rel="stylesheet" href="/assets/css/loginMember.css">
+    <link rel="stylesheet" href="/assets/css/customer-background.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="auth-page">
+    <main class="login-container">
+        <section class="auth-card">
+            <aside class="auth-visual">
+                <a class="auth-home" href="/" aria-label="กลับหน้าหลัก">
+                    <img src="/assets/img/logo_rantimsum.png" alt="">
+                    <span>นึ่งสุข</span>
+                </a>
+                <div class="visual-copy">
+                    <p class="visual-eyebrow">NUENG SUK MEMBER</p>
+                    <h1>อิ่มอร่อย<br>รับความสุขทุกมื้อ</h1>
+                    <p>สะสมแต้ม รับคูปอง และสิทธิพิเศษสำหรับสมาชิก</p>
+                </div>
+                <div class="visual-action">
+                    <span>ยังไม่ได้เป็นสมาชิก?</span>
+                    <a href="/registerMember">สมัครสมาชิก</a>
+                </div>
+            </aside>
+
+            <section class="auth-form-panel">
+                <div class="auth-form">
+                    <p class="form-eyebrow">ยินดีต้อนรับกลับ</p>
+                    <h2>เข้าสู่ระบบสมาชิก</h2>
+                    <p class="subtitle">กรอกเบอร์โทรศัพท์เพื่อรับรหัสยืนยัน</p>
+
+                    <div id="phoneSection">
+                        <label for="phone">เบอร์โทรศัพท์</label>
+                        <input type="tel" id="phone" maxlength="10" inputmode="numeric"
+                            autocomplete="tel" placeholder="กรอกเบอร์โทรศัพท์ 10 หลัก">
+                        <button type="button" onclick="sendOTP()">ส่งรหัส OTP</button>
+                    </div>
+
+                    <div id="otpSection" hidden>
+                        <label for="otp">รหัสยืนยัน OTP</label>
+                        <input type="text" id="otp" maxlength="6" inputmode="numeric"
+                            autocomplete="one-time-code" placeholder="กรอกรหัส OTP 6 หลัก">
+                        <button type="button" onclick="verifyOTP()">ยืนยัน OTP</button>
+                        <button class="text-button" type="button" onclick="backToPhone()">เปลี่ยนเบอร์โทรศัพท์</button>
+                    </div>
+
+                    <p class="auth-footer">นึ่งสุข ความสุขที่นึ่งสดใหม่ทุกวัน</p>
+                </div>
+            </section>
+        </section>
+    </main>
+    <script src="/assets/js/loginMember.js"></script>
+</body>
+
+</html>

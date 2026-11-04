@@ -26,6 +26,17 @@ app.get('/', (req, res) => {
 app.get('/menu', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'customer', 'menu.html'));
 });
+app.get('/loginMember', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'customer', 'loginMember.html'));
+});
+
+app.get('/registerMember', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'customer', 'registerMember.html'));
+});
+
+app.get('/memberAccount', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'customer', 'memberAccount.html'));
+});
 
 app.get('/owner', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'login.html'));

@@ -13,6 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="/assets/css/web_HomePage.css">
+    <link rel="stylesheet" href="/assets/css/customer-background.css">
+    <script src="/assets/js/customerNavbar.js" defer></script>
     <script src="/customer/web_homePage.js" defer></script>
 </head>
 
@@ -26,10 +28,11 @@
             <a href="/">หน้าแรก</a>
             <a href="/customer/web_menu.html">เมนู</a>
             <a href="/customer/web_catering.html">จัดเลี้ยง</a>
+            <a href="/customer/web_coupon.html" id="navCoupon" hidden>คูปองส่วนลด</a>
         </div>
         <div class="nav-login">
             <a href="/loginMember" id="navLogin">เข้าสู่ระบบ</a>
-            <a href="/loginMember" id="navAccount" hidden>บัญชีสมาชิก</a>
+            <a href="/memberAccount" id="navAccount" hidden>บัญชีสมาชิก</a>
         </div>
     </nav>
     <main class="page">
@@ -65,11 +68,17 @@
 
             <section class="menu-poster-section">
 
-                <div class="menu-poster-heading">
-                    <br>
+                <header class="menu-poster-heading">
                     <h1>เมนูอาหารร้านนึ่งสุข</h1>
-                    <p><h2>* 1 เข่งมีทั้งหมด 4 ชิ้น *</h2></p>
-                </div>
+                    <p class="menu-serving-note">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 13h16l-1.6 6H5.6L4 13Z" />
+                            <path d="M6 10a2 2 0 0 1 4 0m0 0a2 2 0 0 1 4 0m0 0a2 2 0 0 1 4 0" />
+                            <path d="M12 3v2m-5-1 1 2m9-2-1 2" />
+                        </svg>
+                        1 เข่ง มีทั้งหมด <strong>4 ชิ้น</strong>
+                    </p>
+                </header>
 
                 <div class="menu-poster">
                     <img src="/assets/img/menuTimsum.jpg" alt="แผ่นเมนูอาหารร้านนึ่งสุข" id="menuPoster">
