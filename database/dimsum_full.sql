@@ -527,13 +527,13 @@ CREATE TEMPORARY TABLE seed_menu (
 
 INSERT INTO seed_menu VALUES
   -- ซาลาเปา
-  ('ซาลาเปา', 'ซาลาเปาหมูสับ',          'ไส้คลาสสิก',            30, 'ลูก',  'steam', 10, 40),
-  ('ซาลาเปา', 'ซาลาเปาหมูแดง',          'ไส้คลาสสิก',            30, 'ลูก',  'steam', 10, 40),
-  ('ซาลาเปา', 'ซาลาเปาครีม',            'ไส้คลาสสิก',            30, 'ลูก',  'steam', 10, 40),
-  ('ซาลาเปา', 'ซาลาเปาถั่วแดง',         'ไส้คลาสสิก',            30, 'ลูก',  'steam', 10, 40),
-  ('ซาลาเปา', 'ซาลาเปาเห็ดหอม',         'มังสวิรัติ',             30, 'ลูก',  'steam', 10, 30),
-  ('ซาลาเปา', 'ซาลาเปาหมูสับไข่เค็ม',    'พรีเมียม',               39, 'ลูก',  'steam', 10, 30),
-  ('ซาลาเปา', 'ซาลาเปาไข่เค็มลาวาทอด',  'แป้งกรอบนอก เยิ้มใน',    39, 'ลูก',  'fry',   10, 30),
+  ('ซาลาเปา', 'ซาลาเปาหมูสับ',          'ไส้คลาสสิก',            30, 'เข่ง', 'steam', 10, 40),
+  ('ซาลาเปา', 'ซาลาเปาหมูแดง',          'ไส้คลาสสิก',            30, 'เข่ง', 'steam', 10, 40),
+  ('ซาลาเปา', 'ซาลาเปาครีม',            'ไส้คลาสสิก',            30, 'เข่ง', 'steam', 10, 40),
+  ('ซาลาเปา', 'ซาลาเปาถั่วแดง',         'ไส้คลาสสิก',            30, 'เข่ง', 'steam', 10, 40),
+  ('ซาลาเปา', 'ซาลาเปาเห็ดหอม',         'มังสวิรัติ',             30, 'เข่ง', 'steam', 10, 30),
+  ('ซาลาเปา', 'ซาลาเปาหมูสับไข่เค็ม',    'พรีเมียม',               39, 'เข่ง', 'steam', 10, 30),
+  ('ซาลาเปา', 'ซาลาเปาไข่เค็มลาวาทอด',  'แป้งกรอบนอก เยิ้มใน',    39, 'เข่ง', 'fry',   10, 30),
   ('ซาลาเปา', 'เสี่ยวหลงเปา',           'เข่งละ 3 ชิ้น',           59, 'เข่ง', 'steam',  5, 20),
   -- ขนมจีบ
   ('ขนมจีบ', 'ขนมจีบหมู',               'เข่งละ 3–4 ชิ้น',         45, 'เข่ง', 'steam',  5, 40),
@@ -827,3 +827,184 @@ INSERT IGNORE INTO `public_holidays` (`id`, `holiday_date`, `name`) VALUES
 -- เพิ่มต่อจากตรงนี้ · อ้างอิงเมนูด้วยชื่อ (SELECT id FROM menu_items WHERE name = ...) ห้ามเดา id
 USE dimsum;
 
+
+-- ---------------------------------------------------------
+-- 4.1 ข้อมูลทดสอบชำระเงิน (คนที่ 5) — บิลมีค่าอาหาร สมาชิก คูปอง ห้อง VIP
+--     ใช้ทดสอบ: ชำระเงิน · ค้นบิล · จอครัว · ปิดยอดกะ · Dashboard
+--     บิลที่เปิดอยู่ (วันนี้):  T01 พร้อมจ่าย · T02+T03 ต่อโต๊ะ มีรายการยกเลิก · T06 ครัวยังทำอยู่ (จ่ายไม่ได้)
+--                            · VIP 1 จองไว้ มัดจำ 1,500 (หักตอนจ่าย)
+--     บิลเมื่อวาน (จ่ายแล้ว): เงินสด · พร้อมเพย์ · บัตร+สมาชิก+คูปอง · 1 ใบถูก void
+--     สมาชิกทดสอบ: 0812345678 มะลิ 320 แต้ม · 0861112222 กานดา 500 · 0898765432 สมชาย 80 · 0823334444 น้องใหม่ 0
+--     คูปองทดสอบ: TEST50 ลด 50 · FREEBUN แถมซาลาเปาหมูสับ (ขั้นต่ำ 200) · ONCE10 ใช้ได้ครั้งเดียวทั้งร้าน
+-- ---------------------------------------------------------
+SET @ton   = (SELECT id FROM users WHERE username = 'ton');
+SET @wipa  = (SELECT id FROM users WHERE username = 'wipa');
+SET @chef  = (SELECT id FROM users WHERE username = 'ahmei');
+SET @today = DATE_FORMAT(CURDATE(), '%Y%m%d');
+SET @yday  = DATE_FORMAT(CURDATE() - INTERVAL 1 DAY, '%Y%m%d');
+SET @y     = CAST(CURDATE() - INTERVAL 1 DAY AS DATETIME);
+
+-- เบอร์ร้าน = เบอร์พร้อมเพย์ (หน้าชำระเงินสร้าง QR พร้อมเพย์จากเบอร์นี้ ต้องเป็นเบอร์มือถือ 10 หลัก)
+UPDATE shop_settings SET phone = '0993211234' WHERE id = 1;
+
+-- สมาชิกเพิ่ม + คูปองทดสอบ
+INSERT INTO members (phone, name, tier, points_balance) VALUES
+  ('0861112222', 'กานดา มีสุข', 'silver', 500),
+  ('0898765432', 'สมชาย ใจดี', 'normal', 80),
+  ('0823334444', 'น้องใหม่ เพิ่งสมัคร', 'normal', 0)
+ON DUPLICATE KEY UPDATE name = VALUES(name), tier = VALUES(tier), points_balance = VALUES(points_balance);
+
+INSERT INTO coupons (code, coupon_type, value, free_menu_item_id, min_spend, start_date, end_date, member_only, usage_limit) VALUES
+  ('TEST50', 'amount', 50, NULL, 0, '2026-01-01', '2099-12-31', 0, NULL),
+  ('FREEBUN', 'free_item', NULL, (SELECT id FROM menu_items WHERE name = 'ซาลาเปาหมูสับ'), 200, '2026-01-01', '2099-12-31', 0, NULL),
+  ('ONCE10', 'amount', 10, NULL, 0, '2026-01-01', '2099-12-31', 0, 1);
+
+INSERT INTO member_coupons (member_id, coupon_id, expires_at)
+SELECT m.id, c.id, '2099-12-31' FROM members m JOIN coupons c
+  ON (m.phone = '0861112222' AND c.code = 'BDAY') OR (m.phone = '0823334444' AND c.code = 'WELCOME20');
+
+-- ===== บิลที่เปิดอยู่ (วันนี้) =====
+
+-- T01 · 3 คน · 2 รอบ (QR + พนักงานสั่งแทน) · เสิร์ฟครบ พร้อมจ่าย · มีซาลาเปาครีม (ลองแลก "ฟรีซาลาเปาครีม")
+INSERT INTO bills (bill_no, guests, qr_token, opened_at, opened_by)
+VALUES (CONCAT('B', @today, '-001'), 3, 'demo-qr-t01', NOW() - INTERVAL 65 MINUTE, @ton);
+SET @b = LAST_INSERT_ID();
+INSERT INTO bill_tables (bill_id, table_id) SELECT @b, id FROM dining_tables WHERE code = 'T01';
+INSERT INTO orders (bill_id, round_no, source, created_at) VALUES (@b, 1, 'qr', NOW() - INTERVAL 60 MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status, updated_by)
+SELECT @o, m.id, x.qty, m.price, 'done', @chef FROM menu_items m JOIN (
+  SELECT 'ซาลาเปาครีม' AS n, 2 AS qty UNION ALL SELECT 'ซาลาเปาหมูสับ', 3
+  UNION ALL SELECT 'ขนมจีบกุ้ง', 2 UNION ALL SELECT 'ฮะเก๋ากุ้ง', 2) x ON x.n = m.name;
+INSERT INTO orders (bill_id, round_no, source, created_by, created_at) VALUES (@b, 2, 'staff', @ton, NOW() - INTERVAL 35 MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status, updated_by)
+SELECT @o, m.id, x.qty, m.price, 'done', @chef FROM menu_items m JOIN (
+  SELECT 'เสี่ยวหลงเปา' AS n, 1 AS qty UNION ALL SELECT 'เผือกทอด', 1) x ON x.n = m.name;
+
+-- T02 + T03 (ต่อโต๊ะ) · 6 คน · หัวหน้าเชฟยกเลิก 1 รายการ (วัตถุดิบหมด) + ยกเลิกบางส่วน 1 รายการ → ไม่คิดเงินส่วนที่ยกเลิก
+INSERT INTO bills (bill_no, guests, qr_token, opened_at, opened_by)
+VALUES (CONCAT('B', @today, '-002'), 6, 'demo-qr-t02', NOW() - INTERVAL 50 MINUTE, @ton);
+SET @b = LAST_INSERT_ID();
+INSERT INTO bill_tables (bill_id, table_id) SELECT @b, id FROM dining_tables WHERE code IN ('T02', 'T03');
+INSERT INTO orders (bill_id, round_no, source, created_at) VALUES (@b, 1, 'qr', NOW() - INTERVAL 45 MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status, cancelled_qty, cancel_reason, cancel_note, updated_by)
+SELECT @o, m.id, x.qty, m.price, x.st, x.cq, x.cr, x.note, @chef FROM menu_items m JOIN (
+  SELECT 'บักกุ๊ดเต๊หม้อดิน' AS n, 2 AS qty, 'done' AS st, 0 AS cq, CAST(NULL AS CHAR(20)) AS cr, CAST(NULL AS CHAR(100)) AS note
+  UNION ALL SELECT 'ขนมจีบหมู', 4, 'done', 1, 'spoiled', 'นึ่งนานเกิน 1 ชิ้น'
+  UNION ALL SELECT 'ฮะเก๋าปู', 2, 'cancelled', 0, 'out_of_stock', 'ปูหมด'
+  UNION ALL SELECT 'ซาลาเปาหมูแดง', 3, 'done', 0, NULL, NULL
+  UNION ALL SELECT 'หมี่หยกพันกุ้ง', 2, 'done', 0, NULL, NULL) x ON x.n = m.name;
+
+-- T06 · 2 คน · ครัวยังทำไม่เสร็จ (กำลังทำ + รอทำ) → หน้าชำระเงินต้องกดจ่ายไม่ได้ · จอครัวเห็นรายการนี้
+INSERT INTO bills (bill_no, guests, qr_token, opened_at, opened_by)
+VALUES (CONCAT('B', @today, '-003'), 2, 'demo-qr-t06', NOW() - INTERVAL 20 MINUTE, @ton);
+SET @b = LAST_INSERT_ID();
+INSERT INTO bill_tables (bill_id, table_id) SELECT @b, id FROM dining_tables WHERE code = 'T06';
+INSERT INTO orders (bill_id, round_no, source, created_at) VALUES (@b, 1, 'qr', NOW() - INTERVAL 15 MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status)
+SELECT @o, m.id, x.qty, m.price, x.st FROM menu_items m JOIN (
+  SELECT 'ขนมจีบกุ้ง' AS n, 2 AS qty, 'done' AS st UNION ALL SELECT 'ซาลาเปาไข่เค็มลาวาทอด', 2, 'cooking'
+  UNION ALL SELECT 'ฟองเต้าหู้ทอด', 1, 'waiting') x ON x.n = m.name;
+
+UPDATE dining_tables SET status = 'occupied' WHERE code IN ('T01', 'T02', 'T03', 'T06');
+
+-- VIP 1 · จองห้อง (ไม่ใช่สมาชิกก็ได้) · มัดจำ 1,500 รับแล้ว · ออเดอร์ล่วงหน้า + สั่งเพิ่ม → ตอนจ่ายหักมัดจำ
+INSERT INTO bills (bill_no, guests, vip_room_id, qr_token, opened_at, opened_by)
+VALUES (CONCAT('B', @today, '-004'), 12, (SELECT id FROM vip_rooms WHERE name = 'VIP 1'), 'demo-qr-vip1', NOW() - INTERVAL 90 MINUTE, @wipa);
+SET @b = LAST_INSERT_ID();
+UPDATE vip_rooms SET status = 'occupied' WHERE name = 'VIP 1';
+INSERT INTO vip_bookings (vip_room_id, booking_date, start_time, hours, customer_name, customer_phone, guests,
+  preorder_total, deposit_amount, deposit_received_at, deposit_received_by, status, bill_id, created_by)
+SELECT id, CURDATE(), TIME(NOW() - INTERVAL 90 MINUTE), 3, 'คุณวรรณา (จองงานเลี้ยง)', '0855555555', 12,
+  3000, 1500, NOW() - INTERVAL 2 DAY, @wipa, 'arrived', @b, @wipa
+FROM vip_rooms WHERE name = 'VIP 1';
+INSERT INTO orders (bill_id, round_no, source, created_by, created_at) VALUES (@b, 1, 'vip_preorder', @wipa, NOW() - INTERVAL 90 MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status, updated_by)
+SELECT @o, m.id, x.qty, m.price, 'done', @chef FROM menu_items m JOIN (
+  SELECT 'Set C: Family & Gathering' AS n, 4 AS qty UNION ALL SELECT 'ปลากระพงนึ่งซีอิ๊ว', 2
+  UNION ALL SELECT 'ขนมจีบกุ้ง', 6 UNION ALL SELECT 'ฮะเก๋ากุ้ง', 6) x ON x.n = m.name;
+INSERT INTO orders (bill_id, round_no, source, created_at) VALUES (@b, 2, 'qr', NOW() - INTERVAL 40 MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status, updated_by)
+SELECT @o, m.id, x.qty, m.price, 'done', @chef FROM menu_items m JOIN (
+  SELECT 'ซาลาเปาครีม' AS n, 4 AS qty UNION ALL SELECT 'เสี่ยวหลงเปา', 3) x ON x.n = m.name;
+
+-- ===== บิลเมื่อวาน (จ่ายแล้ว) — ใช้ทดสอบค้นบิล ปิดยอดกะ Dashboard =====
+-- ยอด = (qty - cancelled_qty) × unit_price ของรายการที่ไม่ cancelled · total_paid = เงินที่รับตอนปิดบิล
+
+-- เมื่อวาน 001 · T04 · เงินสด
+INSERT INTO bills (bill_no, status, guests, qr_token, opened_at, opened_by, closed_at, closed_by, payment_method)
+VALUES (CONCAT('B', @yday, '-001'), 'paid', 2, 'demo-qr-y1', @y + INTERVAL '10:15' HOUR_MINUTE, @ton, @y + INTERVAL '11:05' HOUR_MINUTE, @ton, 'cash');
+SET @b = LAST_INSERT_ID();
+INSERT INTO bill_tables (bill_id, table_id) SELECT @b, id FROM dining_tables WHERE code = 'T04';
+INSERT INTO orders (bill_id, round_no, source, created_at) VALUES (@b, 1, 'qr', @y + INTERVAL '10:20' HOUR_MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status)
+SELECT @o, m.id, x.qty, m.price, 'done' FROM menu_items m JOIN (
+  SELECT 'ขนมจีบหมู' AS n, 2 AS qty UNION ALL SELECT 'ซาลาเปาหมูสับ', 2 UNION ALL SELECT 'ก๋วยเตี๋ยวหลอดหมูสับ', 1) x ON x.n = m.name;
+
+-- เมื่อวาน 002 · L01 · พร้อมเพย์ · พนักงานสั่งแทน
+INSERT INTO bills (bill_no, status, guests, qr_token, opened_at, opened_by, closed_at, closed_by, payment_method)
+VALUES (CONCAT('B', @yday, '-002'), 'paid', 6, 'demo-qr-y2', @y + INTERVAL '11:30' HOUR_MINUTE, @ton, @y + INTERVAL '12:40' HOUR_MINUTE, @wipa, 'promptpay');
+SET @b = LAST_INSERT_ID();
+INSERT INTO bill_tables (bill_id, table_id) SELECT @b, id FROM dining_tables WHERE code = 'L01';
+INSERT INTO orders (bill_id, round_no, source, created_by, created_at) VALUES (@b, 1, 'staff', @ton, @y + INTERVAL '11:35' HOUR_MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status)
+SELECT @o, m.id, x.qty, m.price, 'done' FROM menu_items m JOIN (
+  SELECT 'Set B: Duo Signature' AS n, 2 AS qty UNION ALL SELECT 'กุ้งห่อสาหร่าย', 3
+  UNION ALL SELECT 'ขาไก่นึ่งเต้าซี่น้ำแดง', 2 UNION ALL SELECT 'ซาลาเปาครีม', 4) x ON x.n = m.name;
+
+-- เมื่อวาน 003 · T07 · บัตร · สมาชิกมะลิ ใช้ TEST50 ได้แต้ม
+INSERT INTO bills (bill_no, status, guests, qr_token, opened_at, opened_by, closed_at, closed_by, payment_method, member_id)
+VALUES (CONCAT('B', @yday, '-003'), 'paid', 4, 'demo-qr-y3', @y + INTERVAL '16:10' HOUR_MINUTE, @ton, @y + INTERVAL '17:20' HOUR_MINUTE, @ton, 'card',
+  (SELECT id FROM members WHERE phone = '0812345678'));
+SET @b = LAST_INSERT_ID();
+INSERT INTO bill_tables (bill_id, table_id) SELECT @b, id FROM dining_tables WHERE code = 'T07';
+INSERT INTO orders (bill_id, round_no, source, created_at) VALUES (@b, 1, 'qr', @y + INTERVAL '16:15' HOUR_MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status)
+SELECT @o, m.id, x.qty, m.price, 'done' FROM menu_items m JOIN (
+  SELECT 'ปลากระพงนึ่งซีอิ๊ว' AS n, 1 AS qty UNION ALL SELECT 'ฮะเก๋ากุ้ง', 3
+  UNION ALL SELECT 'ขนมจีบกุ้ง', 3 UNION ALL SELECT 'หมี่หยกพันไข่เค็ม', 2) x ON x.n = m.name;
+UPDATE bills SET discount_coupon = 50 WHERE id = @b;
+INSERT INTO coupon_usages (coupon_id, bill_id, member_id, used_at)
+SELECT c.id, @b, b.member_id, b.closed_at FROM coupons c JOIN bills b ON b.id = @b WHERE c.code = 'TEST50';
+SET @b_member = @b;
+
+-- เมื่อวาน 004 · T08 · เงินสด แล้วผู้จัดการ void (คิดเงินผิดโต๊ะ)
+INSERT INTO bills (bill_no, status, guests, qr_token, opened_at, opened_by, closed_at, closed_by, payment_method)
+VALUES (CONCAT('B', @yday, '-004'), 'cancelled', 2, 'demo-qr-y4', @y + INTERVAL '17:00' HOUR_MINUTE, @ton, @y + INTERVAL '17:45' HOUR_MINUTE, @ton, 'cash');
+SET @b = LAST_INSERT_ID();
+INSERT INTO bill_tables (bill_id, table_id) SELECT @b, id FROM dining_tables WHERE code = 'T08';
+INSERT INTO orders (bill_id, round_no, source, created_at) VALUES (@b, 1, 'qr', @y + INTERVAL '17:05' HOUR_MINUTE);
+SET @o = LAST_INSERT_ID();
+INSERT INTO order_items (order_id, menu_item_id, qty, unit_price, status)
+SELECT @o, m.id, x.qty, m.price, 'done' FROM menu_items m JOIN (
+  SELECT 'ซาลาเปาหมูแดง' AS n, 2 AS qty UNION ALL SELECT 'ขนมจีบปู', 2) x ON x.n = m.name;
+SET @b_void = @b;
+
+-- เติมยอดของบิลเมื่อวาน (subtotal → total_paid หลังหักคูปอง)
+UPDATE bills b
+JOIN (SELECT o.bill_id, SUM(CASE WHEN oi.status <> 'cancelled' THEN (oi.qty - oi.cancelled_qty) * oi.unit_price ELSE 0 END) AS s
+        FROM orders o JOIN order_items oi ON oi.order_id = o.id GROUP BY o.bill_id) t ON t.bill_id = b.id
+SET b.subtotal = t.s, b.total_paid = t.s - b.discount_points - b.discount_coupon - b.deposit_deducted
+WHERE b.opened_at >= @y AND b.opened_at < @y + INTERVAL 1 DAY;
+UPDATE bills SET points_earned = FLOOR(total_paid / 100) WHERE id = @b_member;
+INSERT INTO point_transactions (member_id, bill_id, points, type, created_by, created_at)
+SELECT member_id, id, points_earned, 'earn', closed_by, closed_at FROM bills WHERE id = @b_member;
+
+-- ประวัติในหน้าค้นบิล (log)
+INSERT INTO activity_logs (user_id, log_level, action, target_type, target_id, detail, created_at)
+SELECT b.closed_by, 'operation', 'bill.pay', 'bills', b.id,
+       JSON_OBJECT('bill_no', b.bill_no, 'total', b.total_paid, 'payment_method', b.payment_method), b.closed_at
+  FROM bills b WHERE b.opened_at >= @y AND b.opened_at < @y + INTERVAL 1 DAY;
+INSERT INTO activity_logs (user_id, log_level, action, target_type, target_id, detail, created_at)
+SELECT @wipa, 'operation', 'bill.void', 'bills', id,
+       JSON_OBJECT('bill_no', bill_no, 'reason', 'คิดเงินผิดโต๊ะ ลูกค้าโต๊ะ T08 ยังไม่ได้จ่าย', 'previous_status', 'paid', 'total', total_paid),
+       closed_at + INTERVAL 10 MINUTE
+  FROM bills WHERE id = @b_void;

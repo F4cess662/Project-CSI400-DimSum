@@ -1,0 +1,220 @@
+<!doctype html>
+<!-- ค้นบิลย้อนหลัง + ยกเลิกบิล void (คนที่ 5 · เฟส 2) -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ค้นบิล · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="card" style="margin-bottom:16px">
+      <div class="grid grid-4" style="align-items:end">
+        <div class="field" style="margin:0"><label for="fDate">วันที่</label><input class="input" type="date" id="fDate"></div>
+        <div class="field" style="margin:0"><label for="fTable">โต๊ะ</label><select class="select" id="fTable"><option value="">ทุกโต๊ะ</option></select></div>
+        <div class="field" style="margin:0"><label for="fFrom">เปิดบิลตั้งแต่</label><input class="input" type="time" id="fFrom"></div>
+        <div class="field" style="margin:0"><label for="fTo">ถึง</label><input class="input" type="time" id="fTo"></div>
+        <div class="field" style="margin:0">
+          <label for="fStatus">สถานะ</label>
+          <select class="select" id="fStatus">
+            <option value="">ทั้งหมด</option><option value="open">เปิดอยู่</option>
+            <option value="paid">จ่ายแล้ว</option><option value="cancelled">ยกเลิก</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0"><label for="fNo">เลขบิล</label><input class="input" id="fNo" placeholder="เช่น 015"></div>
+        <button class="btn" id="searchBtn">🔍 ค้นหา</button>
+        <button class="btn btn-secondary" id="clearBtn">ล้างตัวกรอง</button>
+      </div>
+    </div>
+
+    <div class="split">
+      <div>
+        <div class="toolbar"><span class="small muted" id="count"></span><span class="bold" id="sum"></span></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>เลขบิล</th><th>โต๊ะ</th><th>เปิด</th><th>ปิด</th><th>สั่งผ่าน</th><th class="num">ยอด</th><th>สถานะ</th></tr>
+            </thead>
+            <tbody id="rows"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="side-panel" id="detail">
+        <div class="empty"><div class="empty-icon">🧾</div>เลือกบิลจากตารางเพื่อดูรายละเอียด</div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'ค้นบิล', roles: ['manager', 'owner'] });
+      if (!me) return;
+
+      const $ = (id) => document.getElementById(id);
+      const PAY = { cash: 'เงินสด', promptpay: 'พร้อมเพย์', card: 'บัตร' };
+      const today = () => new Date().toLocaleDateString('sv-SE');
+      let current = null; // id บิลที่เปิดดูอยู่
+
+      $('fDate').value = today();
+
+      // รายการโต๊ะสำหรับตัวกรอง
+      api.get('tables').then((tables) => {
+        $('fTable').innerHTML += tables.map((t) => `<option value="${t.id}">${fmt.esc(t.code)}</option>`).join('');
+      }).catch(() => {});
+
+      function statusBadge(b) {
+        if (b.status === 'cancelled') return badge('cancelled', b.void_reason ? 'void' : 'ยกเลิก');
+        return badge(b.status);
+      }
+
+      function sourceText(b) {
+        if (!b.rounds) return '<span class="muted">-</span>';
+        const parts = [];
+        if (b.qr_rounds) parts.push(`📱 QR ${b.qr_rounds} รอบ`);
+        if (b.staff_names) parts.push(`🧑‍💼 ${fmt.esc(b.staff_names)}`);
+        return `<span class="small">${parts.join('<br>') || fmt.num(b.rounds) + ' รอบ'}</span>`;
+      }
+
+      /* ---------- ตาราง ---------- */
+      async function search() {
+        const rows = await run(() => api.get('bills', {
+          action: 'search',
+          date: $('fDate').value || today(),
+          table_id: $('fTable').value,
+          time_from: $('fFrom').value,
+          time_to: $('fTo').value,
+          status: $('fStatus').value,
+          q: $('fNo').value.trim(),
+        }));
+        if (!rows) return;
+        const paid = rows.filter((b) => b.status === 'paid');
+        $('count').textContent = `พบ ${fmt.num(rows.length)} บิล`;
+        $('sum').textContent = paid.length ? `ยอดที่จ่ายแล้ว ${fmt.baht(paid.reduce((a, b) => a + Number(b.total_paid), 0))}` : '';
+        $('rows').innerHTML = rows.length ? rows.map((b) => `
+          <tr class="clickable" data-id="${b.id}">
+            <td class="bold">${fmt.esc(b.bill_no)}</td>
+            <td>${fmt.esc(b.place)}<div class="caption muted">${fmt.esc(b.guests)} คน</div></td>
+            <td>${fmt.time(b.opened_at)}<div class="caption muted">${fmt.esc(b.opened_by_name || '-')}</div></td>
+            <td>${b.closed_at ? fmt.time(b.closed_at) : '-'}<div class="caption muted">${fmt.esc(b.closed_by_name || '')}</div></td>
+            <td>${sourceText(b)}</td>
+            <td class="num">${fmt.baht(b.status === 'paid' ? b.total_paid : b.total)}
+              <div class="caption muted">${b.payment_method ? PAY[b.payment_method] : ''}</div></td>
+            <td>${statusBadge(b)}</td>
+          </tr>`).join('')
+          : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🧾</div>ไม่พบบิลตามเงื่อนไข</div></td></tr>`;
+        $('rows').querySelectorAll('[data-id]').forEach((tr) => { tr.onclick = () => showDetail(Number(tr.dataset.id)); });
+      }
+
+      /* ---------- รายละเอียด ---------- */
+      const HISTORY = {
+        'bill.open': (d) => `เปิดบิล ${fmt.esc((d.places || []).join(', '))} · ${fmt.esc(d.guests || '')} คน`,
+        'bill.move': (d) => `ย้ายโต๊ะ ${fmt.esc((d.from || []).join(', '))} → ${fmt.esc((d.to || []).join(', '))}`,
+        'bill.pay': (d) => `รับเงิน ${fmt.baht(d.total)} (${PAY[d.payment_method] || ''})` +
+          (d.paid_together ? ` · จ่ายรวมกับ ${fmt.esc(d.paid_together.join(', '))}` : ''),
+        'bill.void': (d) => `ยกเลิกบิล: ${fmt.esc(d.reason)}`,
+        'bill.cancel': () => 'ยกเลิกโต๊ะ',
+      };
+
+      function sourceLabel(o) {
+        if (o.source === 'qr') return '📱 ลูกค้าสั่งผ่าน QR';
+        if (o.source === 'vip_preorder') return '👑 สั่งล่วงหน้า (ห้อง VIP)';
+        return `🧑‍💼 ${fmt.esc(o.created_by_name || 'พนักงาน')} สั่งแทน`;
+      }
+
+      async function showDetail(id) {
+        current = id;
+        document.querySelectorAll('#rows tr').forEach((tr) => {
+          tr.querySelectorAll('td').forEach((td) => { td.style.background = Number(tr.dataset.id) === id ? 'var(--red-50)' : ''; });
+        });
+        $('detail').innerHTML = '<div class="loading">กำลังโหลด...</div>';
+        const b = await run(() => api.get('bills', { id }));
+        if (!b || current !== id) return;
+        const canVoid = b.status === 'paid' || (b.status === 'open' && b.orders.length > 0);
+
+        $('detail').innerHTML = `
+          <div class="stack">
+            <div class="row-between">
+              <div><h3 style="margin:0">${fmt.esc(b.bill_no)}</h3>
+                <div class="caption muted">${b.vip_room_id ? 'ห้อง' : 'โต๊ะ'} ${fmt.esc(b.place)} · ${fmt.esc(b.guests)} คน</div></div>
+              ${statusBadge(b)}
+            </div>
+            ${b.void_reason ? `<div class="alert alert-bad">ยกเลิกบิล: ${fmt.esc(b.void_reason)}</div>` : ''}
+            <div class="small">
+              <div class="row-between"><span class="muted">เปิด</span><span>${fmt.datetime(b.opened_at)} · ${fmt.esc(b.opened_by_name || '-')}</span></div>
+              <div class="row-between"><span class="muted">ปิด</span><span>${b.closed_at ? fmt.datetime(b.closed_at) + ' · ' + fmt.esc(b.closed_by_name || '-') : '-'}</span></div>
+              ${b.payment_method ? `<div class="row-between"><span class="muted">ชำระด้วย</span><span>${PAY[b.payment_method]}</span></div>` : ''}
+            </div>
+            ${b.orders.length ? b.orders.map((o) => `
+              <div class="card" style="padding:12px">
+                <div class="row-between small" style="margin-bottom:6px">
+                  <span class="bold">รอบ ${o.round_no} · ${fmt.time(o.created_at)}</span>
+                  ${o.cancelled_at ? badge('cancelled', 'ลูกค้ายกเลิก') : `<span>${fmt.baht(o.total)}</span>`}
+                </div>
+                <div class="caption muted" style="margin-bottom:6px">${sourceLabel(o)}</div>
+                ${o.items.map((it) => `
+                  <div class="row-between small" style="gap:8px">
+                    <span>${fmt.esc(it.name)} × ${fmt.num(it.qty - it.cancelled_qty)} ${fmt.esc(it.unit)}
+                      ${it.cancelled_qty && it.status !== 'cancelled' ? `<span class="caption muted">(ยกเลิก ${it.cancelled_qty})</span>` : ''}</span>
+                    ${badge(it.status)}
+                  </div>`).join('')}
+              </div>`).join('') : '<div class="muted small">ยังไม่มีออเดอร์</div>'}
+            <div class="row-between"><span class="h3">ยอดรวม</span>
+              <span class="h2">${fmt.baht(b.status === 'paid' || (b.status === 'cancelled' && Number(b.total_paid)) ? b.total_paid : b.total)}</span></div>
+            ${b.history.length ? `
+              <div>
+                <div class="label" style="margin-bottom:4px">ประวัติ</div>
+                ${b.history.map((h) => `
+                  <div class="caption"><span class="muted">${fmt.time(h.created_at)} ${fmt.esc(h.user_name || '')}</span>
+                    · ${(HISTORY[h.action] || (() => fmt.esc(h.action)))(h.detail || {})}</div>`).join('')}
+              </div>` : ''}
+            ${canVoid ? '<button class="btn btn-danger btn-block" id="voidBtn">ยกเลิกบิล (void)</button>' : ''}
+          </div>`;
+        if (canVoid) $('voidBtn').onclick = () => askVoid(b);
+      }
+
+      /* ---------- void ---------- */
+      function askVoid(b) {
+        const m = openModal({
+          title: `ยกเลิกบิล ${fmt.esc(b.bill_no)}`,
+          body: `
+            <p class="small">${b.status === 'paid'
+              ? 'บิลนี้จ่ายเงินแล้ว ยกเลิกแล้วยอดจะไม่นับในยอดขาย'
+              : 'โต๊ะจะกลับเป็นว่าง QR ใช้ไม่ได้ และรายการที่ครัวยังไม่เสิร์ฟจะถูกยกเลิก'}</p>
+            <div class="field" style="margin:0">
+              <label for="voidReason">เหตุผล (จำเป็น)</label>
+              <textarea class="textarea" id="voidReason" maxlength="255" placeholder="เช่น คิดเงินผิดโต๊ะ ลูกค้าร้องเรียนอาหาร"></textarea>
+            </div>`,
+          footer: `<button class="btn btn-secondary" data-close>ไม่ยกเลิก</button>
+                   <button class="btn btn-danger" data-ok disabled>ยืนยันยกเลิกบิล</button>`,
+        });
+        const input = m.el.querySelector('#voidReason');
+        const okBtn = m.el.querySelector('[data-ok]');
+        input.oninput = () => { okBtn.disabled = input.value.trim().length < 3; };
+        input.focus();
+        okBtn.onclick = async () => {
+          okBtn.disabled = true;
+          const done = await run(() => api.post('bills', { action: 'void', bill_id: b.id, reason: input.value.trim() }));
+          if (!done) { okBtn.disabled = false; return; }
+          m.close();
+          await search();
+          showDetail(b.id);
+        };
+      }
+
+      $('searchBtn').onclick = search;
+      $('fNo').onkeydown = (e) => { if (e.key === 'Enter') search(); };
+      $('clearBtn').onclick = () => {
+        $('fDate').value = today();
+        ['fTable', 'fFrom', 'fTo', 'fStatus', 'fNo'].forEach((k) => { $(k).value = ''; });
+        search();
+      };
+      search();
+    })();
+  </script>
+</body>
+</html>
