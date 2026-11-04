@@ -317,13 +317,75 @@ button:focus-visible {
 /* Sidebar */
 
 .sidebar {
+    margin-top: 20px;
     position: sticky;
     top: 100px;
-    padding: 20px 0;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    background: linear-gradient(160deg, #fffdf7, #fff5dc);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+}
+
+.sidebar h2 {
+    margin: 0;
+    color: var(--brand-dark);
+    font-size: 19px;
+}
+
+.sidebar .search {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.sidebar .search:focus {
+    border-color: var(--yellow-dark);
+    box-shadow: 0 0 0 3px rgba(245, 215, 110, .25);
+}
+
+.sidebar .chips {
     display: flex;
     flex-direction: column;
     gap: 7px;
-    min-width: 0;
+}
+
+.sidebar .chip {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: color .18s, background .18s, border-color .18s, transform .18s;
+}
+
+.sidebar .chip:hover {
+    border-color: var(--line);
+    background: #fff8e8;
+    transform: translateX(2px);
+}
+
+.sidebar .chip.active {
+    border-color: var(--brand-dark);
+    background: var(--brand);
+    color: var(--yellow);
+    font-weight: 600;
+    box-shadow: 0 3px 9px rgba(92, 16, 16, .14);
 }
 
 .tab {
@@ -1035,19 +1097,46 @@ button:focus-visible {
         position: sticky;
         top: 0;
         z-index: 10;
+        flex-direction: column;
+        gap: 9px;
+        padding: 12px;
+        margin: 0 -12px;
+        border-radius: 0 0 16px 16px;
+        box-shadow: 0 5px 14px rgba(92, 16, 16, .08);
+    }
+
+    .sidebar h2 {
+        font-size: 17px;
+    }
+
+    .sidebar .search {
+        padding: 9px 12px;
+        font-size: 14px;
+    }
+
+    .sidebar .chips {
         flex-direction: row;
         gap: 7px;
-        padding: 10px 0;
-        margin: 0 -12px;
-        padding-left: 12px;
-        padding-right: 12px;
         overflow-x: auto;
-        background: var(--bg);
+        padding-bottom: 2px;
         scrollbar-width: none;
     }
 
-    .sidebar::-webkit-scrollbar {
+    .sidebar .chips::-webkit-scrollbar {
         display: none;
+    }
+
+    .sidebar .chip {
+        flex: 0 0 auto;
+        width: auto;
+        white-space: nowrap;
+        padding: 8px 13px;
+        border-radius: 999px;
+        font-size: 13px;
+    }
+
+    .sidebar .chip:hover {
+        transform: none;
     }
 
     .tab {

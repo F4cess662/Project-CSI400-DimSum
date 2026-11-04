@@ -29,10 +29,12 @@
         </div>
 
         <div class="nav-login">
-            <a href="/owner" id="navLogin" hidden>เข้าสู่ระบบ</a>
-            <a href="/owner" id="navAccount" hidden>บัญชีสมาชิก</a>
+            <!-- แสดง "เข้าสู่ระบบ" เป็นค่าเริ่มต้น แล้วให้ JS สลับเป็น "บัญชีสมาชิก" ตอนล็อกอินแล้ว -->
+            <a href="/loginMember" id="navLogin">เข้าสู่ระบบ</a>
+            <a href="/loginMember" id="navAccount" hidden>บัญชีสมาชิก</a>
         </div>
     </nav>
+
     <main class="page">
         <section class="details">
             <div class="slider">
@@ -40,8 +42,8 @@
                     <img src="/assets/img/banners/banner_1.jpg" class="slide active" alt="banner1">
 
                     <img src="/assets/img/banners/banner_2.jpg" class="slide" alt="banner2">
-
                 </div>
+
                 <button type="button" class="slider-btn prev" onclick="plusSlides(-1)" aria-label="รูปก่อนหน้า">
                     &#10094;
                 </button>
@@ -55,11 +57,10 @@
 
                     <button type="button" class="dot" onclick="showSlide(1)" aria-label="แสดงรูปที่ 2">
                     </button>
-
                 </div>
-
             </div>
         </section>
+
         <!-- แนะนำร้าน -->
         <section class="about-shop">
             <div class="about-content">
@@ -71,18 +72,16 @@
                     เติมเต็มทุกมื้อด้วยความอร่อยจากติ่มซำและซาลาเปา
                     เลือกเมนูโปรดของคุณ แล้วมาอิ่มอร่อยไปด้วยกัน
                 </p>
+                <p><a href="/customer/web_menu.html" class="about-btn">
+                        เลือกชมเมนูอาหาร
+                    </a></p>
 
-                <a href="/customer/web_menu.html" class="about-btn">
-                    เลือกชมเมนูอาหาร
-                </a>
             </div>
         </section>
 
         <section class="details_2">
             <div class="member-card">
-
                 <div class="member-content">
-
                     <div class="member-info">
                         <h1>สมาชิกนึ่งสุข</h1>
 
@@ -109,11 +108,10 @@
                     <button type="button" class="register-btn" id="member">
                         สมัครสมาชิกฟรี
                     </button>
-
                 </div>
             </div>
-            <div class="opening-card">
 
+            <div class="opening-card">
                 <h2>
                     <span class="clock-icon">◷</span>
                     เวลาเปิด-ปิด
@@ -136,8 +134,6 @@
             </div>
         </section>
 
-
-
         <!-- <section class="menu" id="menu">
 
           <div class="title-menu">
@@ -150,6 +146,7 @@
             </div> 
         </section> -->
     </main>
+
     <footer class="footer">
         <div>
             <div class="logo"></div>
@@ -168,19 +165,19 @@
             <p>โทร 02-000-0000</p>
         </div>
     </footer>
+
     <script>
-        (async () => {
-            const login = document.getElementById('navLogin');
-            const account = document.getElementById('navAccount');
-            let loggedIn = false;
+        function updateNavAuth() {
+
+            let isLoggedIn = false;
             try {
-                const res = await fetch('/api/auth', { credentials: 'same-origin' });
-                const json = await res.json();
-                loggedIn = res.ok && json.success;
-            } catch (e) { /* ถือว่ายังไม่ล็อกอิน */ }
-            login.hidden = loggedIn;
-            account.hidden = !loggedIn;
-        })();
+                isLoggedIn = !!localStorage.getItem('token');
+            } catch (e) { }
+
+            document.getElementById('navLogin').hidden = isLoggedIn;
+            document.getElementById('navAccount').hidden = !isLoggedIn;
+        }
+        updateNavAuth();
     </script>
 </body>
 

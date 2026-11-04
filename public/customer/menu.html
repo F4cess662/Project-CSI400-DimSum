@@ -11,7 +11,6 @@
 
 <body>
 
-    <!-- ไอคอนทั้งหมด (เส้นบาง ไม่ใช้อิโมจิ) ใช้ผ่าน <use href="#i-ชื่อ"> -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
         <defs>
             <symbol id="i-fork" viewBox="0 0 24 24">
@@ -36,39 +35,6 @@
             <symbol id="i-close" viewBox="0 0 24 24">
                 <path d="M6 6l12 12M18 6L6 18" />
             </symbol>
-            <symbol id="i-star" viewBox="0 0 24 24">
-                <path d="M12 3.5l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17.2 6.6 20.2l1.1-6.1L3.2 9.9l6.1-.8z" />
-            </symbol>
-            <symbol id="i-bun" viewBox="0 0 24 24">
-                <path d="M12 4c5 0 8 4 8 9 0 3-2 5-4 5H8c-2 0-4-2-4-5 0-5 3-9 8-9z" />
-                <path d="M12 4v3M9.5 12h.01M14.5 12h.01M10.5 14.5c1 .8 2 .8 3 0" />
-            </symbol>
-            <symbol id="i-dumpling" viewBox="0 0 24 24">
-                <path d="M3 15c0-5 4-9 9-9s9 4 9 9z" />
-                <path d="M5 18h14M8 9.5l1 2M12 8v3M16 9.5l-1 2" />
-            </symbol>
-            <symbol id="i-rice" viewBox="0 0 24 24">
-                <path d="M4 12h16a8 7 0 0 1-16 0z" />
-                <path d="M6 12c0-3 2.5-5 6-5s6 2 6 5" />
-            </symbol>
-            <symbol id="i-noodle" viewBox="0 0 24 24">
-                <path d="M3 12h18a9 8 0 0 1-18 0z" />
-                <path d="M8 9c0-2 2-2 2-4M13 9c0-2 2-2 2-4M18 5l-5 6" />
-            </symbol>
-            <symbol id="i-fried" viewBox="0 0 24 24">
-                <path
-                    d="M12 3c1 3.500 5 5 5 10a5 5 0 0 1-10 0c0-2.500 1.200-4 2.500-5 0 2 .8 3 1.800 3 .5-2.500-.3-5.500.7-8z" />
-            </symbol>
-            <symbol id="i-box" viewBox="0 0 24 24">
-                <rect x="3" y="6" width="18" height="13" rx="2" />
-                <path d="M3 12h18M12 6v13" />
-            </symbol>
-            <symbol id="i-drink" viewBox="0 0 24 24">
-                <path d="M6 7h12l-1.500 13h-9zM5 7h14M12 7l2-4h3" />
-            </symbol>
-            <symbol id="i-dessert" viewBox="0 0 24 24">
-                <path d="M4 14h16l-1 5H5zM6 14c0-4 2.500-6 6-6s6 2 6 6M12 8V5" />
-            </symbol>
         </defs>
     </svg>
 
@@ -83,20 +49,14 @@
         <div class="tagline">ติ่มซำร้อน ๆ ความสุขในทุกมื้อ</div>
         <div class="spacer"></div>
         <div class="table-chip">
-            <svg class="ic">
-                <use href="#i-fork" />
-            </svg>
+            <svg class="ic"><use href="#i-fork" /></svg>
             โต๊ะที่ <span id="tableNo">-</span>
         </div>
         <button class="history-btn" onclick="openHistory()">
-            <svg class="ic">
-                <use href="#i-clock" />
-            </svg> ประวัติการสั่งอาหาร
+            <svg class="ic"><use href="#i-clock" /></svg> ประวัติการสั่งอาหาร
         </button>
         <div class="clock">
-            <svg class="ic">
-                <use href="#i-clock" />
-            </svg>
+            <svg class="ic"><use href="#i-clock" /></svg>
             <div>
                 <div id="clockDate"></div>
                 <div id="clockTime"></div>
@@ -117,32 +77,30 @@
             <div class="modal-head">
                 <h3>ประวัติการสั่งอาหาร</h3>
                 <button class="rm" onclick="closeHistory()" aria-label="ปิด">
-                    <svg class="ic">
-                        <use href="#i-close" />
-                    </svg>
+                    <svg class="ic"><use href="#i-close" /></svg>
                 </button>
             </div>
             <div id="historyList" class="history-list"></div>
         </div>
     </div>
 
-    <div class="main">
-        <aside id="catTabs" class="sidebar"></aside>
+<div class="main">
+    <aside class="sidebar">
+        <h2>เลือกเมนู</h2>
+        <input id="searchBox" class="search" type="search" placeholder="ค้นหาเมนู..."
+            oninput="onSearch(this.value)">
+        <div id="catTabs" class="chips"></div>
+    </aside>
 
-        <main class="content">
-            <h2 id="catTitle"></h2>
-            <div id="menuGrid" class="grid"></div>
-        </main>
+    <main class="content">
+        <div id="menuGrid" class="grid"></div>
+    </main>
 
-        <aside class="cart">
+    <aside class="cart">
             <div class="cart-head">
-                <h3><svg class="ic">
-                        <use href="#i-cart" />
-                    </svg> รายการอาหาร (<span id="cartCount">0</span>)</h3>
+                <h3><svg class="ic"><use href="#i-cart" /></svg> รายการอาหาร (<span id="cartCount">0</span>)</h3>
                 <button class="clear-btn" onclick="clearCart()">
-                    <svg class="ic">
-                        <use href="#i-trash" />
-                    </svg> ล้างทั้งหมด
+                    <svg class="ic"><use href="#i-trash" /></svg> ล้างทั้งหมด
                 </button>
             </div>
             <div id="cartList" class="cart-list"></div>
@@ -151,15 +109,11 @@
                 <span class="sum" id="cartTotal">0 บาท</span>
             </div>
             <button id="confirmBtn" class="confirm" onclick="confirmOrder()" disabled>
-                <svg class="ic">
-                    <use href="#i-fork" />
-                </svg> ยืนยันสั่งอาหาร
+                <svg class="ic"><use href="#i-fork" /></svg> ยืนยันสั่งอาหาร
             </button>
             <div class="note">
-                <svg class="ic">
-                    <use href="#i-info" />
-                </svg>
-                <span>เมื่อกดสั่งอาหารแล้ว<br>ทางร้านจะจัดเตรียมและเสิร์ฟที่โต๊ะของท่าน</span>
+                <svg class="ic"><use href="#i-info" /></svg>
+                <span>สั่งได้สูงสุด 10 ที่ต่อเมนู ต่อรอบ<br>เมื่อกดสั่งแล้วทางร้านจะจัดเตรียมและเสิร์ฟที่โต๊ะของท่าน</span>
             </div>
         </aside>
     </div>

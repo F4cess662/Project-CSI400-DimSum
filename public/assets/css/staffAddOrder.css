@@ -1,0 +1,184 @@
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            font-family: "Prompt", sans-serif;
+            color: #38251e;
+            background: #fdf3e1;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+            width: 90%;
+            max-width: 1100px;
+            margin: 20px auto 40px;
+            align-items: start;
+        }
+
+        .card {
+            background: #fffaf2;
+            border: 1px solid #f0d0a0;
+            border-radius: 16px;
+            box-shadow: 0 4px 0 #ead1a5;
+            padding: 20px;
+        }
+
+        .card h2 { font-size: 20px; margin-bottom: 14px; }
+
+        .search {
+            width: 100%;
+            padding: 11px 14px;
+            margin-bottom: 12px;
+            border: 1px solid #ead8bc;
+            border-radius: 12px;
+            background: #fff;
+            font-family: inherit;
+            font-size: 15px;
+            color: #38251e;
+        }
+
+        .categories { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+        .chip {
+            padding: 6px 14px;
+            border: 1px solid #f0dfac;
+            border-radius: 30px;
+            background: #fff9e7;
+            color: #9b712b;
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .chip.active { background: #f2d77b; border-color: #e8ca69; color: #59451e; font-weight: 600; }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .menu-item {
+            position: relative;
+            padding: 14px;
+            border: 1px solid #ead8bc;
+            border-radius: 14px;
+            background: #fff;
+            text-align: left;
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .menu-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(91, 56, 37, 0.1); }
+        .menu-item small { display: block; color: #9a672c; font-size: 12px; }
+        .menu-item strong { display: block; margin: 4px 0; color: #5b3825; font-size: 16px; font-weight: 600; }
+        .menu-item span { color: #a74b2a; font-weight: 600; }
+        .menu-item .badge { position: absolute; top: 8px; right: 8px; }
+        .menu-item.soldout > :not(.badge) { opacity: 0.5; }
+
+        .field { margin-bottom: 14px; }
+        .field label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+        .field input, .field select, .field textarea {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid #ead8bc;
+            border-radius: 12px;
+            background: #fff;
+            font-family: inherit;
+            font-size: 15px;
+            color: #38251e;
+        }
+        .field select { min-height: 46px; }
+        .field textarea { resize: vertical; min-height: 64px; }
+        .field select:focus { outline: 2px solid #f2d77b; border-color: #c8954a; }
+        .field select:disabled { color: #98725f; background: #fdf3e1; }
+
+        .load-error { color: #c92d2d; }
+
+        .menu-item:disabled {
+            color: #98725f;
+            cursor: not-allowed;
+            opacity: 0.65;
+            transform: none;
+            box-shadow: none;
+        }
+        .menu-item:disabled span { color: #98725f; }
+
+        .cart-list { list-style: none; margin-bottom: 14px; }
+
+        .cart-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 2px dotted #e8b56f;
+        }
+        .cart-row:last-child { border-bottom: none; }
+        .cart-name { flex: 1; min-width: 0; font-size: 14px; }
+        .cart-name small { display: block; color: #98725f; }
+
+        .qty { display: flex; align-items: center; gap: 8px; }
+        .qty button {
+            width: 28px; height: 28px;
+            border: 1px solid #f0d0a0;
+            border-radius: 50%;
+            background: #fffdf8;
+            color: #38251e;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+        }
+        .qty button:hover { background: #fff0d9; }
+
+        .empty { padding: 14px 0; text-align: center; color: #98725f; font-size: 14px; }
+
+        .total {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            margin-bottom: 12px;
+            border-top: 2px solid #ead1a5;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .total span:last-child { color: #a74b2a; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            background: #cf2e2e;
+            color: #fff;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #a92323;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .btn-submit:hover { background: #b92525; transform: translateY(-1px); }
+        .btn-submit:active { transform: translateY(2px); box-shadow: 0 2px 0 #a92323; }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .btn-clear {
+            display: block;
+            margin: 10px auto 0;
+            border: none;
+            background: none;
+            color: #98725f;
+            font-family: inherit;
+            font-size: 13px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .message { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+        .message.ok { background: #e2f3e7; color: #247747; }
+        .message.error { background: #ffe6e3; color: #c92d2d; }
+
+        @media (max-width: 768px) {
+            .layout { grid-template-columns: 1fr; width: 94%; }
+        }
