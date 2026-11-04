@@ -1,0 +1,105 @@
+<!doctype html>
+<!-- ยอดเตรียมวันนี้ (FR-46): ครัวต้องเตรียมเมนูละเท่าไหร่ ทำไปแล้วเท่าไหร่ · ข้อมูลจาก GET /api/kitchen?action=prep_today -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ยอดเตรียมวันนี้ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="alert alert-bad hidden" id="svcAlert" style="margin-bottom:16px">ระบบครัวขัดข้อง กำลังเชื่อมต่อใหม่...</div>
+
+    <div class="grid grid-3 section">
+      <div class="card stat"><div class="stat-icon">📋</div>
+        <div><div class="stat-value" id="sTotal">-</div><div class="stat-label">เมนูที่ต้องเตรียม</div></div></div>
+      <div class="card stat"><div class="stat-icon">✅</div>
+        <div><div class="stat-value" id="sDone">-</div><div class="stat-label">ทำครบตามเป้าแล้ว</div></div></div>
+      <div class="card stat"><div class="stat-icon">📈</div>
+        <div><div class="stat-value" id="sPct">-</div><div class="stat-label">ความคืบหน้ารวม</div></div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="row" id="zoneChips"></div>
+      <div class="small muted" id="planDate"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>เมนู</th><th>โซน</th><th class="num">เป้าหมาย</th><th class="num">ทำแล้ว</th><th style="width:30%">ความคืบหน้า</th><th class="num">พร้อมขายตอนนี้</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody>
+      </table>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'ยอดเตรียมวันนี้', roles: ['head_chef', 'manager', 'owner'] });
+      if (!me) return;
+      const $ = (id) => document.getElementById(id);
+      const css = (n) => getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim();
+      let zone = '', last = null;
+
+      /** แถบความคืบหน้า: เขียว = ครบเป้า · เหลือง = ยังไม่ครบ (ความกว้างเป็น %) */
+      function bar(made, target) {
+        const pct = target ? Math.min(100, Math.round((made / target) * 100)) : 0;
+        const color = pct >= 100 ? css('ok') : css('wait');
+        return `<div class="row" style="gap:8px;flex-wrap:nowrap">
+          <svg width="100%" height="12" role="img" aria-label="ทำแล้ว ${pct}%"><title>ทำแล้ว ${made} จาก ${target} (${pct}%)</title>
+            <rect width="100%" height="12" rx="6" fill="${css('cream-200')}"/>
+            ${pct ? `<rect width="${pct}%" height="12" rx="6" fill="${color}"/>` : ''}</svg>
+          <span class="small bold" style="min-width:40px">${pct}%</span></div>`;
+      }
+
+      function render(d) {
+        $('planDate').textContent = 'แผนวันที่ ' + fmt.date(d.plan_date) + ' · อัปเดตทุก 10 วินาที';
+        const items = zone ? d.items.filter((r) => r.kitchen_zone === zone) : d.items;
+        const sumTarget = items.reduce((s, r) => s + r.target_qty, 0);
+        const sumMade = items.reduce((s, r) => s + Math.min(r.made_qty, r.target_qty), 0);
+        $('sTotal').textContent = fmt.num(items.length);
+        $('sDone').textContent = `${items.filter((r) => r.made_qty >= r.target_qty).length}/${items.length}`;
+        $('sPct').textContent = (sumTarget ? Math.round((sumMade / sumTarget) * 100) : 0) + '%';
+
+        $('zoneChips').innerHTML = [['', 'ทุกโซน'], ...Object.entries(ZONES)].map(([k, v]) =>
+          `<button class="chip ${zone === k ? 'active' : ''}" data-zone="${k}">${k ? `<span class="zone-dot zone-${k}"></span>` : ''}${v}</button>`).join('');
+
+        $('rows').innerHTML = items.length ? items.map((r) => `<tr>
+            <td class="bold">${fmt.esc(r.menu_name)}</td>
+            <td>${zoneChip(r.kitchen_zone)}</td>
+            <td class="num">${fmt.num(r.target_qty)} ${fmt.esc(r.unit)}
+              <div>${r.confirmed_qty === null ? '<span class="badge badge-off">ยอดแนะนำ</span>' : '<span class="badge badge-ok">ยืนยันแล้ว</span>'}</div></td>
+            <td class="num">${fmt.num(r.made_qty)}</td>
+            <td>${bar(r.made_qty, r.target_qty)}</td>
+            <td class="num">${r.is_available === 0 || r.available_qty === 0 ? badge('soldout')
+              : r.available_qty === null ? 'ไม่จำกัด' : `${fmt.num(r.available_qty)} ${fmt.esc(r.unit)}`}</td>
+          </tr>`).join('')
+          : `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div>
+              ยังไม่มีแผนเตรียมของวันนี้<div class="small">ผู้จัดการยืนยันยอดได้ที่หน้า "แผนเตรียมของ"</div></div></td></tr>`;
+      }
+
+      async function load() {
+        try {
+          last = await api.get('kitchen', { action: 'prep_today' });
+          $('svcAlert').classList.add('hidden');
+          render(last);
+        } catch (e) {
+          $('svcAlert').classList.remove('hidden');      // kitchen-service ดับ: ข้อมูลเดิมยังอยู่บนจอ
+        }
+      }
+
+      $('zoneChips').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-zone]');
+        if (!b) return;
+        zone = b.dataset.zone;
+        if (last) render(last);
+      });
+      poll(load, 10);
+    })();
+  </script>
+</body>
+</html>
