@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- จอครัว (FR-15–19) · โหมดจอโซนแสดงผลอย่างเดียว: kitchen.html?zone=steam&view=1 (FR-16) -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จอครัว · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <!-- หัวจอโซน (เฉพาะโหมดจอโซน) -->
+    <div class="row-between hidden" id="viewHead" style="margin-bottom:24px">
+      <h1 class="row" id="viewZone"></h1>
+      <div class="row">
+        <span class="h2" id="viewPending"></span>
+        <span class="h1" id="viewClock"></span>
+      </div>
+    </div>
+
+    <!-- แท็บโซน + ลิงก์เปิดจอโซน (เฉพาะโหมดหัวหน้าเชฟ) -->
+    <div id="chefBar">
+      <div class="row" id="zoneTabs" style="margin-bottom:12px"></div>
+      <div class="row small" id="zoneLinks" style="margin-bottom:16px"></div>
+    </div>
+
+    <div class="alert alert-bad hidden" id="svcAlert" style="margin-bottom:16px">ระบบครัวขัดข้อง กำลังเชื่อมต่อใหม่...</div>
+
+    <div class="grid grid-4" id="cards"><div class="loading">กำลังโหลด...</div></div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/kitchen.js"></script>
+</body>
+</html>
