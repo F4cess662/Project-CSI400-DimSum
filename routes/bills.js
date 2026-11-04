@@ -4,6 +4,7 @@
  * POST {"action":"open", "table_ids":[13,14], "guests":4}   → เปิดโต๊ะ / ต่อโต๊ะ (FR-06, 07)
  * POST {"action":"open", "vip_room_id":2, "guests":10}      → เปิดห้อง VIP
  * POST {"action":"cancel", "bill_id":5}                     → ยกเลิกโต๊ะที่เปิดผิด (FR-08, manager+)
+ * POST {"action":"move", "bill_id":5, "to_table_ids":[9]}   → ย้ายโต๊ะ เมื่อยังไม่สั่งอาหาร (Feedback เฟส 1, staff+)
  */
 const crypto = require('crypto');
 const router = require('express').Router();
@@ -76,6 +77,7 @@ router.post('/', handle(async (req, res) => {
   switch (b.action) {
     case 'open': return openBill(req, res, b);
     case 'cancel': return cancelBill(req, res, b);
+    case 'move': return moveBill(req, res, b);
     default: throw fail('ไม่รู้จัก action นี้', 400);
   }
 }));
@@ -91,7 +93,7 @@ async function openBill(req, res, b) {
   if (!isVip && (b.table_ids === undefined || b.table_ids === null || b.table_ids === '')) {
     throw fail('กรุณาเลือกโต๊ะ', 422);
   }
-  // TODO: ปิดเช็กเวลาร้านไว้ชั่วคราวเพื่อทดสอบ เปิดกลับก่อนส่งงาน
+  // TODO: ปิดเช็กเวลาร้านไว้ชั่วคราวเพื่อทดสอบ เปิดกลับก่อน commit
   // if (!(await isOpenNow())) throw fail('ร้านปิดอยู่ เปิดโต๊ะได้เฉพาะเวลาเปิดร้าน', 409); // BR-01
 
   const token = crypto.randomBytes(16).toString('hex'); // 32 ตัวอักษร
@@ -201,5 +203,73 @@ async function cancelBill(req, res, b) {
   await writeLog(req, 'bill.cancel', 'bills', bill.id, { bill_no: bill.bill_no });
   return ok(res, { bill_id: bill.id, bill_no: bill.bill_no }, `ยกเลิกบิล ${bill.bill_no} แล้ว`);
 }
+
+/**
+ * ย้ายโต๊ะ: ย้าย "บิล" ไปผูกกับโต๊ะว่างชุดใหม่ (เลขบิล เวลาเปิด และ QR เดิมใช้ต่อได้)
+ * ได้เฉพาะบิลโต๊ะปกติที่ยังเปิดอยู่และยังไม่มีออเดอร์ · ที่นั่งรวมของโต๊ะใหม่ต้องพอกับจำนวนคน
+ */
+async function moveBill(req, res, b) {
+  await mustBe(req, STAFF_UP);
+  requireFields(b, ['bill_id', 'to_table_ids']);
+  const billId = Number(b.bill_id);
+  const targetIds = toIds(b.to_table_ids);
+
+  const result = await transaction(async (conn) => {
+    const [[bill]] = await conn.execute(
+      'SELECT id, bill_no, status, guests, vip_room_id FROM bills WHERE id = ? FOR UPDATE', [billId]);
+    if (!bill) throw fail('ไม่พบบิลนี้', 404);
+    if (bill.status !== 'open') throw fail(`บิล ${bill.bill_no} ไม่ได้เปิดอยู่`, 409);
+    if (bill.vip_room_id) throw fail('บิลห้อง VIP ย้ายโต๊ะไม่ได้', 422);
+
+    const [[cnt]] = await conn.execute('SELECT COUNT(*) AS n FROM orders WHERE bill_id = ?', [billId]);
+    if (cnt.n > 0) throw fail(`บิล ${bill.bill_no} สั่งอาหารแล้ว ย้ายโต๊ะไม่ได้`, 409);
+
+    const [fromRows] = await conn.execute(
+      `SELECT t.id, t.code FROM bill_tables bt JOIN dining_tables t ON t.id = bt.table_id
+        WHERE bt.bill_id = ? ORDER BY t.code FOR UPDATE`, [billId]);
+    const fromIds = fromRows.map((t) => t.id);
+    if (targetIds.every((id) => fromIds.includes(id)) && targetIds.length === fromIds.length) {
+      throw fail('เลือกโต๊ะใหม่ที่ไม่ใช่โต๊ะเดิม', 422);
+    }
+
+    // โต๊ะปลายทางที่ยังไม่ใช่ของบิลนี้ ต้องว่างและใช้งานอยู่
+    const newIds = targetIds.filter((id) => !fromIds.includes(id));
+    const [targets] = await conn.execute(
+      `SELECT id, code, seats, status, is_active FROM dining_tables WHERE id IN (${marks(targetIds)}) FOR UPDATE`, targetIds);
+    if (targets.length !== targetIds.length || targets.some((t) => t.is_active !== 1)) {
+      throw fail('มีโต๊ะที่ไม่พบหรือปิดใช้งานอยู่', 404);
+    }
+    const busy = targets.filter((t) => newIds.includes(t.id) && t.status !== 'available');
+    if (busy.length) throw fail('โต๊ะ ' + busy.map((t) => t.code).join(', ') + ' มีลูกค้าอยู่แล้ว', 409);
+
+    const seats = targets.reduce((sum, t) => sum + t.seats, 0);
+    if (seats < bill.guests) {
+      throw fail(`ลูกค้า ${bill.guests} คน แต่โต๊ะที่เลือกนั่งได้ ${seats} ที่ เลือกโต๊ะเพิ่ม`, 422);
+    }
+
+    // ปล่อยโต๊ะเดิม → ผูกโต๊ะใหม่
+    const freed = fromIds.filter((id) => !targetIds.includes(id));
+    await conn.execute('DELETE FROM bill_tables WHERE bill_id = ?', [billId]);
+    if (freed.length) {
+      await conn.execute(`UPDATE dining_tables SET status = 'available' WHERE id IN (${marks(freed)})`, freed);
+    }
+    for (const id of targetIds) {
+      await conn.execute('INSERT INTO bill_tables (bill_id, table_id) VALUES (?, ?)', [billId, id]);
+    }
+    await conn.execute(`UPDATE dining_tables SET status = 'occupied' WHERE id IN (${marks(targetIds)})`, targetIds);
+
+    return {
+      bill,
+      from: fromRows.map((t) => t.code),
+      to: targets.map((t) => t.code).sort(),
+    };
+  });
+
+  await writeLog(req, 'bill.move', 'bills', result.bill.id,
+    { bill_no: result.bill.bill_no, from: result.from, to: result.to });
+  return ok(res, { bill_id: result.bill.id, bill_no: result.bill.bill_no, from: result.from, to: result.to },
+    `ย้าย ${result.from.join(', ')} → ${result.to.join(', ')} แล้ว`);
+}
+
 
 module.exports = router;

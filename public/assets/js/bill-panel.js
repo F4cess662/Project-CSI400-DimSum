@@ -153,6 +153,7 @@
     const isManager = user && ['manager', 'owner'].includes(user.role_code);
     const canPay = user && (isManager || (user.role_code === 'staff' && user.can_payment === 1));
     const canCancel = isManager && Number(bill.rounds || 0) === 0;
+    const canMove = !table.is_vip && Number(bill.rounds || 0) === 0; // ย้ายได้เมื่อยังไม่สั่งอาหาร (ทุก role หน้าร้าน)
 
     panelEl.innerHTML = `
       <div class="stack">
@@ -176,6 +177,7 @@
           <button class="btn btn-secondary" data-qr ${full ? '' : 'disabled'}>🔳 ดู QR</button>
           <a class="btn btn-secondary" href="/admin/order-staff.html?bill_id=${bill.id}">📝 สั่งแทนลูกค้า</a>
         </div>
+        ${canMove ? `<button class="btn btn-secondary btn-block" data-move>🔀 ย้ายโต๊ะ</button>` : ''}
         ${canPay
           ? `<a class="btn btn-lg btn-block" href="/admin/checkout.html?bill_id=${bill.id}">💳 ไปชำระเงิน</a>`
           : `<button class="btn btn-lg btn-block" disabled title="ไม่มีสิทธิ์รับเงิน">💳 ไปชำระเงิน</button>`}
@@ -187,6 +189,8 @@
     panelEl.querySelector('[data-x]').onclick = () => renderIdle(panelEl);
     const qrBtn = panelEl.querySelector('[data-qr]');
     if (qrBtn && full) qrBtn.onclick = () => showBillQr(full);
+    const moveBtn = panelEl.querySelector('[data-move]');
+    if (moveBtn) moveBtn.onclick = () => startMove(table, bill, panelEl);
     const cancelBtn = panelEl.querySelector('[data-cancel]');
     if (cancelBtn && canCancel) {
       cancelBtn.onclick = async () => {
@@ -200,6 +204,78 @@
         reload();
       };
     }
+  }
+
+
+  /* ---------- ย้ายโต๊ะ (ยังไม่สั่งอาหาร) ---------- */
+  async function startMove(table, bill, panelEl) {
+    // ถ้าผังโต๊ะของคนที่ 4 มี window.pickTable ให้เลือกบนผังจริง ไม่มีก็เลือกจากรายชื่อในแผง
+    if (typeof window.pickTable === 'function') {
+      const target = await window.pickTable((t) => !t.is_vip && t.status === 'available');
+      if (target) return confirmMove(bill, [target], panelEl);
+      return;
+    }
+    let free = [];
+    try {
+      const all = await api.get('tables');
+      const list = Array.isArray(all) ? all : (all.tables || []);
+      free = list.filter((t) => !t.is_vip && t.status === 'available');
+    } catch (e) { return toast(e.message, 'error'); }
+    renderMovePicker(table, bill, free, panelEl);
+  }
+
+  function renderMovePicker(table, bill, free, panelEl) {
+    const picked = new Set();
+    const place = bill.place || table.code;
+    const seatsPicked = () => free.filter((t) => picked.has(t.id)).reduce((s, t) => s + t.seats, 0);
+
+    function draw() {
+      const seats = seatsPicked();
+      const enough = picked.size > 0 && seats >= Number(bill.guests);
+      panelEl.innerHTML = `
+        <div class="stack">
+          <div class="row-between">
+            <h3 style="margin:0">ย้ายโต๊ะ ${fmt.esc(place)}</h3>
+            <button class="btn btn-ghost btn-icon btn-sm" data-back aria-label="กลับ">✕</button>
+          </div>
+          <div class="small muted">บิล ${fmt.esc(bill.bill_no)} · ${fmt.esc(bill.guests)} คน · QR เดิมใช้ต่อได้ ลูกค้าไม่ต้องสแกนใหม่</div>
+          <div class="field">
+            <label>เลือกโต๊ะใหม่ (เลือกได้หลายโต๊ะ)</label>
+            <div class="row">
+              ${free.length
+                ? free.map((t) => `<button class="chip ${picked.has(t.id) ? 'active' : ''}" data-pick="${t.id}">
+                    ${picked.has(t.id) ? '✓ ' : ''}${fmt.esc(t.code)} · ${t.seats} ที่</button>`).join('')
+                : '<span class="caption muted">ไม่มีโต๊ะว่าง</span>'}
+            </div>
+            <div class="caption ${picked.size && !enough ? 'field-error' : 'muted'}">
+              ${picked.size ? `นั่งได้ ${seats} ที่ จาก ${fmt.esc(bill.guests)} คน${enough ? '' : ' · เลือกโต๊ะเพิ่ม'}` : 'ยังไม่ได้เลือกโต๊ะ'}
+            </div>
+          </div>
+          <button class="btn btn-lg btn-block" data-go ${enough ? '' : 'disabled'}>ย้ายโต๊ะ</button>
+        </div>`;
+      panelEl.querySelector('[data-back]').onclick = () => renderBusy(table, panelEl);
+      panelEl.querySelectorAll('[data-pick]').forEach((btn) => {
+        btn.onclick = () => {
+          const id = Number(btn.dataset.pick);
+          if (picked.has(id)) picked.delete(id); else picked.add(id);
+          draw();
+        };
+      });
+      panelEl.querySelector('[data-go]').onclick = () =>
+        confirmMove(bill, free.filter((t) => picked.has(t.id)), panelEl, place);
+    }
+    draw();
+  }
+
+  async function confirmMove(bill, targets, panelEl, place) {
+    const to = targets.map((t) => t.code).join(', ');
+    const yes = await confirmModal(`ย้าย ${fmt.esc(place || bill.place || '')} → ${fmt.esc(to)}?<br>
+      <span class="small muted">บิล ${fmt.esc(bill.bill_no)} · โต๊ะเดิมจะว่าง · QR เดิมใช้ต่อได้</span>`, 'ย้ายโต๊ะ');
+    if (!yes) return;
+    const done = await run(() => api.post('bills', { action: 'move', bill_id: bill.id, to_table_ids: targets.map((t) => t.id) }));
+    if (done === null) return;
+    renderIdle(panelEl);
+    reload();
   }
 
   /* ---------- ทางเข้าหลัก ---------- */

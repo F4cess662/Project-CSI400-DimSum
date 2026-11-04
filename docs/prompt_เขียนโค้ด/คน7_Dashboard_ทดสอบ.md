@@ -272,12 +272,19 @@ dashboard.html: grid-4 card stat (โต๊ะมีลูกค้า x/y, บ�
 kitchen.html: ใส่ class kitchen ที่ content · แท็บโซนใหญ่ (btn-lg) + zone-dot + จำนวนค้าง · grid-4 card zone-border เรียงเวลาสั่ง
 เลขโต๊ะ tile-code · ชื่อเมนู × จำนวน **หน่วย** ตัวใหญ่ ("× 3 เข่ง") · เวลารอ (เกิน 15 นาที class late) · ปุ่ม btn-lg ขั้นถัดไป · โซน drink_dessert มีปุ่มข้าม QC · ปุ่มยกเลิก → modal จำนวน + เหตุผล
 poll 5 วินาที · ถ้า API ตอบ 503 (kitchen-service ดับ) ให้ขึ้นแถบ alert-bad "ระบบครัวขัดข้อง กำลังเชื่อมต่อใหม่..." แล้ว poll ต่อ ไม่ล้างการ์ดเดิม
+**โหมดจอโซน (FR-16 · พ่อครัวไม่มีบัญชี จอโซนแสดงผลอย่างเดียว):** หน้าเดิม kitchen.html เปิดด้วย ?zone=<steam|fry|congee_noodle|drink_dessert>&view=1
+  · แสดงเฉพาะโซนนั้น ไม่มีแท็บสลับโซน · **ซ่อนปุ่มทั้งหมด** (เปลี่ยนสถานะ ข้าม QC ยกเลิก) · ซ่อน sidebar ให้เต็มจอ
+  · ตัวหนังสือใหญ่มองจากเตาได้: เลขโต๊ะ · เมนู × จำนวน หน่วย · เวลารอ (เกิน 15 นาที late) · หัวจอชื่อโซน + นาฬิกา + จำนวนรายการค้าง
+  · เรียงตามเวลาสั่ง · poll 5 วินาที รายการ done/cancelled หายเอง · ไม่มีรายการ → empty "ยังไม่มีรายการ"
+  · ใช้บัญชีหัวหน้าเชฟล็อกอินไว้ที่จอ (ไม่ต้องมี role ใหม่) · ใน kitchen.html ปกติ ให้มีลิงก์ "เปิดจอโซน" ของแต่ละโซน (เปิดแท็บใหม่)
+  · ไม่มีการพิมพ์ใบครัว (นอกขอบเขต Requirement) ใช้จอโซนแทนกระดาษ
 prep-today.html ตาราง + แถบความคืบหน้า
 ## กฎธุรกิจที่ต้องเช็ก
 - เปลี่ยนทีละขั้น waiting → cooking → ready → done · drink_dessert ข้าม ready ได้ · บันทึก updated_by
 - cancel_item: ทั้งหมด/บางส่วน (cancelled_qty) · out_of_stock → available_qty = 0 + ปิดเมนู · spoiled/other ไม่คืนจำนวน (BR-08) · log
 - kitchen.js require lib ด้วย '../../../lib/...' · kitchen-service ใช้ตาราง orders, order_items, menu_items, bills, bill_tables, dining_tables, vip_rooms (ฐานข้อมูลร่วม)
 - ทดสอบ: npm run dev:all → เปิดจอครัว → ปิด kitchen-service (หน้าสถานะระบบ หรือ Ctrl+C ที่ npm run dev:kitchen) → ลูกค้ายังสั่งได้ → เปิดกลับ ครัวเห็นออเดอร์ครบ
+- ทดสอบจอโซน: เปิด ?zone=steam&view=1 กับ ?zone=drink_dessert&view=1 คนละหน้าต่าง → ออเดอร์ขนมจีบ + เครื่องดื่ม แยกไปคนละจอ · ไม่มีปุ่มให้กด · หัวหน้าเชฟกดเปลี่ยนสถานะที่จอหลัก → จอโซนเปลี่ยนตามภายใน 5 วินาที
 ```
 
 ---
