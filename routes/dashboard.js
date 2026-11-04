@@ -1,8 +1,8 @@
 /**
  * /api/dashboard — ภาพรวมร้านสำหรับผู้จัดการ/เจ้าของร้าน (FR-47, FR-57)
  * GET → { shop, tables, vip_rooms, open_bills, unavailable_menus, active_staff,
- *         tables_by_zone, menus_by_category, bills_by_hour, generated_at }
- * 3 key หลังเป็นข้อมูลสำหรับกราฟ (แก้ตาม Feedback เฟส 1)
+ *         tables_by_zone, menus_by_category, bills_by_hour, vip_today, generated_at }
+ * tables_by_zone / menus_by_category / bills_by_hour = ข้อมูลกราฟ (Feedback เฟส 1) · vip_today = เฟส 3
  *
  * ออกแบบให้ขยายตามเฟส: เฟสถัดไปเพิ่ม key ใหม่ในก้อนเดียวกันโดยไม่แก้ key เดิม
  *   P2+: sales_today, low_menus · P3+: vip_today · P4: low_ingredients
@@ -164,6 +164,62 @@ async function loadBillsByHour() {
   ];
 }
 
+/** no_show กดได้หลังเลยเวลาเริ่ม 30 นาที (ค่าเดียวกับ NO_SHOW_AFTER_MIN ใน routes/vip_bookings.js ของคนที่ 4) */
+const NO_SHOW_AFTER_MIN = 30;
+
+/**
+ * P3: การจองห้อง VIP วันนี้ (ทุกสถานะ) สำหรับไทม์ไลน์ + โดนัท + รายการต้องติดตาม
+ * → { date, open_hour, close_hour, closed_ranges: [{ from, to }], rooms: [{ id, name }],
+ *     bookings: [{ id, vip_room_id, room_name, start_time, end_time, hours, customer_name, customer_phone, guests,
+ *                  preorder_total, deposit_amount, deposit_received_at, status, minutes_late }],
+ *     by_status: { pending_deposit, confirmed, arrived, no_show, cancelled },
+ *     follow_up: [{ booking_id, room_name, start_time, customer_name, customer_phone, guests, status, deposit_amount,
+ *                   no_deposit, late, minutes_late, can_no_show }] }   เลยนัดขึ้นก่อน แล้วเรียงตามเวลาเริ่ม
+ * minutes_late = เลยเวลาเริ่มมาแล้วกี่นาที (ติดลบ = ยังไม่ถึงเวลา)
+ */
+async function loadVipToday(vipRooms) {
+  const [s, bookings, today] = await Promise.all([
+    shopSettings(),
+    query(
+      `SELECT k.id, k.vip_room_id, v.name AS room_name, k.start_time,
+              ADDTIME(k.start_time, SEC_TO_TIME(k.hours * 3600)) AS end_time, k.hours,
+              k.customer_name, k.customer_phone, k.guests, k.preorder_total, k.deposit_amount,
+              k.deposit_received_at, k.status, k.bill_id,
+              TIMESTAMPDIFF(MINUTE, TIMESTAMP(k.booking_date, k.start_time), NOW()) AS minutes_late
+       FROM vip_bookings k JOIN vip_rooms v ON v.id = k.vip_room_id
+       WHERE k.booking_date = CURDATE()
+       ORDER BY k.start_time, v.name`),
+    queryOne('SELECT CURDATE() AS d'),
+  ]);
+  const hourOf = (t) => Number(t.slice(0, 2)) + Number(t.slice(3, 5)) / 60;
+  const byStatus = { pending_deposit: 0, confirmed: 0, arrived: 0, no_show: 0, cancelled: 0 };
+  for (const k of bookings) byStatus[k.status]++;
+
+  // 1 การจอง = 1 แถว · late = ถึงเวลาแล้วแต่ยังไม่ได้กด "มาถึง" · no_deposit = ยังไม่รับมัดจำ
+  const followUp = bookings
+    .map((k) => ({
+      booking_id: k.id, room_name: k.room_name, start_time: k.start_time, customer_name: k.customer_name,
+      customer_phone: k.customer_phone, guests: k.guests, status: k.status, deposit_amount: k.deposit_amount,
+      no_deposit: k.status === 'pending_deposit',
+      late: ['pending_deposit', 'confirmed'].includes(k.status) && k.minutes_late > 0,
+      minutes_late: Number(k.minutes_late),
+      can_no_show: ['pending_deposit', 'confirmed'].includes(k.status) && k.minutes_late >= NO_SHOW_AFTER_MIN,
+    }))
+    .filter((f) => f.late || f.no_deposit)
+    .sort((a, b) => (a.late === b.late ? a.start_time.localeCompare(b.start_time) : a.late ? -1 : 1));
+
+  return {
+    date: today.d,
+    open_hour: Math.floor(hourOf(s.morning_open)),
+    close_hour: Math.ceil(hourOf(s.evening_close > s.morning_close ? s.evening_close : s.morning_close)),
+    closed_ranges: s.evening_open > s.morning_close ? [{ from: hourOf(s.morning_close), to: hourOf(s.evening_open) }] : [],
+    rooms: vipRooms.items.map((r) => ({ id: r.id, name: r.name })),
+    bookings: bookings.map((k) => ({ ...k, minutes_late: Number(k.minutes_late) })),
+    by_status: byStatus,
+    follow_up: followUp,
+  };
+}
+
 /** พนักงานที่บัญชียังใช้งาน + เวลาล็อกอินล่าสุด (จาก activity_logs) */
 async function loadActiveStaff() {
   return query(
@@ -183,6 +239,7 @@ router.get('/', requireRole(['manager', 'owner']), handle(async (req, res) => {
     loadOpenBills(), loadUnavailableMenus(), loadActiveStaff(),
     loadMenusByCategory(), loadBillsByHour(),
   ]);
+  const vipToday = await loadVipToday(vipRooms);
   return ok(res, {
     shop: { shift, is_open: shift !== null, is_order_open: orderOpen },
     tables,
@@ -193,6 +250,7 @@ router.get('/', requireRole(['manager', 'owner']), handle(async (req, res) => {
     tables_by_zone: tablesByZone(tables, vipRooms),
     menus_by_category: menusByCategory,
     bills_by_hour: billsByHour,
+    vip_today: vipToday,
     generated_at: nowDateTime(),
   });
 }));
