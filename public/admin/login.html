@@ -1,38 +1,88 @@
 <!doctype html>
-<!-- หน้าล็อกอินชั่วคราว (ทำไว้ให้ทีมใช้ทดสอบได้ก่อน) — คนที่ 2 แก้ทับไฟล์นี้ได้เลยตอนทำเฟส 1 -->
+<!-- หน้าล็อกอินพนักงาน (คนที่ 2 · แก้ตาม Feedback เฟส 1)
+     ใช้ CSS ของหน้า member (loginMember.css) ซ้ำ ไม่แก้ไฟล์นั้น · ฟอร์มอยู่ซ้าย แบรนด์อยู่ขวา เพื่อให้ต่างจากหน้า member -->
 <html lang="th">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>เข้าสู่ระบบพนักงาน · นึ่งสุข</title>
-  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/assets/css/loginMember.css">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-  <div class="container" style="max-width:420px;margin-top:48px">
-    <div class="card stack">
-      <a class="logo" href="/"><span class="logo-mark logo-img"><img src="/assets/img/logo_rantimsum.png" alt="นึ่งสุข"></span><span class="logo-text">นึ่งสุข</span></a>
-      <h2>เข้าสู่ระบบพนักงาน</h2>
-      <div class="alert alert-bad hidden" id="err"></div>
-      <form id="form" class="stack">
-        <div class="field"><label>ชื่อล็อกอิน</label><input class="input" name="username" autocomplete="username" required></div>
-        <div class="field"><label>รหัสผ่าน</label><input class="input" type="password" name="password" autocomplete="current-password" required></div>
-        <button class="btn btn-block" type="submit">เข้าสู่ระบบ</button>
-      </form>
-    </div>
-  </div>
+<body class="auth-page">
+  <main class="login-container">
+    <!-- register-card = ให้จอเล็ก (< 700px) แสดงรูปแบรนด์ก่อนฟอร์ม -->
+    <section class="auth-card register-card">
+
+      <!-- ซ้าย: ฟอร์ม -->
+      <section class="auth-form-panel">
+        <form class="auth-form" id="form">
+          <p class="form-eyebrow">สำหรับพนักงานเท่านั้น</p>
+          <h2>เข้าสู่ระบบพนักงาน</h2>
+          <p class="subtitle">กรอกชื่อล็อกอินและรหัสผ่านที่เจ้าของร้านตั้งให้</p>
+
+          <label for="username">ชื่อล็อกอิน</label>
+          <input id="username" name="username" autocomplete="username" placeholder="เช่น somchai" required>
+
+          <label for="pw">รหัสผ่าน</label>
+          <input id="pw" type="password" name="password" autocomplete="current-password" placeholder="กรอกรหัสผ่าน" required>
+
+          <p class="form-message" id="err" role="alert"></p>
+          <button type="submit" id="submitBtn">เข้าสู่ระบบ</button>
+          <button class="text-button" type="button" id="togglePw">แสดงรหัสผ่าน</button>
+
+          <p class="auth-footer">ลืมรหัสผ่าน? ติดต่อเจ้าของร้านเพื่อรีเซ็ต</p>
+        </form>
+      </section>
+
+      <!-- ขวา: แบรนด์ -->
+      <aside class="auth-visual">
+        <a class="auth-home" href="/" aria-label="กลับหน้าร้าน">
+          <img src="/assets/img/logo_rantimsum.png" alt="">
+          <span>นึ่งสุข</span>
+        </a>
+        <div class="visual-copy">
+          <p class="visual-eyebrow">NUENG SUK STAFF</p>
+          <h1>ระบบหลังร้าน<br>นึ่งสุข</h1>
+          <p>จัดการโต๊ะ ออเดอร์ และงานประจำวันของร้านในที่เดียว</p>
+        </div>
+        <div class="visual-action">
+          <span>เป็นลูกค้าของร้าน?</span>
+          <a href="/">กลับหน้าร้าน</a>
+        </div>
+      </aside>
+
+    </section>
+  </main>
+
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/layout.js"></script>
   <script>
+    // ปุ่มแสดง/ซ่อนรหัสผ่าน
+    document.getElementById('togglePw').onclick = (e) => {
+      const pw = document.getElementById('pw');
+      const show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      e.target.textContent = show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน';
+    };
+
+    // ล็อกอิน (ตรรกะเดิม) — Enter ส่งได้จาก <form>
     document.getElementById('form').onsubmit = async (e) => {
       e.preventDefault();
       const f = new FormData(e.target);
       const err = document.getElementById('err');
+      const btn = document.getElementById('submitBtn');
+      err.textContent = '';
+      btn.disabled = true;
+      btn.textContent = 'กำลังเข้าสู่ระบบ...';
       try {
         const user = await api.post('auth', { action: 'login', username: f.get('username'), password: f.get('password') });
         location.href = '/admin/' + (HOME_BY_ROLE[user.role_code] || 'dashboard.html');
       } catch (ex) {
-        err.textContent = ex.message;
-        err.classList.remove('hidden');
+        // เชื่อมต่อไม่ได้ → ข้อความชัดเจน และไม่ล้างช่องกรอก
+        err.textContent = ex.message === 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง' : ex.message;
+        btn.disabled = false;
+        btn.textContent = 'เข้าสู่ระบบ';
       }
     };
   </script>
