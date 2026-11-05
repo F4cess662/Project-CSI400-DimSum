@@ -64,11 +64,11 @@
         rowsEl.innerHTML = '<tr><td colspan="3" class="loading">กำลังโหลดข้อมูล...</td></tr>';
         const data = await run(() => api.get('holidays', { year: yearSelect.value }));
         if (!data) {
-          rowsEl.innerHTML = '<tr><td colspan="3"><div class="empty"><div class="empty-icon">⚠️</div>โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่</div></td></tr>';
+          rowsEl.innerHTML = '<tr><td colspan="3"><div class="empty"><div class="empty-icon"><i data-icon="alert"></i></div>โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่</div></td></tr>';
           return;
         }
         if (!data.length) {
-          rowsEl.innerHTML = '<tr><td colspan="3"><div class="empty"><div class="empty-icon">📅</div>ยังไม่มีวันหยุดในปีนี้</div></td></tr>';
+          rowsEl.innerHTML = '<tr><td colspan="3"><div class="empty"><div class="empty-icon"><i data-icon="calendar"></i></div>ยังไม่มีวันหยุดในปีนี้</div></td></tr>';
           return;
         }
         rowsEl.innerHTML = data.map((item) => `

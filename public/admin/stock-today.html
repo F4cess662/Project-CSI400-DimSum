@@ -15,24 +15,24 @@
     <!-- การ์ดสรุป 3 ใบ -->
     <div class="grid grid-3 section">
       <div class="card stat">
-        <div class="stat-icon" style="background:var(--ok-bg); color:var(--ok)">🥟</div>
+        <div class="stat-icon" style="background:var(--ok-bg); color:var(--ok)"><i data-icon="dumpling"></i></div>
         <div>
           <div class="stat-value" id="statOkCount">0</div>
           <div class="stat-label">พร้อมขายปกติ (รายการ)</div>
         </div>
       </div>
       <div class="card stat">
-        <div class="stat-icon" style="background:var(--wait-bg); color:var(--wait)">⚠️</div>
+        <div class="stat-icon" style="background:var(--wait-bg); color:var(--wait)"><i data-icon="alert"></i></div>
         <div>
           <div class="stat-value" id="statLowCount">0</div>
           <div class="stat-label">ใกล้หมด ≤ 1 ล็อต (รายการ)</div>
         </div>
       </div>
       <div class="card stat">
-        <div class="stat-icon" style="background:var(--bad-bg); color:var(--bad)">⛔</div>
+        <div class="stat-icon" style="background:var(--bad-bg); color:var(--bad)"><i data-icon="ban"></i></div>
         <div>
           <div class="stat-value" id="statOutCount">0</div>
-          <div class="stat-label">หมด / ปิดขาย (รายการ)</div>
+          <div class="stat-label">หมด · ปิดขาย (รายการ)</div>
         </div>
       </div>
     </div>
@@ -84,7 +84,7 @@
   <script>
 /* =========================================================
    public/assets/js/stock-today.js — หน้าจำนวนพร้อมขาย + เติมล็อตตามหน่วยเมนู
-   เมื่อคงเหลือถึง 0 ระบบปิดขายทันทีอัตโนมัติ จนกว่าจะเติมของใหม่
+   คงเหลือ 0 = "หมดชั่วคราว" ลูกค้ายังสั่งได้ (รอนานขึ้น) · ปิดขาย = "หมด" ต้องกดสวิตช์เอง
    ========================================================= */
 (async () => {
   const me = await initStaffPage({
@@ -134,7 +134,7 @@
     menus.forEach((m) => {
       const qty = Number(m.available_qty || 0);
       const lotSize = Number(m.lot_size || 1);
-      if (!m.is_available || qty <= 0) outCount += 1;
+      if (!m.is_available) outCount += 1; // หมดชั่วคราวนับเป็นใกล้หมด
       else if (qty <= lotSize) lowCount += 1;
       else okCount += 1;
     });
@@ -146,7 +146,7 @@
     if (!menus.length) {
       stockRowsEl.innerHTML = `
         <tr><td colspan="8">
-          <div class="empty"><div class="empty-icon">🥟</div>ไม่พบรายการเมนูที่ค้นหา</div>
+          <div class="empty"><div class="empty-icon"><i data-icon="dumpling"></i></div>ไม่พบรายการเมนูที่ค้นหา</div>
         </td></tr>`;
       return;
     }
@@ -155,12 +155,12 @@
       const qty = Number(m.available_qty || 0);
       const lotSize = Number(m.lot_size || 1);
       const unit = fmt.esc(m.unit || 'เข่ง');
-      const isOut = !m.is_available || qty <= 0;
+      const isOut = !m.is_available;
       const isLow = !isOut && qty <= lotSize;
 
       let statusBadge = badge('ok', 'พร้อมขาย');
-      if (qty <= 0) statusBadge = badge('soldout', 'หมด (ปิดขาย)');
-      else if (!m.is_available) statusBadge = badge('inactive', 'ปิดขายชั่วคราว');
+      if (!m.is_available) statusBadge = badge('soldout', 'หมด (ปิดขาย)');
+      else if (m.available_qty != null && qty <= 0) statusBadge = badge('temp_out', 'หมดชั่วคราว');
       else if (isLow) statusBadge = badge('low', 'ใกล้หมด');
 
       return `
@@ -192,7 +192,7 @@
           </td>
           <td>
             <label class="switch">
-              <input type="checkbox" data-toggle-avail="${m.id}" ${m.is_available && qty > 0 ? 'checked' : ''}>
+              <input type="checkbox" data-toggle-avail="${m.id}" ${m.is_available ? 'checked' : ''}>
               <span></span>
             </label>
           </td>
@@ -211,7 +211,7 @@
             <label for="newStockQty">จำนวนพร้อมขาย (${unit})</label>
             <input class="input" type="number" id="newStockQty" min="0" step="1" required value="${Number(item.available_qty || 0)}">
             <div class="caption muted">
-              ขนาดล็อตของเมนูนี้: 1 ล็อต = ${fmt.num(item.lot_size)} ${unit} · หากใส่ <strong>0</strong> จะปิดขายทันทีจนกว่าจะเติมของใหม่
+              ขนาดล็อตของเมนูนี้: 1 ล็อต = ${fmt.num(item.lot_size)} ${unit} · ใส่ <strong>0</strong> = หมดชั่วคราว (ลูกค้ายังสั่งได้ รอนานขึ้น) · ถ้าจะหยุดขายให้กดสวิตช์ปิดขาย
             </div>
           </div>
         </form>`,

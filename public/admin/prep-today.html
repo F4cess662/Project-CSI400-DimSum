@@ -14,11 +14,11 @@
     <div class="alert alert-bad hidden" id="svcAlert" style="margin-bottom:16px">ระบบครัวขัดข้อง กำลังเชื่อมต่อใหม่...</div>
 
     <div class="grid grid-3 section">
-      <div class="card stat"><div class="stat-icon">📋</div>
+      <div class="card stat"><div class="stat-icon"><i data-icon="clipboard"></i></div>
         <div><div class="stat-value" id="sTotal">-</div><div class="stat-label">เมนูที่ต้องเตรียม</div></div></div>
-      <div class="card stat"><div class="stat-icon">✅</div>
+      <div class="card stat"><div class="stat-icon"><i data-icon="check"></i></div>
         <div><div class="stat-value" id="sDone">-</div><div class="stat-label">ทำครบตามเป้าแล้ว</div></div></div>
-      <div class="card stat"><div class="stat-icon">📈</div>
+      <div class="card stat"><div class="stat-icon"><i data-icon="trend"></i></div>
         <div><div class="stat-value" id="sPct">-</div><div class="stat-label">ความคืบหน้ารวม</div></div></div>
     </div>
 
@@ -75,10 +75,10 @@
               <div>${r.confirmed_qty === null ? '<span class="badge badge-off">ยอดแนะนำ</span>' : '<span class="badge badge-ok">ยืนยันแล้ว</span>'}</div></td>
             <td class="num">${fmt.num(r.made_qty)}</td>
             <td>${bar(r.made_qty, r.target_qty)}</td>
-            <td class="num">${r.is_available === 0 || r.available_qty === 0 ? badge('soldout')
+            <td class="num">${r.is_available === 0 ? badge('soldout') : r.available_qty !== null && r.available_qty <= 0 ? badge('temp_out')
               : r.available_qty === null ? 'ไม่จำกัด' : `${fmt.num(r.available_qty)} ${fmt.esc(r.unit)}`}</td>
           </tr>`).join('')
-          : `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div>
+          : `<tr><td colspan="6"><div class="empty"><div class="empty-icon"><i data-icon="clipboard"></i></div>
               ยังไม่มีแผนเตรียมของวันนี้<div class="small">ผู้จัดการยืนยันยอดได้ที่หน้า "แผนเตรียมของ"</div></div></td></tr>`;
       }
 

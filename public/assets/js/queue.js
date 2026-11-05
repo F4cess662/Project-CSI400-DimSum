@@ -9,9 +9,9 @@
   if (!me) return;
 
   const GROUPS = [
-    { key: 'bar', title: '🍵 บาร์', sub: '1 คน', prefix: 'A' },
-    { key: 'small', title: '🪑 โต๊ะเล็ก', sub: '2–4 คน', prefix: 'S' },
-    { key: 'large', title: '🍽️ โต๊ะใหญ่', sub: '5–8 คน', prefix: 'L' },
+    { key: 'bar', title: '<i data-icon="cup"></i> บาร์', sub: '1 คน', prefix: 'A' },
+    { key: 'small', title: '<i data-icon="chair"></i> โต๊ะเล็ก', sub: '2–4 คน', prefix: 'S' },
+    { key: 'large', title: '<i data-icon="utensils"></i> โต๊ะใหญ่', sub: '5–8 คน', prefix: 'L' },
   ];
   const TYPE_LABEL = { bar: 'บาร์', small: 'โต๊ะเล็ก', large: 'โต๊ะใหญ่' };
   const $ = (id) => document.getElementById(id);
@@ -28,7 +28,7 @@
         <div class="small muted">ออกบัตร ${fmt.time(t.created_at)} น. · รอ ${fmt.num(t.wait_minutes)} นาที</div>
         <div class="small">${info}</div>
         <div class="row">
-          <button class="btn btn-secondary btn-sm" data-call="${t.id}">📢 ${called ? 'เรียกซ้ำ' : 'เรียก'}</button>
+          <button class="btn btn-secondary btn-sm" data-call="${t.id}"><i data-icon="megaphone"></i> ${called ? 'เรียกซ้ำ' : 'เรียก'}</button>
           <button class="btn btn-sm" data-seat="${t.id}">ให้นั่ง</button>
           <button class="btn btn-ghost btn-sm" data-skip="${t.id}" ${t.can_skip ? '' : 'disabled title="ข้ามได้เมื่อเรียกครบ 3 ครั้ง หรือเรียกครั้งแรกเกิน 5 นาที"'}>ข้าม</button>
         </div>
@@ -42,7 +42,7 @@
     $('cntWait').textContent = `รอ ${all.filter((t) => t.status === 'waiting').length}`;
     $('cntCalled').textContent = `เรียกแล้ว ${all.filter((t) => t.status === 'called').length}`;
     $('closedAlert').innerHTML = data.order_open ? ''
-      : `<div class="alert alert-wait" style="margin-bottom:16px">⏰ ${fmt.esc(data.closed_message || 'ปิดรับออเดอร์แล้ว')} — ออกบัตรคิวใหม่ไม่ได้</div>`;
+      : `<div class="alert alert-wait" style="margin-bottom:16px"><i data-icon="clock"></i> ${fmt.esc(data.closed_message || 'ปิดรับออเดอร์แล้ว')} — ออกบัตรคิวใหม่ไม่ได้</div>`;
     $('issueBtn').disabled = !data.order_open;
 
     $('columns').innerHTML = GROUPS.map((g) => {
@@ -50,7 +50,7 @@
       return `<div class="card">
         <h3 class="card-title">${g.title} <span class="small muted">${g.sub} · ${g.prefix}- · ${list.length} คิว</span></h3>
         ${list.length ? list.map(ticketHtml).join('')
-          : '<div class="empty"><div class="empty-icon">🎫</div>ไม่มีคิวรอ</div>'}
+          : '<div class="empty"><div class="empty-icon"><i data-icon="ticket"></i></div>ไม่มีคิวรอ</div>'}
       </div>`;
     }).join('');
 
@@ -106,7 +106,7 @@
       title: `บัตรคิว ${fmt.esc(t.queue_no)}`,
       body: `<div class="print-area">
           <div class="slip stack" style="text-align:center">
-            <div class="bold">🥟 ${fmt.esc(shop)}</div>
+            <div class="bold"><i data-icon="dumpling"></i> ${fmt.esc(shop)}</div>
             <div class="small">บัตรคิว · ${TYPE_LABEL[t.group_type]}</div>
             <div class="stat-value">${fmt.esc(t.queue_no)}</div>
             <div>${t.party_size} คน · ${fmt.date(t.created_at)} ${fmt.time(t.created_at)} น.</div>
@@ -114,7 +114,7 @@
             <div class="caption muted">กรุณารอเรียกคิว หากเรียกครบ 3 ครั้งแล้วไม่อยู่ คิวจะถูกข้าม</div>
           </div>
         </div>`,
-      footer: `<button class="btn btn-secondary" data-close>ปิด</button><button class="btn" data-print>🖨 พิมพ์บัตรคิว</button>`,
+      footer: `<button class="btn btn-secondary" data-close>ปิด</button><button class="btn" data-print><i data-icon="printer"></i> พิมพ์บัตรคิว</button>`,
     });
     m.el.querySelector('[data-print]').onclick = () => window.print();
   }
@@ -139,7 +139,7 @@
               ${k === t.group_type ? '<span class="badge badge-ok">แนะนำ</span>' : ''}</div>
             <div class="row">${list.map((x) =>
               `<button class="chip" data-table="${x.id}">${fmt.esc(x.code)} · ${x.seats} ที่</button>`).join('')}</div></div>` : '';
-        }).join('') : '<div class="empty"><div class="empty-icon">🪑</div>ตอนนี้ไม่มีโต๊ะว่าง</div>'}
+        }).join('') : '<div class="empty"><div class="empty-icon"><i data-icon="chair"></i></div>ตอนนี้ไม่มีโต๊ะว่าง</div>'}
         <p class="small muted" id="qPicked">เลือกได้มากกว่า 1 โต๊ะ (ต่อโต๊ะ)</p>`,
       footer: `<button class="btn btn-secondary" data-close>ยกเลิก</button><button class="btn" data-ok disabled>เปิดโต๊ะและให้นั่ง</button>`,
     });

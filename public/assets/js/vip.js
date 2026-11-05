@@ -62,7 +62,7 @@
         <td class="num">${b.guests}</td><td class="num">${fmt.baht(b.preorder_total)}</td>
         <td class="num">${fmt.baht(b.deposit_amount)}</td><td>${badge(b.status)}</td>
       </tr>`).join('')
-      : '<tr><td colspan="7"><div class="empty"><div class="empty-icon">📅</div>ยังไม่มีการจองวันนี้</div></td></tr>';
+      : '<tr><td colspan="7"><div class="empty"><div class="empty-icon"><i data-icon="calendar"></i></div>ยังไม่มีการจองวันนี้</div></td></tr>';
     $('listBody').querySelectorAll('[data-id]').forEach((tr) => { tr.onclick = () => select(Number(tr.dataset.id)); });
   }
 
@@ -122,11 +122,11 @@
         ${['no_show', 'cancelled'].includes(bk.status) && bk.deposit_received_at
           ? '<div class="alert alert-wait small">มัดจำไม่คืน (BR-16)</div>' : ''}
         <div class="stack">
-          ${bk.can_confirm_deposit ? btn('confirm', `💰 รับมัดจำ ${fmt.baht(bk.deposit_amount)}`, '') : ''}
-          ${bk.can_arrive ? btn('arrive', '✅ ลูกค้ามาถึง · เปิดห้อง', '') : ''}
-          ${bk.bill && bk.bill.status === 'open' && typeof window.showBillQr === 'function' ? btn('qr', '📱 ดู QR สั่งอาหาร') : ''}
-          ${bk.can_edit_preorder ? btn('edit', '✏️ แก้ pre-order') : ''}
-          ${bk.can_no_show ? btn('no_show', '🚫 ลูกค้าไม่มา', 'btn-danger') : ''}
+          ${bk.can_confirm_deposit ? btn('confirm', `<i data-icon="cash"></i> รับมัดจำ ${fmt.baht(bk.deposit_amount)}`, '') : ''}
+          ${bk.can_arrive ? btn('arrive', '<i data-icon="check"></i> ลูกค้ามาถึง · เปิดห้อง', '') : ''}
+          ${bk.bill && bk.bill.status === 'open' && typeof window.showBillQr === 'function' ? btn('qr', '<i data-icon="phone"></i> ดู QR สั่งอาหาร') : ''}
+          ${bk.can_edit_preorder ? btn('edit', '<i data-icon="edit"></i> แก้ pre-order') : ''}
+          ${bk.can_no_show ? btn('no_show', '<i data-icon="ban"></i> ลูกค้าไม่มา', 'btn-danger') : ''}
           ${bk.can_cancel ? btn('cancel', 'ยกเลิกการจอง', 'btn-ghost') : ''}
         </div>
       </div>`;
@@ -167,7 +167,7 @@
   /* ---------- ตัวเลือก pre-order (ใช้ทั้งจองใหม่และแก้) ---------- */
   function preorderEditor(el, cart, { depositFixed = null } = {}) {
     el.innerHTML = `
-      <div class="field"><input class="input" data-q placeholder="🔍 ค้นหาเมนู เช่น ฮะเก๋า, กุ้ง, ซาลาเปา"></div>
+      <div class="field"><input class="input" data-q placeholder="ค้นหาเมนู เช่น ฮะเก๋า, กุ้ง, ซาลาเปา"></div>
       <div class="tabs-scroll" data-cats></div>
       <div class="grid grid-2" style="margin-top:12px">
         <div class="stack" data-menus><div class="loading">กำลังโหลดเมนู...</div></div>

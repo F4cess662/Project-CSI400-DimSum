@@ -13,9 +13,9 @@
   <template id="page">
     <div class="toolbar">
       <div class="row">
-        <button class="btn btn-secondary btn-sm" id="prevDay">◀</button>
+        <button class="btn btn-secondary btn-sm" id="prevDay"><i data-icon="chevron-left"></i></button>
         <input class="input" id="dayInput" type="date" style="width:180px">
-        <button class="btn btn-secondary btn-sm" id="nextDay">▶</button>
+        <button class="btn btn-secondary btn-sm" id="nextDay"><i data-icon="chevron-right"></i></button>
         <button class="btn btn-ghost btn-sm" id="todayBtn">วันนี้</button>
       </div>
       <button class="btn" id="newBtn">+ จองห้อง VIP</button>
@@ -25,7 +25,7 @@
       <div class="stack">
         <div class="card">
           <div class="row-between">
-            <h3 class="card-title">👑 ตารางห้อง × ชั่วโมง</h3>
+            <h3 class="card-title"><i data-icon="crown"></i> ตารางห้อง × ชั่วโมง</h3>
             <div class="row small" id="legend"></div>
           </div>
           <div class="table-wrap">
@@ -37,7 +37,7 @@
         </div>
 
         <div class="card">
-          <h3 class="card-title">📋 การจองของวัน</h3>
+          <h3 class="card-title"><i data-icon="clipboard"></i> การจองของวัน</h3>
           <div class="table-wrap">
             <table class="table">
               <thead><tr><th>เวลา</th><th>ห้อง</th><th>ลูกค้า</th><th class="num">คน</th><th class="num">pre-order</th><th class="num">มัดจำ</th><th>สถานะ</th></tr></thead>
@@ -48,7 +48,7 @@
       </div>
 
       <aside class="side-panel" id="panel">
-        <div class="empty"><div class="empty-icon">👑</div>เลือกการจองจากตาราง หรือกดช่องว่างเพื่อจองใหม่</div>
+        <div class="empty"><div class="empty-icon"><i data-icon="crown"></i></div>เลือกการจองจากตาราง หรือกดช่องว่างเพื่อจองใหม่</div>
       </aside>
     </div>
   </template>

@@ -69,10 +69,10 @@ async function loadOpenBills() {
 }
 
 /**
- * เงื่อนไข "ขายไม่ได้" ใช้ร่วมกันระหว่างรายการเมนูปิดขายกับกราฟตามหมวด: ปิดขาย หรือจำนวนพร้อมขายเหลือ 0
- * available_qty = NULL คือไม่จำกัดจำนวน (COALESCE กันผลเป็น NULL ซึ่งจะทำให้ SUM ไม่นับเมนูนั้น)
+ * เงื่อนไข "หมด" (ขายไม่ได้) = เชฟ/ผู้จัดการกดปิดขาย
+ * จำนวนพร้อมขายเหลือ 0 แต่ยังเปิดขาย = "หมดชั่วคราว" ลูกค้ายังสั่งได้ (นับเป็นใกล้หมด · temp_out = true)
  */
-const SOLDOUT_SQL = '(m.is_available = 0 OR COALESCE(m.available_qty, 1) = 0)';
+const SOLDOUT_SQL = '(m.is_available = 0)';
 
 /** เมนูที่ขายไม่ได้ตอนนี้ (ไม่รวมเมนูที่ลบแล้ว) */
 async function loadUnavailableMenus() {
@@ -88,7 +88,7 @@ async function loadUnavailableMenus() {
  * การ์ดสถานะเมนูวันนี้ตามหมวด (หมวดที่ใช้งาน เรียงตาม sort_order · เมนูเรียงตามชื่อ · ไม่รวมเมนูที่ลบแล้ว)
  * → [{ category_id, category, sort_order, total, available, soldout, low,
  *      menus: [{ id, name, unit, available_qty, lot_size, state }] }]
- * state: 'soldout' = ปิดขายหรือเหลือ 0 · 'low' = ยังขายได้แต่เหลือไม่เกิน 1 ล็อต (เกณฑ์เดียวกับหน้าจำนวนพร้อมขาย) · 'ok'
+ * state: 'soldout' = ปิดขาย (หมด) · 'low' = ยังขายได้แต่เหลือไม่เกิน 1 ล็อต หรือหมดชั่วคราว (temp_out) · 'ok'
  * available = total - soldout (นับเมนูใกล้หมดเป็นพร้อมขาย)
  */
 async function loadMenusByCategory() {
@@ -114,7 +114,8 @@ async function loadMenusByCategory() {
     c.total++;
     if (state === 'soldout') c.soldout++;
     if (state === 'low') c.low++;
-    c.menus.push({ id: r.id, name: r.name, unit: r.unit, available_qty: r.available_qty, lot_size: r.lot_size, state });
+    const tempOut = state === 'low' && r.available_qty <= 0; // เหลือ 0 แต่ยังเปิดขาย
+    c.menus.push({ id: r.id, name: r.name, unit: r.unit, available_qty: r.available_qty, lot_size: r.lot_size, state, temp_out: tempOut });
   }
   return [...byCategory.values()].map((c) => ({ ...c, available: c.total - c.soldout }));
 }

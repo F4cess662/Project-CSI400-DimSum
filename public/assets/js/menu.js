@@ -1,6 +1,10 @@
-const API = '/api/menu';
+// สแกน QR ที่โต๊ะ → /customer/menu.html?token=<qr_token ของบิล>
+// token บอกว่าเป็นบิลไหน โต๊ะไหน · ใช้ token เดิมสั่งอาหาร ดูประวัติ ยกเลิกรอบที่ยังไม่เริ่มทำ
+const PUBLIC_API = '/api/public';
 const ORDER_API = '/api/orders';
-const MAX_QTY = 10; // สั่งได้สูงสุดต่อเมนู ต่อรอบ
+let MAX_QTY = 10; // สั่งได้สูงสุดต่อเมนู ต่อรอบ (อ่านจากตั้งค่าร้าน)
+// sale_status จาก API: 'available' ปกติ · 'slow' หมดชั่วคราว ยังสั่งได้ · 'closed' หมด (is_sold_out = 1) สั่งไม่ได้
+const SLOW_NOTE = 'ใช้เวลาเตรียมอาหารนานกว่าปกติ 5–10 นาที';
 
 // หน่วยตามหมวด (ถ้า API ส่ง m.unit มาจะใช้ค่านั้นก่อน)
 const UNIT_BY_CAT = {
@@ -18,14 +22,28 @@ let allItems = [];
 let activeCat = 'all';
 let searchText = '';
 const cart = new Map();
-const tableNo = new URLSearchParams(location.search).get('table') || localStorage.getItem('tableNo') || '-';
+const token = new URLSearchParams(location.search).get('token') || '';
+let blocked = '';         // ข้อความเมื่อสั่งไม่ได้ (ไม่มี token / บิลปิด / ปิดรับออเดอร์)
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const getJson = url => fetch(url).then(r => r.json());
+
+async function loadMenu() {
+    if (!token) { blocked = 'กรุณาสแกน QR ที่โต๊ะเพื่อสั่งอาหาร'; return; }
+    try {
+        const res = await getJson(`${PUBLIC_API}?action=menu&token=${encodeURIComponent(token)}`);
+        if (!res.success) { blocked = res.message; return; }
+        const d = res.data;
+        $('tableNo').textContent = d.bill.place;
+        MAX_QTY = d.max_qty || MAX_QTY;
+        blocked = d.order_open ? '' : (d.closed_message || 'ปิดรับออเดอร์แล้ว');
+        allItems = d.menus;
+    } catch (e) { blocked = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'; }
+}
 
 async function init() {
-    $('tableNo').textContent = tableNo;
     tickClock(); setInterval(tickClock, 30000);
-    const res = await fetch(API).then(r => r.json());
-    if (!res.success) return;
-    allItems = res.data;
+    await loadMenu();
     renderTabs(); renderMenu(); renderCart();
 }
 
@@ -53,6 +71,7 @@ function renderMenu() {
         (activeCat === 'all' || String(m.category_id) === String(activeCat)) &&
         (!searchText || m.name.toLowerCase().includes(searchText))
     );
+    if (!allItems.length && blocked) { $('menuGrid').innerHTML = `<div class="empty">${esc(blocked)}</div>`; return; }
     if (!items.length) { $('menuGrid').innerHTML = '<div class="empty">ไม่พบเมนูที่ค้นหา</div>'; return; }
 
     $('menuGrid').innerHTML = items.map(m => {
@@ -66,6 +85,7 @@ function renderMenu() {
       <div class="body">
         <div class="name">${m.name}</div>
         <div class="price">${Number(m.price).toLocaleString()} บาท <span class="unit">/ ${unitOf(m)}</span></div>
+        ${m.sale_status === 'slow' ? `<div class="slow-note">${SLOW_NOTE}</div>` : ''}
         ${stepper(id, q, m.is_sold_out)}
       </div>
     </div>`;
@@ -99,7 +119,8 @@ function renderCart() {
 
     $('cartCount').textContent = $('cartCount2').textContent = rows.length;
     $('cartTotal').textContent = total.toLocaleString() + ' บาท';
-    $('confirmBtn').disabled = !rows.length;
+    $('confirmBtn').disabled = !rows.length || !!blocked;
+    $('confirmBtn').title = blocked;
 
     $('cartList').innerHTML = rows.length ? rows.map(({ m, q }) => `
     <div class="cart-item">
@@ -116,52 +137,86 @@ function renderCart() {
     </div>`).join('') : '<div class="cart-empty">ยังไม่มีรายการอาหาร</div>';
 }
 
+const postOrder = body => fetch(ORDER_API, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+}).then(r => r.json());
+
 async function confirmOrder() {
+    if (blocked) return alert(blocked);
     const items = [...cart]
         .filter(([id]) => !allItems.find(x => idOf(x) === id)?.is_sold_out)   // กันเมนูที่เพิ่งหมด
-        .map(([menu_id, quantity]) => ({ menu_id, quantity: Math.min(quantity, MAX_QTY) }));
+        .map(([menu_item_id, qty]) => ({ menu_item_id, qty: Math.min(qty, MAX_QTY) }));
     if (!items.length) return;
+    $('confirmBtn').disabled = true;
     try {
-        const res = await fetch(ORDER_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ table_no: tableNo, items })
-        }).then(r => r.json());
-        if (res.success) { alert('สั่งอาหารเรียบร้อย'); clearCart(); }
-        else alert(res.message || 'สั่งอาหารไม่สำเร็จ');
+        const res = await postOrder({ action: 'create', token, items });
+        if (res.success) {
+            const slow = res.data.slow_items || [];
+            alert(`สั่งอาหารรอบที่ ${res.data.round_no} เรียบร้อย`
+                + (slow.length ? `\n${slow.join(', ')} ${SLOW_NOTE}` : '')
+                + `\nกดดูสถานะได้ที่ "ประวัติการสั่งอาหาร"`);
+            cart.clear();
+        } else alert(res.message || 'สั่งอาหารไม่สำเร็จ');
     } catch (e) { alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'); }
+    await loadMenu();            // จำนวนพร้อมขายเปลี่ยน
+    renderMenu(); renderCart();
 }
 
 init();
 
-const STATUS_TH = { pending: 'รอทำ', cooking: 'กำลังทำ', served: 'เสิร์ฟแล้ว', done: 'เสร็จสิ้น', cancelled: 'ยกเลิก' };
+const STATUS_TH = { waiting: 'รอทำ', cooking: 'กำลังทำ', ready: 'พร้อมเสิร์ฟ', done: 'เสิร์ฟแล้ว', cancelled: 'ยกเลิก' };
+const STATUS_COLOR = { waiting: '#9a6b00', cooking: '#c25e00', ready: '#1f6feb', done: '#2e7d32', cancelled: '#9e9e9e' };
+const CANCEL_TH = { customer: 'ลูกค้ายกเลิก', out_of_stock: 'วัตถุดิบหมด', spoiled: 'ของเสีย', other: 'อื่น ๆ' };
+const pill = st => `<b style="font-size:15px;color:${STATUS_COLOR[st] || '#666'}">${STATUS_TH[st] || esc(st)}</b>`;
+const hhmm = d => new Date(String(d).replace(' ', 'T')).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
 
+/** ประวัติทุกรอบของบิลนี้ + สถานะแต่ละรายการ (ใหม่สุดอยู่บน) */
 async function openHistory() {
     $('historyModal').hidden = false;
     const box = $('historyList');
     box.innerHTML = '<div class="cart-empty">กำลังโหลด...</div>';
+    if (!token) { box.innerHTML = '<div class="cart-empty">กรุณาสแกน QR ที่โต๊ะ</div>'; return; }
     try {
-        const res = await fetch(`${ORDER_API}?table_no=${encodeURIComponent(tableNo)}`).then(r => r.json());
-        if (!res.success || !res.data.length) {
-            box.innerHTML = '<div class="cart-empty">ยังไม่มีประวัติการสั่งอาหาร</div>';
-            return;
-        }
-        box.innerHTML = res.data.map(o => `
-      <div class="order">
+        const res = await getJson(`${PUBLIC_API}?action=bill_status&token=${encodeURIComponent(token)}`);
+        if (!res.success) { box.innerHTML = `<div class="cart-empty">${esc(res.message)}</div>`; return; }
+        const d = res.data;
+        if (!d.orders.length) { box.innerHTML = '<div class="cart-empty">ยังไม่มีประวัติการสั่งอาหาร</div>'; return; }
+        box.innerHTML = d.orders.slice().reverse().map(o => `
+      <div class="order" ${o.cancelled_at ? 'style="opacity:.6"' : ''}>
         <div class="order-head">
-          <span>ออเดอร์ #${o.order_id ?? o.id}</span>
-          <span class="status">${STATUS_TH[o.status] || o.status || '-'}</span>
+          <span>รอบที่ ${o.round_no} · ${hhmm(o.created_at)} น.${o.source === 'staff' ? ' · พนักงานสั่งให้' : ''}</span>
+          <span class="status">${o.cancelled_at ? 'ยกเลิกแล้ว' : ''}</span>
         </div>
-        ${(o.items || []).map(i => `
+        ${o.items.map(i => `
           <div class="order-row">
-            <span>${i.name} x ${i.quantity}</span>
-            <span>${(i.price * i.quantity).toLocaleString()} บาท</span>
+            <span>${esc(i.name)} x ${i.status === 'cancelled' ? i.qty : i.qty - i.cancelled_qty} ${esc(i.unit)}
+              ${i.cancelled_qty && i.status !== 'cancelled' ? `<small>(ยกเลิก ${i.cancelled_qty})</small>` : ''}
+              ${i.status === 'cancelled' && i.cancel_reason && i.cancel_reason !== 'customer'
+                ? `<br><small style="color:#c62828">ร้านยกเลิก: ${CANCEL_TH[i.cancel_reason] || ''}${i.cancel_note ? ' · ' + esc(i.cancel_note) : ''}</small>` : ''}</span>
+            <span style="text-align:right">${pill(i.status)}<br><small>${i.amount.toLocaleString()} บาท</small></span>
           </div>`).join('')}
-        <div class="order-total">รวม ${Number(o.total ?? 0).toLocaleString()} บาท</div>
-      </div>`).join('');
+        <div class="order-total">
+          ${o.can_cancel ? `<button class="clear-btn" style="float:left" onclick="cancelRound(${o.id}, ${o.round_no})">ยกเลิกรอบนี้</button>` : ''}
+          รวม ${Number(o.total).toLocaleString()} บาท
+        </div>
+      </div>`).join('') + `
+      <div class="order-total">
+        ${d.pending_items ? `รออีก ${d.pending_items} รายการ · ` : ''}ยอดรวมทั้งบิล ${Number(d.total).toLocaleString()} บาท
+      </div>`;
     } catch (e) {
         box.innerHTML = '<div class="cart-empty">เชื่อมต่อเซิร์ฟเวอร์ไม่ได้</div>';
     }
+}
+
+/** ยกเลิกทั้งรอบ ได้เฉพาะตอนครัวยังไม่เริ่มทำ (BR-07) */
+async function cancelRound(orderId, roundNo) {
+    if (!confirm(`ยกเลิกออเดอร์รอบที่ ${roundNo}?`)) return;
+    try {
+        const res = await postOrder({ action: 'cancel', token, order_id: orderId });
+        alert(res.success ? `ยกเลิกรอบที่ ${roundNo} แล้ว` : (res.message || 'ยกเลิกไม่สำเร็จ'));
+    } catch (e) { alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'); }
+    openHistory();
+    await loadMenu(); renderMenu();
 }
 
 function closeHistory() { $('historyModal').hidden = true; }

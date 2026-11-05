@@ -25,7 +25,7 @@
           </select>
         </div>
         <div class="field" style="margin:0"><label for="fNo">เลขบิล</label><input class="input" id="fNo" placeholder="เช่น 015"></div>
-        <button class="btn" id="searchBtn">🔍 ค้นหา</button>
+        <button class="btn" id="searchBtn"><i data-icon="search"></i> ค้นหา</button>
         <button class="btn btn-secondary" id="clearBtn">ล้างตัวกรอง</button>
       </div>
     </div>
@@ -43,7 +43,7 @@
         </div>
       </div>
       <div class="side-panel" id="detail">
-        <div class="empty"><div class="empty-icon">🧾</div>เลือกบิลจากตารางเพื่อดูรายละเอียด</div>
+        <div class="empty"><div class="empty-icon"><i data-icon="receipt"></i></div>เลือกบิลจากตารางเพื่อดูรายละเอียด</div>
       </div>
     </div>
   </template>
@@ -75,8 +75,8 @@
       function sourceText(b) {
         if (!b.rounds) return '<span class="muted">-</span>';
         const parts = [];
-        if (b.qr_rounds) parts.push(`📱 QR ${b.qr_rounds} รอบ`);
-        if (b.staff_names) parts.push(`🧑‍💼 ${fmt.esc(b.staff_names)}`);
+        if (b.qr_rounds) parts.push(`<i data-icon="phone"></i> QR ${b.qr_rounds} รอบ`);
+        if (b.staff_names) parts.push(`<i data-icon="user"></i> ${fmt.esc(b.staff_names)}`);
         return `<span class="small">${parts.join('<br>') || fmt.num(b.rounds) + ' รอบ'}</span>`;
       }
 
@@ -106,7 +106,7 @@
               <div class="caption muted">${b.payment_method ? PAY[b.payment_method] : ''}</div></td>
             <td>${statusBadge(b)}</td>
           </tr>`).join('')
-          : `<tr><td colspan="7"><div class="empty"><div class="empty-icon">🧾</div>ไม่พบบิลตามเงื่อนไข</div></td></tr>`;
+          : `<tr><td colspan="7"><div class="empty"><div class="empty-icon"><i data-icon="receipt"></i></div>ไม่พบบิลตามเงื่อนไข</div></td></tr>`;
         $('rows').querySelectorAll('[data-id]').forEach((tr) => { tr.onclick = () => showDetail(Number(tr.dataset.id)); });
       }
 
@@ -121,9 +121,9 @@
       };
 
       function sourceLabel(o) {
-        if (o.source === 'qr') return '📱 ลูกค้าสั่งผ่าน QR';
-        if (o.source === 'vip_preorder') return '👑 สั่งล่วงหน้า (ห้อง VIP)';
-        return `🧑‍💼 ${fmt.esc(o.created_by_name || 'พนักงาน')} สั่งแทน`;
+        if (o.source === 'qr') return '<i data-icon="phone"></i> ลูกค้าสั่งผ่าน QR';
+        if (o.source === 'vip_preorder') return '<i data-icon="crown"></i> สั่งล่วงหน้า (ห้อง VIP)';
+        return `<i data-icon="user"></i> ${fmt.esc(o.created_by_name || 'พนักงาน')} สั่งแทน`;
       }
 
       async function showDetail(id) {

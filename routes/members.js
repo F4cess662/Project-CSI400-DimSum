@@ -105,6 +105,13 @@ router.post('/session', handle(async (req, res) => {
     logoutMember(req);
     return ok(res, null, 'ออกจากระบบแล้ว');
   }
+  // เช็กก่อนส่ง OTP ว่าเบอร์นี้สมัครแล้วหรือยัง → { exists: true/false }
+  if (action === 'check') {
+    requireFields(req.body, ['phone']);
+    const phone = cleanPhone(req.body.phone);
+    const found = await queryOne('SELECT id FROM members WHERE phone = ?', [phone]);
+    return ok(res, { exists: !!found });
+  }
   if (action !== 'login') throw fail('ไม่รู้จัก action นี้', 400);
 
   requireFields(req.body, ['phone']);

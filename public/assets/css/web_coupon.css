@@ -95,6 +95,19 @@ body {
     border-radius: 16px;
     background: #fffdf8;
     box-shadow: 0 6px 18px rgba(91, 52, 29, 0.09);
+    /* ปุ่มชิดล่างเสมอ การ์ดในแถวเดียวกันปุ่มจึงอยู่ระดับเดียวกัน */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+article.card > button,
+article.card > .coupon-collect {
+    margin-top: auto;
+}
+
+.card > .meta:nth-last-child(2) {
+    margin-bottom: 18px;
 }
 
 .card h3 {

@@ -86,7 +86,7 @@
             <td><div class="row" style="gap:8px;flex-wrap:nowrap">
               <button class="btn btn-secondary btn-sm" data-edit="${u.id}">แก้ไข</button>${action}</div></td></tr>`;
         }).join('')
-          : '<tr><td colspan="7"><div class="empty"><div class="empty-icon">👥</div>ไม่พบพนักงาน</div></td></tr>';
+          : '<tr><td colspan="7"><div class="empty"><div class="empty-icon"><i data-icon="users"></i></div>ไม่พบพนักงาน</div></td></tr>';
 
         rows.querySelectorAll('[data-edit]').forEach((b) => { b.onclick = () => openForm(list.find((x) => x.id === Number(b.dataset.edit))); });
         rows.querySelectorAll('[data-off]').forEach((b) => { b.onclick = () => toggle(Number(b.dataset.off), false); });

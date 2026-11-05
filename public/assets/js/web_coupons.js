@@ -22,6 +22,13 @@ function discountText(coupon) {
   return escapeHtml(coupon.coupon_type);
 }
 
+/** '2027-12-31' → '31 ธ.ค. 2570' (แบบเดียวกับหน้าบัญชีสมาชิก) */
+function thaiDate(value) {
+  const [y, m, d] = String(value).slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return String(value);
+  return new Date(y, m - 1, d).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+}
+
 function renderCoupons(coupons, isLoggedIn) {
   if (!coupons.length) {
     couponList.innerHTML = '<p class="coupon-message">ยังไม่มีคูปองให้เก็บในขณะนี้</p>';
@@ -44,7 +51,7 @@ function renderCoupons(coupons, isLoggedIn) {
         <span class="tag">${escapeHtml(coupon.code)}</span>
         <div class="discount">${discountText(coupon)}</div>
         <p class="meta">ขั้นต่ำ ${Number(coupon.min_spend).toLocaleString("th-TH")} บาท</p>
-        <p class="meta">ใช้ได้ถึง ${escapeHtml(String(coupon.end_date).slice(0, 10))}</p>
+        <p class="meta">ใช้ได้ถึง ${escapeHtml(thaiDate(coupon.end_date))}</p>
         ${time}
         ${memberOnly}
         ${collectControl}
