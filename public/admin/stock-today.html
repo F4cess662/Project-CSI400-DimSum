@@ -151,7 +151,17 @@
       return;
     }
 
-    stockRowsEl.innerHTML = menus.map((m) => {
+    // เรียง: หมด (ปิดขาย) → หมดชั่วคราว (เหลือ 0) → ใกล้หมด (≤ 1 ล็อต) → ปกติ · กลุ่มเดียวกันคงลำดับเดิม
+    const rank = (m) => {
+      const qty = Number(m.available_qty || 0);
+      if (!m.is_available) return 0;
+      if (m.available_qty != null && qty <= 0) return 1;
+      if (m.available_qty != null && qty <= Number(m.lot_size || 1)) return 2;
+      return 3;
+    };
+    const sorted = [...menus].sort((a, b) => rank(a) - rank(b));
+
+    stockRowsEl.innerHTML = sorted.map((m) => {
       const qty = Number(m.available_qty || 0);
       const lotSize = Number(m.lot_size || 1);
       const unit = fmt.esc(m.unit || 'เข่ง');
