@@ -13,8 +13,8 @@
   <template id="page">
     <div class="toolbar">
       <div class="tabs">
-        <button class="tab active" data-tab="tables">🪑 โต๊ะ</button>
-        <button class="tab" data-tab="rooms">👑 ห้อง VIP</button>
+        <button class="tab active" data-tab="tables"><i data-icon="chair"></i> โต๊ะ</button>
+        <button class="tab" data-tab="rooms"><i data-icon="crown"></i> ห้อง VIP</button>
       </div>
       <button class="btn" id="addBtn">+ เพิ่มโต๊ะ</button>
     </div>
@@ -68,7 +68,7 @@
                  <td>${state}</td><td>${btns}</td></tr>`
             : `<tr><td class="bold">${fmt.esc(r.name)}</td><td>${r.seats}</td><td>${state}</td><td>${btns}</td></tr>`;
         }).join('')
-          : `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">🪑</div>ยังไม่มีข้อมูล</div></td></tr>`;
+          : `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon"><i data-icon="chair"></i></div>ยังไม่มีข้อมูล</div></td></tr>`;
 
         rows.querySelectorAll('[data-edit]').forEach((b) => { b.onclick = () => openForm(list.find((x) => x.id === Number(b.dataset.edit))); });
         rows.querySelectorAll('[data-off]').forEach((b) => { b.onclick = () => toggle(Number(b.dataset.off), false); });

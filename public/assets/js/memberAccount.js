@@ -35,10 +35,17 @@ function couponStatus(status) {
   }[status] || ["ไม่พร้อมใช้", "b-off"];
 }
 
+/** ป้ายจำนวนคูปองที่ใช้ได้ข้างเมนู "คูปองของฉัน" · ไม่มีคูปองก็ซ่อนป้าย */
+function setCouponCount(n) {
+  const el = document.getElementById("cc");
+  el.textContent = n || "";
+  el.hidden = !n;
+}
+
 function renderCoupons() {
   const coupons = accountData.coupons;
   const availableCount = coupons.filter((coupon) => coupon.status === "available").length;
-  document.getElementById("cc").textContent = availableCount;
+  setCouponCount(availableCount);
   if (!coupons.length) return '<p class="empty panel">ยังไม่มีคูปองในบัญชี</p>';
 
   return `<div class="grid">${coupons.map((coupon) => {
@@ -130,8 +137,7 @@ async function loadMemberAccount() {
     }
 
     accountData = result.data;
-    document.getElementById("cc").textContent =
-      accountData.coupons.filter((coupon) => coupon.status === "available").length;
+    setCouponCount(accountData.coupons.filter((coupon) => coupon.status === "available").length);
     document.getElementById("memberName").textContent = accountData.member.name;
     document.getElementById("memberPhone").textContent = accountData.member.phone;
     document.getElementById("memberTier").textContent = {

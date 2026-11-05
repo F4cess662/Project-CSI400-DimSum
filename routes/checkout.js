@@ -7,6 +7,8 @@
  *       "member_id":1, "reward_ids":[2], "coupon_code":"WELCOME20"}
  *      → ปิดบิล + โต๊ะว่าง + QR ใช้ไม่ได้ + ตัดแต้ม/บวกแต้ม/ใช้คูปอง + ข้อมูลใบเสร็จ (FR-25–29, 41)
  *        payment_method: cash | promptpay | card · cash_received ส่งเฉพาะเงินสด (ไม่ส่ง = รับพอดี)
+ * POST {"action":"member", "code":"0812345678"}  หรือ  "code":"TS-000005" (รหัสบนบัตรสมาชิก)
+ *      → ค้นสมาชิก {id, name, phone, tier, points_balance}
  * ใช้ได้: staff ที่มีช่องติ๊ก "รับเงิน", ผู้จัดการ, เจ้าของร้าน
  *
  * ลำดับคิด (BR-10): ยอดอาหาร → หักรางวัลแลกแต้ม → หักคูปอง = ยอดชำระ → หักมัดจำห้อง VIP = ยอดที่ต้องจ่าย
@@ -15,7 +17,7 @@
  */
 const router = require('express').Router();
 const config = require('../config');
-const { query, transaction } = require('../lib/db');
+const { query, queryOne, transaction } = require('../lib/db');
 const { ok, fail, requireFields, handle } = require('../lib/response');
 const { mustHavePerm } = require('../lib/auth');
 const { writeLog } = require('../lib/log');
@@ -386,9 +388,27 @@ router.post('/', handle(async (req, res) => {
   switch (b.action) {
     case 'preview': return preview(req, res, b);
     case 'pay': return pay(req, res, b);
+    case 'member': return findMember(req, res, b);
     default: throw fail('ไม่รู้จัก action นี้', 400);
   }
 }));
+
+/** ค้นสมาชิกด้วยเบอร์โทร หรือรหัสบนบัตร TS-000005 (= เลขสมาชิก 6 หลัก) */
+async function findMember(req, res, b) {
+  await mustHavePerm(req, 'payment');
+  const code = String(b.code || '').trim().toUpperCase().replace(/[\s-]/g, '');
+  if (!code) throw fail('กรอกเบอร์โทรหรือรหัสสมาชิก', 422);
+  let m = null;
+  if (/^TS\d+$/.test(code)) {
+    m = await queryOne('SELECT id, name, phone, tier, points_balance FROM members WHERE id = ?', [Number(code.slice(2))]);
+  } else if (/^0\d{9}$/.test(code)) {
+    m = await queryOne('SELECT id, name, phone, tier, points_balance FROM members WHERE phone = ?', [code]);
+  } else {
+    throw fail('กรอกเบอร์โทร 10 หลัก หรือรหัสสมาชิก เช่น TS-000005', 422);
+  }
+  if (!m) throw fail('ไม่พบสมาชิก ' + b.code, 404);
+  return ok(res, m);
+}
 
 /** คำนวณยอดให้ดูก่อน ไม่บันทึก */
 async function preview(req, res, b) {

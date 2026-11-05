@@ -8,7 +8,7 @@
   if (!me) return;
 
   const $ = (id) => document.getElementById(id);
-  const METHOD_TABS = [['cash', '💵 เงินสด'], ['promptpay', '📱 พร้อมเพย์'], ['card', '💳 บัตร']];
+  const METHOD_TABS = [['cash', '<i data-icon="cash"></i> เงินสด'], ['promptpay', '<i data-icon="phone"></i> พร้อมเพย์'], ['card', '<i data-icon="card"></i> บัตร']];
   const state = {
     bills: [],                 // บิลที่เปิดอยู่ทั้งหมด
     selected: new Set(),       // id ของบิลที่เลือก
@@ -41,7 +41,7 @@
     $('billChips').innerHTML = state.bills.length
       ? state.bills.map((b) => `
           <button class="chip ${state.selected.has(b.id) ? 'active' : ''}" data-bill="${b.id}">
-            ${b.vip_room_id ? '👑' : '🍽'} ${fmt.esc(b.place)} · ${fmt.baht(b.total)}
+            ${b.vip_room_id ? '<i data-icon="crown"></i>' : '<i data-icon="utensils"></i>'} ${fmt.esc(b.place)} · ${fmt.baht(b.total)}
           </button>`).join('')
       : '<span class="muted">ไม่มีบิลที่เปิดอยู่</span>';
     $('billChips').querySelectorAll('[data-bill]').forEach((el) => {
@@ -60,7 +60,7 @@
       state.sum = null;
       $('items').innerHTML = '';
       $('memberCard').classList.add('hidden');
-      $('summary').innerHTML = '<div class="empty"><div class="empty-icon">💳</div>เลือกบิลทางซ้ายเพื่อชำระเงิน</div>';
+      $('summary').innerHTML = '<div class="empty"><div class="empty-icon"><i data-icon="card"></i></div>เลือกบิลทางซ้ายเพื่อชำระเงิน</div>';
       return;
     }
     try {
@@ -99,7 +99,7 @@
         <button class="btn btn-ghost btn-sm" id="memberClear">เปลี่ยน / ไม่ใช้สมาชิก</button>
       </div>` : `
       <div class="row" style="gap:8px;flex-wrap:nowrap">
-        <input class="input" id="memberCode" inputmode="numeric" placeholder="เบอร์โทรหรือบาร์โค้ดสมาชิก">
+        <input class="input" id="memberCode" placeholder="เบอร์โทร หรือรหัสสมาชิก TS-000005">
         <button class="btn btn-secondary" id="memberFind">ค้นหา</button>
       </div>
       <div class="caption muted" style="margin-top:6px">ไม่กรอกเบอร์ = ไม่ได้แต้ม (สมาชิกได้ 1 แต้มทุก 100 บาท)</div>`;
@@ -123,7 +123,7 @@
     const chip = (c, from) => `
       <button class="chip ${s.coupon && s.coupon.code === c.code ? 'active' : ''}" data-coupon="${fmt.esc(c.code)}"
               ${c.usable ? '' : 'disabled'} title="${fmt.esc(c.reason || '')}" style="${c.usable ? '' : 'opacity:.5'}">
-        ${from === 'wallet' ? '🎟' : '✨'} ${fmt.esc(c.code)} · ${fmt.esc(c.label)}${c.usable && c.discount ? ` (−${fmt.baht(c.discount)})` : ''}
+        ${from === 'wallet' ? '<i data-icon="ticket"></i>' : '<i data-icon="sparkle"></i>'} ${fmt.esc(c.code)} · ${fmt.esc(c.label)}${c.usable && c.discount ? ` (−${fmt.baht(c.discount)})` : ''}
       </button>`;
     const couponPart = `
       <div>
@@ -178,12 +178,12 @@
     if (cc) cc.onclick = () => { state.coupon = ''; refresh(); };
   }
 
-  /** ค้นสมาชิกด้วยเบอร์หรือบาร์โค้ด (API ของคนที่ 6) */
+  /** ค้นสมาชิกด้วยเบอร์โทร หรือรหัสบนบัตรสมาชิก TS-000005 */
   async function findMember(code) {
     code = String(code || '').trim();
     if (!code) { toast('กรอกเบอร์โทรหรือบาร์โค้ดสมาชิก', 'warn'); return; }
     try {
-      const m = await api.get('members', { action: 'lookup', code });
+      const m = await api.post('checkout', { action: 'member', code });
       state.member = { id: m.id, name: m.name, phone: m.phone };
       state.rewardIds = [];
       toast(`สมาชิก: ${m.name}`);
@@ -203,8 +203,8 @@
           </div>
           <span class="price" style="font-size:20px">${fmt.baht(b.subtotal)}</span>
         </div>
-        ${b.deposit ? `<div class="alert alert-ok" style="margin-bottom:12px">👑 ห้องนี้จองไว้ มัดจำ ${fmt.baht(b.deposit)} หักให้ตอนจ่าย</div>` : ''}
-        ${b.pending_items ? `<div class="alert alert-wait" style="margin-bottom:12px">⏳ ยังไม่เสิร์ฟ ${b.pending_items} รายการ</div>` : ''}
+        ${b.deposit ? `<div class="alert alert-ok" style="margin-bottom:12px"><i data-icon="crown"></i> ห้องนี้จองไว้ มัดจำ ${fmt.baht(b.deposit)} หักให้ตอนจ่าย</div>` : ''}
+        ${b.pending_items ? `<div class="alert alert-wait" style="margin-bottom:12px"><i data-icon="clock"></i> ยังไม่เสิร์ฟ ${b.pending_items} รายการ</div>` : ''}
         ${b.lines.length ? `
           <div class="table-wrap">
             <table class="table">
@@ -230,16 +230,16 @@
     $('summary').innerHTML = `
       <h3>สรุปยอด</h3>
       ${row(s.bills.length > 1 ? `ยอดอาหาร (${s.bills.length} บิล)` : 'ยอดอาหาร', fmt.baht(s.subtotal))}
-      ${s.used_rewards.map((r) => row(`🎁 ${fmt.esc(r.name)} (${fmt.num(r.points_cost)} แต้ม)`, `<span class="text-red">−${fmt.baht(r.discount)}</span>`)).join('')}
-      ${s.coupon ? row(`🎟 คูปอง ${fmt.esc(s.coupon.code)}`, `<span class="text-red">−${fmt.baht(s.discount_coupon)}</span>`) : ''}
+      ${s.used_rewards.map((r) => row(`<i data-icon="gift"></i> ${fmt.esc(r.name)} (${fmt.num(r.points_cost)} แต้ม)`, `<span class="text-red">−${fmt.baht(r.discount)}</span>`)).join('')}
+      ${s.coupon ? row(`<i data-icon="ticket"></i> คูปอง ${fmt.esc(s.coupon.code)}`, `<span class="text-red">−${fmt.baht(s.discount_coupon)}</span>`) : ''}
       ${s.deposit_deducted ? row('<b>ยอดชำระ</b>', `<b>${fmt.baht(s.total)}</b>`) : ''}
-      ${s.deposit_deducted ? row('👑 หักมัดจำห้อง VIP', `<span class="text-red">−${fmt.baht(s.deposit_deducted)}</span>`) : ''}
+      ${s.deposit_deducted ? row('<i data-icon="crown"></i> หักมัดจำห้อง VIP', `<span class="text-red">−${fmt.baht(s.deposit_deducted)}</span>`) : ''}
       <div class="row-between">
         <span class="h3">${s.deposit_deducted ? 'ต้องจ่ายเพิ่ม' : 'ยอดชำระ'}</span>
         <span class="h1 text-red">${fmt.baht(s.amount_due)}</span>
       </div>
       <div class="caption muted">ราคารวม VAT ${fmt.baht(s.vat)} แล้ว</div>
-      ${s.member ? `<div class="alert alert-ok">⭐ ${fmt.esc(s.member.name)} จะได้รับ <b>${fmt.num(s.points_to_earn)} แต้ม</b>
+      ${s.member ? `<div class="alert alert-ok"><i data-icon="star"></i> ${fmt.esc(s.member.name)} จะได้รับ <b>${fmt.num(s.points_to_earn)} แต้ม</b>
         <div class="caption">แต้มหลังจ่าย ${fmt.num(s.member.points_after)} แต้ม</div></div>` : ''}
       <div class="tabs">${METHOD_TABS.map(([k, label]) =>
         `<button class="tab ${state.method === k ? 'active' : ''}" data-method="${k}">${label}</button>`).join('')}</div>
@@ -359,7 +359,7 @@
         <div class="print-area">
           <div class="slip stack" style="gap:6px">
             <div style="text-align:center">
-              <div class="bold" style="font-size:18px">🥟 ${fmt.esc(r.shop_name || 'นึ่งสุข')}</div>
+              <div class="bold" style="font-size:18px"><i data-icon="dumpling"></i> ${fmt.esc(r.shop_name || 'นึ่งสุข')}</div>
               ${r.address ? `<div class="caption">${fmt.esc(r.address)}</div>` : ''}
               ${r.phone ? `<div class="caption">โทร ${fmt.esc(r.phone)}</div>` : ''}
               <div class="bold">ใบเสร็จรับเงิน</div>
@@ -388,12 +388,12 @@
               ${line('ได้รับแต้ม', '+' + fmt.num(r.points_earned) + ' แต้ม')}
               ${line('แต้มคงเหลือ', fmt.num(r.points_balance) + ' แต้ม', true)}` : ''}
             <div class="caption" style="text-align:center">ราคารวม VAT 7% (${fmt.baht(r.vat)}) แล้ว</div>
-            <div class="small" style="text-align:center">ขอบคุณที่ใช้บริการ 🙏</div>
+            <div class="small" style="text-align:center">ขอบคุณที่ใช้บริการ</div>
           </div>
         </div>`,
       footer: `
         <a class="btn btn-secondary" href="/admin/tables.html">กลับผังโต๊ะ</a>
-        <button class="btn" data-print>🖨 พิมพ์ใบเสร็จ</button>`,
+        <button class="btn" data-print><i data-icon="printer"></i> พิมพ์ใบเสร็จ</button>`,
     });
     m.el.querySelector('[data-print]').onclick = () => window.print();
   }

@@ -8,11 +8,32 @@ if (loginParams.get("registered") === "1") {
     alert("สมัครสมาชิกสำเร็จ กรุณายืนยันเบอร์โทรศัพท์เพื่อเข้าสู่ระบบ");
 }
 
-function sendOTP() {
+async function sendOTP() {
     const phone = phoneInput.value.trim();
 
     if (!/^0[0-9]{9}$/.test(phone)) {
         alert("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง 10 หลัก");
+        return;
+    }
+
+    // เบอร์ที่ยังไม่สมัคร ไม่ต้องส่ง OTP
+    try {
+        const response = await fetch("/api/members/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "check", phone }),
+        });
+        const result = await response.json();
+        if (!result.success) {
+            alert(result.message || "ตรวจสอบเบอร์โทรศัพท์ไม่สำเร็จ");
+            return;
+        }
+        if (!result.data.exists) {
+            alert("ยังไม่มีบัญชีนี้ในระบบ กรุณาสมัครสมาชิกก่อนใช้งาน");
+            return;
+        }
+    } catch (error) {
+        alert("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง");
         return;
     }
 

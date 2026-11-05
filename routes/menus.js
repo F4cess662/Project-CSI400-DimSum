@@ -12,9 +12,13 @@
  *   - action: 'delete'        (owner) ซ่อนเมนู (is_deleted = 1)
  *   - action: 'set_available' (head_chef, manager, owner) เปิด/ปิดขาย
  *   - action: 'add_stock'     (head_chef, manager, owner) บวกจำนวนพร้อมขายตามล็อต (lots * lot_size) หรือ qty
- *                             หากเมนูเคยปิดขายเพราะหมด (0) จะเปิดขายให้อัตโนมัติ
  *   - action: 'set_stock'     (head_chef, manager, owner) กำหนดจำนวนพร้อมขายตรงๆ
- *                             หากกำหนดเป็น 0 จะปิดขายทันทีอัตโนมัติ (is_available = 0) จนกว่าจะเติมของใหม่
+ *
+ * สถานะขาย (เหมือนกันทุกหน้า):
+ *   จำนวน > 0 + เปิดขาย = พร้อมขาย
+ *   จำนวน 0  + เปิดขาย = "หมดชั่วคราว" ลูกค้ายังสั่งได้ แค่รอนานขึ้น 5–10 นาที (เติมของแล้วกลับเป็นพร้อมขายเอง)
+ *   ปิดขาย (is_available = 0) = "หมด" สั่งไม่ได้ · ปิด/เปิดขายได้เฉพาะคนกดสวิตช์ (เชฟ ผู้จัดการ เจ้าของ)
+ *   ระบบไม่ปิดขายเองตอนจำนวนเหลือ 0 และเติมของไม่เปิดขายให้เอง
  */
 const router = require('express').Router();
 const path = require('path');
@@ -296,11 +300,6 @@ router.post('/', maybeUpload, handle(async (req, res) => {
       const existing = await queryOne('SELECT * FROM menu_items WHERE id = ? AND is_deleted = 0', [id]);
       if (!existing) throw fail('ไม่พบเมนู', 404);
 
-      // ถ้าจะกดเปิดขาย แต่จำนวนคงเหลือเป็น 0 ให้แจ้งเตือนให้อัปเดตของใหม่ก่อน
-      if (isAvailable === 1 && existing.available_qty !== null && Number(existing.available_qty) <= 0) {
-        throw fail(`ไม่สามารถเปิดขาย "${existing.name}" ได้เนื่องจากจำนวนคงเหลือเป็น 0 ${existing.unit} กรุณาเพิ่มล็อตหรือระบุจำนวนก่อน`, 400);
-      }
-
       await query('UPDATE menu_items SET is_available = ? WHERE id = ?', [isAvailable, id]);
       await writeLog(req, 'menu.set_available', 'menu_items', id, {
         name: existing.name,
@@ -337,8 +336,8 @@ router.post('/', maybeUpload, handle(async (req, res) => {
 
       const oldQty = Number(existing.available_qty || 0);
       const newQty = Math.max(0, oldQty + deltaQty);
-      // กฎธุรกิจ: ถ้าเดิมเป็น 0/ปิดขายเพราะหมด แล้วเติมของใหม่ (> 0) ให้เปิดขายอัตโนมัติ / ถ้าเหลือ 0 ปิดขายทันที
-      const newAvailable = newQty <= 0 ? 0 : 1;
+      // เติมของไม่เปลี่ยนสถานะเปิด/ปิดขาย (จำนวน 0 + เปิดขาย = หมดชั่วคราว ยังสั่งได้)
+      const newAvailable = existing.is_available;
 
       await query(
         'UPDATE menu_items SET available_qty = ?, is_available = ? WHERE id = ?',
@@ -373,14 +372,8 @@ router.post('/', maybeUpload, handle(async (req, res) => {
       if (!existing) throw fail('ไม่พบเมนู', 404);
 
       const oldQty = Number(existing.available_qty || 0);
-      // กฎธุรกิจ: เมื่อถึง 0 ปิดขายทันทีจนกว่าจะมีการอัปเดตของใหม่เข้ามา
-      // และถ้าอัปเดตของใหม่เข้ามา (> 0) จากที่เคยหมด (0) ให้เปิดขายอัตโนมัติ
-      let newAvailable = existing.is_available;
-      if (newQty === 0) {
-        newAvailable = 0;
-      } else if (oldQty <= 0 && newQty > 0) {
-        newAvailable = 1;
-      }
+      // ตั้งจำนวนไม่เปลี่ยนสถานะเปิด/ปิดขาย (ตั้งเป็น 0 = หมดชั่วคราว ยังสั่งได้)
+      const newAvailable = existing.is_available;
 
       await query(
         'UPDATE menu_items SET available_qty = ?, is_available = ? WHERE id = ?',
@@ -398,7 +391,7 @@ router.post('/', maybeUpload, handle(async (req, res) => {
         res,
         { id, available_qty: newQty, is_available: newAvailable, unit: existing.unit },
         newQty === 0
-          ? `อัปเดต "${existing.name}" เป็น 0 ${existing.unit} และปิดขายอัตโนมัติแล้ว`
+          ? `อัปเดต "${existing.name}" เป็น 0 ${existing.unit} (หมดชั่วคราว ลูกค้ายังสั่งได้)`
           : `อัปเดตคงเหลือ "${existing.name}" เป็น ${newQty} ${existing.unit} แล้ว`
       );
     }

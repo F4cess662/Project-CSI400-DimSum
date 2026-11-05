@@ -117,11 +117,11 @@
 
       function getCatEmoji(name = '') {
         const s = String(name);
-        if (s.includes('ทอด')) return '🍤';
-        if (s.includes('จานหลัก') || s.includes('โจ๊ก') || s.includes('เส้น') || s.includes('หมี่')) return '🍜';
-        if (s.includes('เครื่องดื่ม') || s.includes('ชา') || s.includes('น้ำ')) return '🧋';
-        if (s.includes('หวาน') || s.includes('เซ็ต')) return '🍮';
-        return '🥟';
+        if (s.includes('ทอด')) return '<i data-icon="flame"></i>';
+        if (s.includes('จานหลัก') || s.includes('โจ๊ก') || s.includes('เส้น') || s.includes('หมี่')) return '<i data-icon="bowl"></i>';
+        if (s.includes('เครื่องดื่ม') || s.includes('ชา') || s.includes('น้ำ')) return '<i data-icon="cup"></i>';
+        if (s.includes('หวาน') || s.includes('เซ็ต')) return '<i data-icon="cup"></i>';
+        return '<i data-icon="dumpling"></i>';
       }
 
       let categories = [];
@@ -282,7 +282,7 @@
         if (!menus.length) {
           menuGridEl.innerHTML = `
             <div class="card empty" style="grid-column: 1 / -1">
-              <div class="empty-icon">🥟</div>
+              <div class="empty-icon"><i data-icon="dumpling"></i></div>
               <div>ไม่พบรายการเมนูที่ตรงกับเงื่อนไขการค้นหา</div>
             </div>`;
           return;
@@ -291,13 +291,14 @@
         menuGridEl.innerHTML = menus.map((m) => {
           const qty = m.available_qty !== null && m.available_qty !== undefined ? Number(m.available_qty) : 0;
           const lotSize = Number(m.lot_size || 1);
-          const isSoldOut = !m.is_available || qty <= 0;
-          const isLow = !isSoldOut && qty <= lotSize;
+          const isSoldOut = !m.is_available; // หมด = ปิดขาย
+          const isTempOut = !isSoldOut && m.available_qty != null && qty <= 0; // หมดชั่วคราว ยังสั่งได้
+          const isLow = !isSoldOut && !isTempOut && qty <= lotSize;
           const unitText = fmt.esc(m.unit || 'เข่ง');
 
           let stockBadge = `<span class="badge badge-ok">คงเหลือ ${fmt.num(qty)} ${unitText}</span>`;
-          if (qty <= 0) {
-            stockBadge = `<span class="badge badge-bad">หมด (0 ${unitText})</span>`;
+          if (isSoldOut || isTempOut) {
+            stockBadge = isSoldOut ? `<span class="badge badge-bad">หมด (ปิดขาย)</span>` : `<span class="badge badge-wait">หมดชั่วคราว (0 ${unitText})</span>`;
           } else if (isLow) {
             stockBadge = `<span class="badge badge-wait">ใกล้หมด ${fmt.num(qty)} ${unitText}</span>`;
           }
@@ -306,7 +307,7 @@
             <article class="menu-card zone-${fmt.esc(m.kitchen_zone)} zone-border ${isSoldOut ? 'soldout' : ''}" style="padding:16px">
               <div class="menu-img" style="margin:0 0 12px 0">
                 ${menuImage(m)}
-                ${isSoldOut ? badge('soldout', 'หมด') : ''}
+                ${isSoldOut ? badge('soldout', 'หมด') : isTempOut ? badge('temp_out') : ''}
               </div>
 
               <div class="menu-body" style="padding:0">
@@ -355,7 +356,7 @@
                 <div style="display:flex; align-items:center; justify-content:space-between; padding-top:10px">
                   <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; font-weight:600">
                     <span class="switch">
-                      <input type="checkbox" data-toggle-avail="${m.id}" ${m.is_available && qty > 0 ? 'checked' : ''}>
+                      <input type="checkbox" data-toggle-avail="${m.id}" ${m.is_available ? 'checked' : ''}>
                       <span></span>
                     </span>
                     <span>เปิดขาย</span>
@@ -443,7 +444,7 @@
                 <div class="field">
                   <label>รูปเมนู (อัตราส่วน 4:3 · ไม่เกิน 2MB)</label>
                   <div class="menu-img" id="imgPreviewBox" style="margin:0">
-                    ${item ? menuImage(item) : '🥟'}
+                    ${item ? menuImage(item) : '<i data-icon="dumpling"></i>'}
                   </div>
                   <input class="input" type="file" id="menuImgInput" name="image" accept="image/*" style="padding-top:8px">
                 </div>
@@ -715,6 +716,14 @@
         if (!toggle) return;
         const id = Number(toggle.dataset.toggleAvail);
         const isAvailable = toggle.checked ? 1 : 0;
+        // ถามยืนยันก่อน กันนิ้วไปโดนสวิตช์ · กดยกเลิก = สวิตช์กลับที่เดิม
+        const menu = menus.find((x) => Number(x.id) === id);
+        const name = menu ? fmt.esc(menu.name) : 'เมนูนี้';
+        const yes = await confirmModal(isAvailable
+          ? `เปิดขาย <b>${name}</b>?<br><span class="small muted">ลูกค้าจะเห็นและสั่งเมนูนี้ได้</span>`
+          : `ปิดขาย <b>${name}</b>?<br><span class="small muted">ลูกค้าจะเห็นเมนูนี้เป็น "หมด" และสั่งไม่ได้</span>`,
+          isAvailable ? 'เปิดขาย' : 'ปิดขาย', !isAvailable);
+        if (!yes) { toggle.checked = !toggle.checked; return; }
         const res = await run(() => api.post('menus', { action: 'set_available', id, is_available: isAvailable }));
         await loadMenus();
         if (!res) toggle.checked = !toggle.checked;

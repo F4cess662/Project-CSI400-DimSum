@@ -64,7 +64,7 @@
           ? data.queue.map((q) => `<tr><td class="bold">${fmt.esc(q.topic)}</td><td>${fmt.num(q.pending)}</td>
               <td>${fmt.num(q.processing)}</td><td>${fmt.num(q.done)}</td>
               <td>${q.failed ? `<span class="badge badge-bad">${fmt.num(q.failed)}</span>` : 0}</td></tr>`).join('')
-          : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>ยังไม่มีงานในคิว</div></td></tr>`;
+          : `<tr><td colspan="5"><div class="empty"><div class="empty-icon"><i data-icon="inbox"></i></div>ยังไม่มีงานในคิว</div></td></tr>`;
 
         document.querySelectorAll('[data-crash]').forEach((btn) => {
           btn.onclick = async () => {

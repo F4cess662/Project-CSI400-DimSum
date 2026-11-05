@@ -37,7 +37,7 @@
         if (!rows) return;
         document.getElementById('rows').innerHTML = rows.length
           ? rows.map((r) => `<tr><td>${fmt.esc(r.name)}</td><td>${badge(r.is_active ? 'active' : 'inactive')}</td><td></td></tr>`).join('')
-          : `<tr><td colspan="3"><div class="empty"><div class="empty-icon">🥟</div>ยังไม่มีข้อมูล</div></td></tr>`;
+          : `<tr><td colspan="3"><div class="empty"><div class="empty-icon"><i data-icon="dumpling"></i></div>ยังไม่มีข้อมูล</div></td></tr>`;
       }
       document.getElementById('search').oninput = load;
       load();

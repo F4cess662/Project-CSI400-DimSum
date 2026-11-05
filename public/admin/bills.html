@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>บิลที่เปิดอยู่ · นึ่งสุข</title>
   <link rel="stylesheet" href="/assets/css/style.css">
+  <style>
+    /* ตาราง + แผงรายละเอียดด้านขวา (แผงกว้างคงที่ ตารางได้พื้นที่ที่เหลือ) */
+    .bills-split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s5); align-items: start; }
+    @media (max-width: 1023px) { .bills-split { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
   <div id="app"></div>
@@ -15,13 +20,18 @@
       <input class="input" style="max-width:320px" id="search" placeholder="ค้นหาเลขบิลหรือโต๊ะ">
       <span class="small muted" id="count"></span>
     </div>
-    <div class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr><th>เลขบิล</th><th>โต๊ะ</th><th>คน</th><th>เวลาเปิด</th><th>นั่งมาแล้ว</th><th>ยอดปัจจุบัน</th><th>รอบสั่ง</th><th></th></tr>
-        </thead>
-        <tbody id="rows"><tr><td colspan="8" class="loading">กำลังโหลด...</td></tr></tbody>
-      </table>
+    <div class="bills-split">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>เลขบิล</th><th>โต๊ะ</th><th>คน</th><th>เวลาเปิด</th><th>นั่งมาแล้ว</th><th>ยอดปัจจุบัน</th><th>รอบสั่ง</th><th></th></tr>
+          </thead>
+          <tbody id="rows"><tr><td colspan="8" class="loading">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="side-panel" id="detail">
+        <div class="empty"><div class="empty-icon"><i data-icon="receipt"></i></div>กดที่บิลเพื่อดูรายการอาหาร</div>
+      </div>
     </div>
   </template>
 
@@ -35,6 +45,7 @@
       const canPay = ['manager', 'owner'].includes(me.role_code) || me.can_payment === 1;
 
       let bills = [];
+      let current = null; // บิลที่เลือกดูรายละเอียด
       const search = document.getElementById('search');
 
       function draw() {
@@ -45,7 +56,7 @@
         document.getElementById('count').textContent = `ทั้งหมด ${bills.length} บิล`;
         document.getElementById('rows').innerHTML = list.length
           ? list.map((b) => `
-              <tr>
+              <tr data-id="${b.id}" style="cursor:pointer">
                 <td class="bold">${fmt.esc(b.bill_no)}</td>
                 <td>${fmt.esc(b.place)}</td>
                 <td>${fmt.esc(b.guests)}</td>
@@ -55,24 +66,71 @@
                 <td>${fmt.num(b.rounds)}</td>
                 <td>
                   <div class="row" style="gap:8px;flex-wrap:nowrap">
-                    <button class="btn btn-secondary btn-sm" data-qr="${b.id}">🔳 ดู QR</button>
+                    <button class="btn btn-secondary btn-sm" data-qr="${b.id}"><i data-icon="qr"></i> ดู QR</button>
                     ${canPay
-                      ? `<a class="btn btn-sm" href="/admin/checkout.html?bill_id=${b.id}">💳 ชำระเงิน</a>`
-                      : `<button class="btn btn-sm" disabled title="ไม่มีสิทธิ์รับเงิน">💳 ชำระเงิน</button>`}
+                      ? `<a class="btn btn-sm" href="/admin/checkout.html?bill_id=${b.id}"><i data-icon="card"></i> ชำระเงิน</a>`
+                      : `<button class="btn btn-sm" disabled title="ไม่มีสิทธิ์รับเงิน"><i data-icon="card"></i> ชำระเงิน</button>`}
                   </div>
                 </td>
               </tr>`).join('')
-          : `<tr><td colspan="8"><div class="empty"><div class="empty-icon">🥟</div>${q ? 'ไม่พบบิลที่ค้นหา' : 'ยังไม่มีบิลที่เปิดอยู่'}</div></td></tr>`;
+          : `<tr><td colspan="8"><div class="empty"><div class="empty-icon"><i data-icon="dumpling"></i></div>${q ? 'ไม่พบบิลที่ค้นหา' : 'ยังไม่มีบิลที่เปิดอยู่'}</div></td></tr>`;
 
         document.querySelectorAll('[data-qr]').forEach((btn) => {
-          btn.onclick = () => showBillQr(bills.find((b) => b.id === Number(btn.dataset.qr)));
+          btn.onclick = (e) => { e.stopPropagation(); showBillQr(bills.find((b) => b.id === Number(btn.dataset.qr))); };
         });
+        document.querySelectorAll('#rows [data-id]').forEach((tr) => {
+          tr.onclick = (e) => { if (!e.target.closest('a,button')) showDetail(Number(tr.dataset.id)); };
+        });
+        highlight();
+      }
+
+      function highlight() {
+        document.querySelectorAll('#rows [data-id]').forEach((tr) => {
+          tr.querySelectorAll('td').forEach((td) => { td.style.background = Number(tr.dataset.id) === current ? 'var(--red-50)' : ''; });
+        });
+      }
+
+      /** แผงขวา: รายการอาหารแยกรอบ + สถานะ (โหลดใหม่ทุกรอบ poll) */
+      async function showDetail(id, quiet) {
+        const detailEl = document.getElementById('detail');
+        if (current !== id) { current = id; highlight(); quiet = false; }
+        if (!quiet) detailEl.innerHTML = '<div class="loading">กำลังโหลด...</div>';
+        let b;
+        try { b = await api.get('bills', { id }); } catch (e) { if (!quiet) toast(e.message, 'error'); return; }
+        if (current !== id) return;
+        if (b.status !== 'open') {
+          current = null; highlight();
+          detailEl.innerHTML = `<div class="empty"><div class="empty-icon"><i data-icon="receipt"></i></div>บิล ${fmt.esc(b.bill_no)} ปิดไปแล้ว</div>`;
+          return;
+        }
+        detailEl.innerHTML = `
+          <div class="stack">
+            <div class="row-between">
+              <div><h3 style="margin:0">${b.vip_room_id ? 'ห้อง' : 'โต๊ะ'} ${fmt.esc(b.place)}</h3>
+                <div class="caption muted">${fmt.esc(b.bill_no)} · ${fmt.esc(b.guests)} คน · เปิด ${fmt.time(b.opened_at)} น.</div></div>
+              <button class="btn btn-ghost btn-icon btn-sm" id="detailClose" aria-label="ปิด">✕</button>
+            </div>
+            ${billItemsHtml(b)}
+            <div class="row-between"><span class="h3">ยอดรวม</span><span class="h2 price">${fmt.baht(b.total)}</span></div>
+            <div class="grid grid-2" style="gap:8px">
+              <a class="btn btn-secondary" href="/admin/order-staff.html?bill_id=${b.id}">${olIcon('edit', 18)} สั่งแทนลูกค้า</a>
+              ${canPay
+                ? `<a class="btn" href="/admin/checkout.html?bill_id=${b.id}">${olIcon('card', 18)} ชำระเงิน</a>`
+                : `<button class="btn" disabled title="ไม่มีสิทธิ์รับเงิน">${olIcon('card', 18)} ชำระเงิน</button>`}
+            </div>
+          </div>`;
+        document.getElementById('detailClose').onclick = () => {
+          current = null; highlight();
+          detailEl.innerHTML = '<div class="empty"><div class="empty-icon"><i data-icon="receipt"></i></div>กดที่บิลเพื่อดูรายการอาหาร</div>';
+        };
       }
 
       async function load() {
         try {
           bills = await api.get('bills', { status: 'open' });
           draw();
+          if (current) showDetail(current, true);
+          else if (qs('bill_id') && !load.done) { load.done = true; showDetail(Number(qs('bill_id'))); }
         } catch (e) {
           toast(e.message, 'error');
         }
