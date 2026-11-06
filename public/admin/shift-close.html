@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ปิดยอดกะ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="field" style="margin:0">
+        <label for="fDate">วันที่</label>
+        <input class="input" type="date" id="fDate" style="max-width:200px">
+      </div>
+      <div class="tabs" id="shiftTabs">
+        <button class="tab" data-shift="morning">กะเช้า</button>
+        <button class="tab" data-shift="evening">กะเย็น</button>
+      </div>
+    </div>
+
+    <div id="closedNote"></div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3 class="card-title">ยอดเงินสดในระบบ</h3>
+        <div class="stat">
+          <div class="stat-icon"><i data-icon="cash"></i></div>
+          <div>
+            <div class="stat-value" id="sysCash">-</div>
+            <div class="stat-label" id="sysInfo"></div>
+          </div>
+        </div>
+        <h3 class="card-title" style="margin-top:24px">ตัวช่วยนับแบงก์</h3>
+        <div id="bank"></div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">เงินที่นับได้</h3>
+        <div class="field">
+          <label for="counted">เงินสดที่นับได้ (บาท)</label>
+          <input class="input" type="number" min="0" step="0.01" id="counted" placeholder="0.00">
+        </div>
+        <div class="alert alert-wait" id="diffBox">กรอกเงินที่นับได้ เพื่อดูส่วนต่าง</div>
+        <p class="muted small" id="saveHint"></p>
+        <button class="btn btn-block" id="saveBtn">บันทึกปิดยอดกะ</button>
+      </div>
+    </div>
+
+    <h3 class="card-title" style="margin-top:24px">ประวัติการปิดยอด</h3>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>วันที่</th><th>กะ</th><th>ในระบบ</th><th>นับได้</th><th>ส่วนต่าง</th><th>ผู้ปิดยอด</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody>
+      </table>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      // perm: 'payment' = ต้องติ๊กสิทธิ์รับเงิน (ผู้จัดการ/เจ้าของผ่านเสมอ)
+      const me = await initStaffPage({ title: 'ปิดยอดกะ', roles: ['staff', 'manager', 'owner'], perm: 'payment' });
+      if (!me) return;
+
+      const $ = (id) => document.getElementById(id);
+      const SHIFT_NAME = { morning: 'กะเช้า', evening: 'กะเย็น' };
+      const DENOMS = [1000, 500, 100, 50, 20, 10, 5, 2, 1];   // แบงก์/เหรียญที่ให้นับ
+      let state = { date: '', today: '', shift: 'morning', system_cash: 0 };
+
+      // ---- ตัวช่วยนับแบงก์: ช่องจำนวนต่อชนิด → รวมเป็นยอดแล้วใส่ช่อง counted ให้ ----
+      $('bank').innerHTML = DENOMS.map((d) => `
+        <div class="row-between" style="margin-bottom:8px">
+          <span>${d >= 20 ? 'แบงก์' : 'เหรียญ'} ${fmt.num(d)} ฿</span>
+          <input class="input bank-qty" type="number" min="0" step="1" data-d="${d}" placeholder="0" style="max-width:100px">
+        </div>`).join('');
+      document.querySelectorAll('.bank-qty').forEach((el) => {
+        el.oninput = () => {
+          const sum = [...document.querySelectorAll('.bank-qty')]
+            .reduce((t, i) => t + Number(i.dataset.d) * (Number(i.value) || 0), 0);
+          $('counted').value = sum;
+          showDiff();
+        };
+      });
+
+      // ---- ส่วนต่างแสดงสด: ตรง = ok / ขาด = bad / เกิน = wait ----
+      function showDiff() {
+        const box = $('diffBox');
+        if ($('counted').value === '') {
+          box.className = 'alert alert-wait';
+          box.textContent = 'กรอกเงินที่นับได้ เพื่อดูส่วนต่าง';
+          return;
+        }
+        const diff = Math.round((Number($('counted').value) - state.system_cash) * 100) / 100;
+        if (diff === 0) { box.className = 'alert alert-ok'; box.textContent = 'เงินตรงกับในระบบ'; }
+        else if (diff < 0) { box.className = 'alert alert-bad'; box.textContent = 'เงินขาด ' + fmt.baht(-diff); }
+        else { box.className = 'alert alert-wait'; box.textContent = 'เงินเกิน ' + fmt.baht(diff); }
+      }
+      $('counted').oninput = showDiff;
+
+      const diffBadge = (d) => d === 0 ? '<span class="badge badge-ok">ตรง</span>'
+        : d < 0 ? `<span class="badge badge-bad">ขาด ${fmt.baht(-d)}</span>`
+        : `<span class="badge badge-wait">เกิน ${fmt.baht(d)}</span>`;
+
+      // ---- โหลดข้อมูล: ไม่ส่ง date/shift = ให้ server เลือกวันนี้ + กะปัจจุบัน ----
+      async function load(params = {}) {
+        const d = await run(() => api.get('shifts', params));
+        if (!d) return;
+        state = d;
+        $('fDate').value = d.date;
+        document.querySelectorAll('#shiftTabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.shift === d.shift));
+        $('sysCash').textContent = fmt.baht(d.system_cash);
+        $('sysInfo').textContent = d.closed ? `${SHIFT_NAME[d.shift]} · ยอดที่บันทึกตอนปิดยอด`
+          : `${SHIFT_NAME[d.shift]} · บิลเงินสด ${fmt.num(d.bill_count)} ใบ`;
+        $('closedNote').innerHTML = d.closed
+          ? `<div class="alert alert-ok" style="margin-bottom:16px">กะนี้ปิดยอดแล้วเมื่อ ${fmt.datetime(d.closed.created_at)} โดย ${fmt.esc(d.closed.full_name)}</div>` : '';
+        // บันทึกได้เฉพาะวันนี้ (server ปิดยอดของวันนี้เสมอ)
+        const isToday = d.date === d.today;
+        $('saveBtn').disabled = !isToday || !!d.closed;
+        $('saveHint').textContent = d.closed ? 'กะนี้ปิดยอดแล้ว ปิดซ้ำไม่ได้'
+          : isToday ? '' : 'ดูย้อนหลังได้ แต่บันทึกปิดยอดได้เฉพาะวันนี้';
+        showDiff();
+        $('rows').innerHTML = d.history.length
+          ? d.history.map((h) => `<tr>
+              <td>${fmt.date(h.shift_date)}</td><td>${SHIFT_NAME[h.shift]}</td>
+              <td>${fmt.baht(h.system_cash)}</td><td>${fmt.baht(h.counted_cash)}</td>
+              <td>${diffBadge(h.difference)}</td><td>${fmt.esc(h.full_name)}</td></tr>`).join('')
+          : `<tr><td colspan="6"><div class="empty"><div class="empty-icon"><i data-icon="receipt"></i></div>ยังไม่มีประวัติปิดยอด</div></td></tr>`;
+      }
+
+      document.querySelectorAll('#shiftTabs .tab').forEach((t) => {
+        t.onclick = () => load({ date: $('fDate').value, shift: t.dataset.shift });
+      });
+      $('fDate').onchange = () => load({ date: $('fDate').value, shift: state.shift });
+
+      // ---- บันทึกปิดยอด ----
+      $('saveBtn').onclick = async () => {
+        if ($('counted').value === '') return toast('กรุณากรอกเงินที่นับได้', 'warn');
+        if (!(await confirmModal(`ปิดยอด${SHIFT_NAME[state.shift]} ด้วยเงินที่นับได้ ${fmt.baht($('counted').value)} ?`))) return;
+        const r = await run(() => api.post('shifts', { action: 'close', shift: state.shift, counted_cash: Number($('counted').value) }));
+        if (!r) return;
+        $('counted').value = '';
+        document.querySelectorAll('.bank-qty').forEach((i) => { i.value = ''; });
+        load({ date: state.date, shift: state.shift });
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>
