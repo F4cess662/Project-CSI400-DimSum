@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รางวัลแลกแต้ม · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+  <template id="page">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:16px">
+      <p class="muted">ตั้งค่ารางวัลที่สมาชิกสามารถใช้แต้มแลกได้</p>
+      <button class="btn" id="addReward">+ เพิ่มรางวัล</button>
+    </div>
+    <div class="alert alert-wait" style="margin-bottom:16px">
+      การแลกรางวัลทำได้เฉพาะตอนชำระเงินที่หน้าแคชเชียร์เท่านั้น หน้านี้ใช้สำหรับตั้งค่ารางวัล ไม่ได้ตัดแต้มสมาชิก
+    </div>
+    <div class="grid grid-menu" id="rewardGrid">
+      <div class="card loading">กำลังโหลดรางวัล...</div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'รางวัลแลกแต้ม', roles: ['manager', 'owner'] });
+      if (!me) return;
+
+      const grid = document.getElementById('rewardGrid');
+      let rewards = [];
+      let menus = [];
+
+      async function load() {
+        const data = await run(() => api.get('rewards', { all: 1 }));
+        if (!data) return;
+        rewards = data;
+        render();
+      }
+
+      function render() {
+        grid.innerHTML = rewards.length ? rewards.map((reward) => {
+          const active = Number(reward.is_active) === 1;
+          return `
+            <article class="card">
+              <div class="row" style="justify-content:space-between;align-items:center">
+                ${badge(active ? 'active' : 'inactive')}
+                <label class="switch" title="${active ? 'ปิดใช้งานรางวัล' : 'เปิดใช้งานรางวัล'}">
+                  <input type="checkbox" ${active ? 'checked' : ''} data-active="${reward.id}">
+                  <span></span>
+                </label>
+              </div>
+              <h3 class="card-title" style="margin-top:12px">${fmt.esc(reward.name)}</h3>
+              <div class="row" style="gap:8px;align-items:center">
+                <strong class="badge badge-wait">${fmt.num(reward.points_cost)} แต้ม</strong>
+                ${badge(reward.reward_type === 'free_item' ? 'ready' : 'doing', reward.reward_type === 'free_item' ? 'ของฟรี' : 'ส่วนลด')}
+              </div>
+              <p class="muted">${reward.reward_type === 'free_item'
+                ? `เมนู: ${fmt.esc(reward.menu_item_name || '-')}`
+                : `ส่วนลด ${fmt.baht(reward.discount_value)}`}</p>
+              <div class="row" style="justify-content:flex-end">
+                <button class="btn btn-secondary btn-sm" data-edit="${reward.id}">แก้ไข</button>
+              </div>
+            </article>`;
+        }).join('') : `<div class="card empty">ยังไม่มีรางวัล</div>`;
+      }
+
+      async function loadMenus() {
+        const data = await run(() => api.get('menus'));
+        menus = Array.isArray(data) ? data : [];
+      }
+
+      function openRewardForm(reward = null) {
+        const isEdit = !!reward;
+        const menuOptions = menus.map((menu) =>
+          `<option value="${menu.id}" ${reward && Number(reward.menu_item_id) === Number(menu.id) ? 'selected' : ''}>${fmt.esc(menu.name)}</option>`
+        ).join('');
+
+        const body = `
+          <div class="field">
+            <label for="rewardName">ชื่อรางวัล</label>
+            <input class="input" id="rewardName" maxlength="100" value="${fmt.esc(reward ? reward.name : '')}">
+          </div>
+          <div class="field">
+            <label for="pointsCost">แต้มที่ใช้แลก</label>
+            <input class="input" id="pointsCost" type="number" min="1" step="1" value="${reward ? reward.points_cost : ''}">
+          </div>
+          <div class="field">
+            <label for="rewardType">ประเภทรางวัล</label>
+            <select class="select" id="rewardType">
+              <option value="free_item" ${!reward || reward.reward_type === 'free_item' ? 'selected' : ''}>ของฟรี</option>
+              <option value="discount" ${reward && reward.reward_type === 'discount' ? 'selected' : ''}>ส่วนลด</option>
+            </select>
+          </div>
+          <div class="field" id="menuField">
+            <label for="menuItemId">เลือกเมนู</label>
+            <select class="select" id="menuItemId">
+              <option value="">เลือกเมนู</option>${menuOptions}
+            </select>
+          </div>
+          <div class="field" id="discountField">
+            <label for="discountValue">ส่วนลด (บาท)</label>
+            <input class="input" id="discountValue" type="number" min="0.01" step="0.01" value="${reward && reward.discount_value != null ? reward.discount_value : ''}">
+          </div>`;
+
+        const modal = openModal({
+          title: isEdit ? 'แก้ไขรางวัล' : 'เพิ่มรางวัล',
+          body,
+          footer: `<button class="btn btn-secondary" data-close>ยกเลิก</button><button class="btn" id="saveReward">บันทึก</button>`,
+          size: 'lg'
+        });
+
+        const type = modal.el.querySelector('#rewardType');
+        const menuField = modal.el.querySelector('#menuField');
+        const discountField = modal.el.querySelector('#discountField');
+        function toggleFields() {
+          menuField.hidden = type.value !== 'free_item';
+          discountField.hidden = type.value !== 'discount';
+        }
+        type.onchange = toggleFields;
+        toggleFields();
+
+        modal.el.querySelector('#saveReward').onclick = async () => {
+          const name = modal.el.querySelector('#rewardName').value.trim();
+          const pointsCost = Number(modal.el.querySelector('#pointsCost').value);
+          if (!name) return toast('กรุณาระบุชื่อรางวัล', 'error');
+          if (!Number.isInteger(pointsCost) || pointsCost <= 0) return toast('แต้มที่ใช้ต้องเป็นจำนวนเต็มมากกว่า 0', 'error');
+
+          const payload = {
+            action: isEdit ? 'update' : 'create',
+            name,
+            points_cost: pointsCost,
+            reward_type: type.value
+          };
+          if (isEdit) {
+            payload.id = Number(reward.id);
+            payload.is_active = Number(reward.is_active) === 1;
+          }
+          if (type.value === 'free_item') {
+            const menuItemId = Number(modal.el.querySelector('#menuItemId').value);
+            if (!Number.isInteger(menuItemId) || menuItemId <= 0) return toast('กรุณาเลือกเมนูสำหรับรางวัลของฟรี', 'error');
+            payload.menu_item_id = menuItemId;
+          } else {
+            const discountValue = Number(modal.el.querySelector('#discountValue').value);
+            if (!Number.isFinite(discountValue) || discountValue <= 0) return toast('กรุณาระบุส่วนลดมากกว่า 0 บาท', 'error');
+            payload.discount_value = discountValue;
+          }
+
+          const saveBtn = modal.el.querySelector('#saveReward');
+          saveBtn.disabled = true;
+          const result = await run(() => api.post('rewards', payload));
+          saveBtn.disabled = false;
+          if (result) {
+            modal.close();
+            await load();
+          }
+        };
+      }
+
+      grid.onclick = async (event) => {
+        const edit = event.target.closest('[data-edit]');
+        if (edit) {
+          const reward = rewards.find((item) => Number(item.id) === Number(edit.dataset.edit));
+          if (reward) openRewardForm(reward);
+        }
+      };
+
+      grid.onchange = async (event) => {
+        const toggle = event.target.closest('[data-active]');
+        if (!toggle) return;
+
+        const reward = rewards.find((item) => Number(item.id) === Number(toggle.dataset.active));
+        if (!reward) return;
+        const nextActive = toggle.checked;
+        const verb = nextActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+        if (!await confirmModal(`ต้องการ${verb}รางวัล "${reward.name}" ใช่หรือไม่?`, verb, !nextActive)) {
+          toggle.checked = !nextActive;
+          return;
+        }
+
+        const payload = {
+          action: 'update',
+          id: Number(reward.id),
+          name: reward.name,
+          points_cost: Number(reward.points_cost),
+          reward_type: reward.reward_type,
+          is_active: nextActive
+        };
+        if (reward.reward_type === 'free_item') payload.menu_item_id = Number(reward.menu_item_id);
+        else payload.discount_value = Number(reward.discount_value);
+
+        toggle.disabled = true;
+        const result = await run(() => api.post('rewards', payload));
+        if (result) await load();
+        else {
+          toggle.checked = !nextActive;
+          toggle.disabled = false;
+        }
+      };
+
+      document.getElementById('addReward').onclick = async () => {
+        if (!menus.length) await loadMenus();
+        openRewardForm();
+      };
+
+      await loadMenus();
+      await load();
+    })();
+  </script>
+</body>
+</html>

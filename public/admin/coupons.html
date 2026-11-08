@@ -1,0 +1,419 @@
+
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการคูปอง · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <p class="muted">จัดการคูปองส่วนลดและสิทธิพิเศษของสมาชิก</p>
+      <button class="btn" id="addCoupon">+ เพิ่มคูปอง</button>
+    </div>
+
+    <div class="grid grid-menu" id="couponGrid">
+      <div class="card loading">กำลังโหลดคูปอง...</div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+
+  <script>
+    (async () => {
+      const me = await initStaffPage({
+        title: 'จัดการคูปอง',
+        roles: ['manager', 'owner']
+      });
+
+      if (!me) return;
+
+      const grid = document.getElementById('couponGrid');
+      let coupons = [];
+      let menus = [];
+
+      const typeName = {
+        amount: 'ลดเป็นจำนวนเงิน',
+        percent: 'ลดเป็นเปอร์เซ็นต์',
+        free_item: 'รับเมนูฟรี'
+      };
+
+      const money = (value) => fmt.baht(value);
+
+      function couponDescription(coupon) {
+        if (coupon.coupon_type === 'amount') {
+          return `ส่วนลด ${money(coupon.value)}`;
+        }
+
+        if (coupon.coupon_type === 'percent') {
+          return `ส่วนลด ${fmt.num(coupon.value)}%`;
+        }
+
+        return `เมนูฟรี: ${fmt.esc(coupon.free_item_name || '-')}`;
+      }
+
+      function render() {
+        if (!coupons.length) {
+          grid.innerHTML = '<div class="card empty">ยังไม่มีคูปอง</div>';
+          return;
+        }
+
+        grid.innerHTML = coupons.map((coupon) => {
+          const active = Number(coupon.is_active) === 1;
+          const expired = coupon.end_date < new Date().toISOString().slice(0, 10);
+          const collected = Number(coupon.total_collected || 0);
+          const used = Number(coupon.total_used || 0);
+
+          return `
+            <article class="card">
+              <div class="row" style="justify-content:space-between;align-items:center">
+                <div class="row" style="gap:6px">
+                  ${badge(active ? 'active' : 'inactive')}
+                  ${expired ? badge('inactive', 'หมดอายุ') : ''}
+                </div>
+
+                <label class="switch" title="${active ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}">
+                  <input type="checkbox"
+                    data-active="${coupon.id}"
+                    ${active ? 'checked' : ''}>
+                  <span></span>
+                </label>
+              </div>
+
+              <h3 class="card-title" style="margin-top:12px">
+                ${fmt.esc(coupon.code)}
+              </h3>
+
+              <p><strong>${couponDescription(coupon)}</strong></p>
+              <p class="muted">ประเภท: ${typeName[coupon.coupon_type]}</p>
+              <p class="muted">ยอดซื้อขั้นต่ำ: ${money(coupon.min_spend)}</p>
+              <p class="muted">
+                ระยะเวลา: ${fmt.esc(String(coupon.start_date).slice(0, 10))}
+                ถึง ${fmt.esc(String(coupon.end_date).slice(0, 10))}
+              </p>
+              <p class="muted">
+                เก็บแล้ว ${fmt.num(collected)} สิทธิ์ · ใช้แล้ว ${fmt.num(used)} ครั้ง
+              </p>
+              <p class="muted">
+                จำนวนสิทธิ์รวม: ${coupon.usage_limit == null ? 'ไม่จำกัด' : fmt.num(coupon.usage_limit)}
+              </p>
+
+              <div class="row" style="justify-content:flex-end;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm"
+                  data-edit="${coupon.id}">แก้ไข</button>
+                <button class="btn btn-danger btn-sm"
+                  data-delete="${coupon.id}">ลบ</button>
+              </div>
+            </article>
+          `;
+        }).join('');
+      }
+
+      async function load() {
+        const data = await run(() => api.get('coupons', { all: 1 }));
+        if (!data) return;
+
+        coupons = Array.isArray(data) ? data : [];
+        render();
+      }
+
+      async function loadMenus() {
+        const data = await run(() => api.get('menus'));
+        menus = Array.isArray(data) ? data : [];
+      }
+
+      function openCouponForm(coupon = null) {
+        const editing = Boolean(coupon);
+
+        const menuOptions = menus.map((menu) => `
+          <option value="${menu.id}"
+            ${coupon && Number(coupon.free_menu_item_id) === Number(menu.id) ? 'selected' : ''}>
+            ${fmt.esc(menu.name)}
+          </option>
+        `).join('');
+
+        const body = `
+          <div class="field">
+            <label for="couponCode">รหัสคูปอง</label>
+            <input class="input" id="couponCode" maxlength="30"
+              value="${fmt.esc(coupon ? coupon.code : '')}"
+              placeholder="เช่น TEST50">
+          </div>
+
+          <div class="field">
+            <label for="couponType">ประเภทคูปอง</label>
+            <select class="select" id="couponType">
+              <option value="amount" ${coupon && coupon.coupon_type === 'amount' ? 'selected' : ''}>ลดเป็นจำนวนเงิน</option>
+              <option value="percent" ${coupon && coupon.coupon_type === 'percent' ? 'selected' : ''}>ลดเป็นเปอร์เซ็นต์</option>
+              <option value="free_item" ${coupon && coupon.coupon_type === 'free_item' ? 'selected' : ''}>รับเมนูฟรี</option>
+            </select>
+          </div>
+
+          <div class="field" id="valueField">
+            <label for="couponValue" id="valueLabel">มูลค่าส่วนลด</label>
+            <input class="input" id="couponValue" type="number"
+              min="0.01" step="0.01"
+              value="${coupon && coupon.value != null ? coupon.value : ''}">
+          </div>
+
+          <div class="field" id="menuField">
+            <label for="freeMenuItem">เลือกเมนูฟรี</label>
+            <select class="select" id="freeMenuItem">
+              <option value="">เลือกเมนู</option>
+              ${menuOptions}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="minSpend">ยอดซื้อขั้นต่ำ (บาท)</label>
+            <input class="input" id="minSpend" type="number"
+              min="0" step="0.01"
+              value="${coupon ? coupon.min_spend : 0}">
+          </div>
+
+          <div class="field">
+            <label for="startDate">วันเริ่มต้น</label>
+            <input class="input" id="startDate" type="date"
+              value="${coupon ? String(coupon.start_date).slice(0, 10) : ''}">
+          </div>
+
+          <div class="field">
+            <label for="endDate">วันสิ้นสุด</label>
+            <input class="input" id="endDate" type="date"
+              value="${coupon ? String(coupon.end_date).slice(0, 10) : ''}">
+          </div>
+
+          <div class="field">
+            <label for="startTime">เวลาเริ่มใช้งาน (ไม่บังคับ)</label>
+            <input class="input" id="startTime" type="time"
+              value="${coupon && coupon.valid_time_start ? String(coupon.valid_time_start).slice(0, 5) : ''}">
+          </div>
+
+          <div class="field">
+            <label for="endTime">เวลาสิ้นสุด (ไม่บังคับ)</label>
+            <input class="input" id="endTime" type="time"
+              value="${coupon && coupon.valid_time_end ? String(coupon.valid_time_end).slice(0, 5) : ''}">
+          </div>
+
+          <div class="field">
+            <label for="weekdays">วันที่อนุญาตให้ใช้ (ไม่บังคับ)</label>
+            <input class="input" id="weekdays" maxlength="20"
+              value="${fmt.esc(coupon && coupon.valid_weekdays ? coupon.valid_weekdays : '')}"
+              placeholder="เว้นว่าง = ใช้ได้ทุกวัน">
+          </div>
+
+          <div class="field">
+            <label for="usageLimit">จำนวนสิทธิ์รวม (ไม่บังคับ)</label>
+            <input class="input" id="usageLimit" type="number" min="1" step="1"
+              value="${coupon && coupon.usage_limit != null ? coupon.usage_limit : ''}"
+              placeholder="ไม่จำกัด">
+          </div>
+
+          <div class="field">
+            <label for="memberLimit">จำนวนสิทธิ์ต่อสมาชิก (ไม่บังคับ)</label>
+            <input class="input" id="memberLimit" type="number" min="1" step="1"
+              value="${coupon && coupon.per_member_limit != null ? coupon.per_member_limit : ''}"
+              placeholder="ค่าเริ่มต้นระบบสมาชิกคือ 1">
+          </div>
+
+          <div class="field">
+            <label>
+              <input type="checkbox" id="memberOnly"
+                ${coupon && Number(coupon.member_only) === 1 ? 'checked' : ''}>
+              เฉพาะสมาชิก
+            </label>
+          </div>
+
+          <div class="field">
+            <label>
+              <input type="checkbox" id="excludeHolidays"
+                ${coupon && Number(coupon.exclude_holidays) === 1 ? 'checked' : ''}>
+              ไม่อนุญาตให้ใช้ในวันหยุด
+            </label>
+          </div>
+        `;
+
+        const modal = openModal({
+          title: editing ? 'แก้ไขคูปอง' : 'เพิ่มคูปอง',
+          body,
+          footer: `
+            <button class="btn btn-secondary" data-close>ยกเลิก</button>
+            <button class="btn" id="saveCoupon">บันทึก</button>
+          `,
+          size: 'lg'
+        });
+
+        const type = modal.el.querySelector('#couponType');
+        const valueField = modal.el.querySelector('#valueField');
+        const menuField = modal.el.querySelector('#menuField');
+        const valueLabel = modal.el.querySelector('#valueLabel');
+        const valueInput = modal.el.querySelector('#couponValue');
+
+        function toggleFields() {
+          const isFree = type.value === 'free_item';
+          valueField.hidden = isFree;
+          menuField.hidden = !isFree;
+          valueLabel.textContent = type.value === 'percent'
+            ? 'เปอร์เซ็นต์ส่วนลด (%)'
+            : 'มูลค่าส่วนลด (บาท)';
+          valueInput.max = type.value === 'percent' ? 100 : '';
+        }
+
+        type.onchange = toggleFields;
+        toggleFields();
+
+        modal.el.querySelector('#saveCoupon').onclick = async () => {
+          const code = modal.el.querySelector('#couponCode').value.trim().toUpperCase();
+          const couponType = type.value;
+          const startDate = modal.el.querySelector('#startDate').value;
+          const endDate = modal.el.querySelector('#endDate').value;
+          const minSpend = Number(modal.el.querySelector('#minSpend').value);
+
+          if (!code) return toast('กรุณาระบุรหัสคูปอง', 'error');
+          if (!startDate || !endDate || startDate > endDate) {
+            return toast('กรุณาตรวจสอบวันเริ่มต้นและวันสิ้นสุด', 'error');
+          }
+          if (!Number.isFinite(minSpend) || minSpend < 0) {
+            return toast('ยอดซื้อขั้นต่ำไม่ถูกต้อง', 'error');
+          }
+
+          const payload = {
+            action: editing ? 'update' : 'create',
+            code,
+            coupon_type: couponType,
+            min_spend: minSpend,
+            start_date: startDate,
+            end_date: endDate,
+            valid_time_start: modal.el.querySelector('#startTime').value,
+            valid_time_end: modal.el.querySelector('#endTime').value,
+            valid_weekdays: modal.el.querySelector('#weekdays').value.trim(),
+            usage_limit: modal.el.querySelector('#usageLimit').value || null,
+            per_member_limit: modal.el.querySelector('#memberLimit').value || null,
+            member_only: modal.el.querySelector('#memberOnly').checked,
+            exclude_holidays: modal.el.querySelector('#excludeHolidays').checked
+          };
+
+          if (editing) {
+            payload.id = Number(coupon.id);
+            payload.is_active = Number(coupon.is_active) === 1;
+          }
+
+          if (couponType === 'free_item') {
+            const menuId = Number(modal.el.querySelector('#freeMenuItem').value);
+            if (!Number.isInteger(menuId) || menuId <= 0) {
+              return toast('กรุณาเลือกเมนูฟรี', 'error');
+            }
+            payload.free_menu_item_id = menuId;
+          } else {
+            const value = Number(valueInput.value);
+            if (!Number.isFinite(value) || value <= 0) {
+              return toast('กรุณาระบุมูลค่าส่วนลดมากกว่า 0', 'error');
+            }
+            if (couponType === 'percent' && value > 100) {
+              return toast('ส่วนลดต้องไม่เกิน 100%', 'error');
+            }
+            payload.value = value;
+          }
+
+          const saveButton = modal.el.querySelector('#saveCoupon');
+          saveButton.disabled = true;
+
+          const result = await run(() => api.post('coupons', payload));
+          saveButton.disabled = false;
+
+          if (result) {
+            modal.close();
+            await load();
+          }
+        };
+      }
+
+      grid.onclick = async (event) => {
+        const editButton = event.target.closest('[data-edit]');
+        const deleteButton = event.target.closest('[data-delete]');
+
+        if (editButton) {
+          const coupon = coupons.find(
+            (item) => Number(item.id) === Number(editButton.dataset.edit)
+          );
+          if (coupon) openCouponForm(coupon);
+        }
+
+        if (deleteButton) {
+          const coupon = coupons.find(
+            (item) => Number(item.id) === Number(deleteButton.dataset.delete)
+          );
+          if (!coupon) return;
+
+          const confirmed = await confirmModal(
+            `ต้องการลบคูปอง "${coupon.code}" ใช่หรือไม่?`,
+            'ลบคูปอง',
+            true
+          );
+
+          if (!confirmed) return;
+
+          const result = await run(() => api.post('coupons', {
+            action: 'delete',
+            id: Number(coupon.id)
+          }));
+
+          if (result) await load();
+        }
+      };
+
+      grid.onchange = async (event) => {
+        const toggle = event.target.closest('[data-active]');
+        if (!toggle) return;
+
+        const coupon = coupons.find(
+          (item) => Number(item.id) === Number(toggle.dataset.active)
+        );
+        if (!coupon) return;
+
+        const nextActive = toggle.checked;
+        const action = nextActive ? 'activate' : 'deactivate';
+        const verb = nextActive ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+
+        const confirmed = await confirmModal(
+          `ต้องการ${verb}คูปอง "${coupon.code}" ใช่หรือไม่?`,
+          verb,
+          !nextActive
+        );
+
+        if (!confirmed) {
+          toggle.checked = !nextActive;
+          return;
+        }
+
+        toggle.disabled = true;
+
+        const result = await run(() => api.post('coupons', {
+          action,
+          id: Number(coupon.id)
+        }));
+
+        if (result) {
+          await load();
+        } else {
+          toggle.checked = !nextActive;
+          toggle.disabled = false;
+        }
+      };
+
+      document.getElementById('addCoupon').onclick = async () => {
+        if (!menus.length) await loadMenus();
+        openCouponForm();
+      };
+
+      await loadMenus();
+      await load();
+    })();
+  </script>
+</body>
+</html>
