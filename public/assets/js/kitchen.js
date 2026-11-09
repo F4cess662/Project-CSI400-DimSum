@@ -34,12 +34,12 @@
     let user;
     try { user = await api.get('auth'); } catch { location.href = '/admin/login.html'; return null; }
     if (!ZONES[VIEW_ZONE]) {
-      app.innerHTML = `<div class="empty"><div class="empty-icon">🔥</div><h3>ไม่รู้จักโซนครัวนี้</h3>
+      app.innerHTML = `<div class="empty"><div class="empty-icon"><i data-icon="flame"></i></div><h3>ไม่รู้จักโซนครัวนี้</h3>
         <p>ใช้ ?zone=steam, fry, congee_noodle หรือ drink_dessert</p></div>`;
       return null;
     }
     if (!KITCHEN_ROLES.includes(user.role_code)) {
-      app.innerHTML = `<div class="empty"><div class="empty-icon">🔒</div><h3>ไม่มีสิทธิ์เข้าถึงหน้านี้</h3>
+      app.innerHTML = `<div class="empty"><div class="empty-icon"><i data-icon="lock"></i></div><h3>ไม่มีสิทธิ์เข้าถึงหน้านี้</h3>
         <p>ล็อกอินด้วยบัญชีหัวหน้าเชฟที่จอนี้</p></div>`;
       return null;
     }
@@ -62,9 +62,9 @@
   /* ---------- ข้อความแสดงผล ---------- */
   const placeOf = (it) => it.vip_room_name || it.table_codes || it.bill_no;
   const STEP = {
-    waiting: { to: 'cooking', label: '🔥 เริ่มทำ' },
-    cooking: { to: 'ready', label: '✅ พร้อมเสิร์ฟ' },
-    ready:   { to: 'done', label: '🛎️ เสิร์ฟแล้ว' },
+    waiting: { to: 'cooking', label: '<i data-icon="flame"></i> เริ่มทำ' },
+    cooking: { to: 'ready', label: '<i data-icon="check"></i> พร้อมเสิร์ฟ' },
+    ready:   { to: 'done', label: '<i data-icon="serve"></i> เสิร์ฟแล้ว' },
   };
 
   function card(it) {
@@ -80,7 +80,7 @@
     return `<div class="card order-card zone-border zone-${it.kitchen_zone}${late ? ' late' : ''}">
       <div class="row-between">
         <span class="tile-code">${esc(placeOf(it))}</span>
-        <span class="${late ? 'bold text-red' : 'muted'}">${late ? '⏰ ' : ''}${it.wait_minutes} นาที</span>
+        <span class="${late ? 'bold text-red' : 'muted'}">${late ? '<i data-icon="clock"></i> ' : ''}${it.wait_minutes} นาที</span>
       </div>
       <div class="item-name bold">${esc(it.menu_name)}</div>
       <div class="${viewMode ? 'h1' : 'h2'}">× ${it.remaining_qty} ${esc(it.unit)}</div>
@@ -104,7 +104,7 @@
     $('zoneTabs').innerHTML = tab('', 'ทุกโซน', d.total) +
       Object.keys(ZONES).map((z) => tab(z, ZONES[z], d.counts[z] || 0)).join('');
     $('zoneLinks').innerHTML = '<span class="muted">เปิดจอโซน:</span>' + Object.keys(ZONES).map((z) =>
-      `<a class="btn btn-ghost btn-sm" href="/admin/kitchen.html?zone=${z}&view=1" target="_blank" rel="noopener">${ZONES[z]} ↗</a>`).join('');
+      `<a class="btn btn-ghost btn-sm" href="/admin/kitchen.html?zone=${z}&view=1" target="_blank" rel="noopener">${ZONES[z]} <i data-icon="external"></i></a>`).join('');
   }
 
   function render(d) {
@@ -114,7 +114,7 @@
     $('cards').className = items.length ? 'grid grid-4' : '';      // ไม่มีรายการ: ข้อความกลางจอเต็มความกว้าง
     $('cards').innerHTML = items.length
       ? items.map(card).join('')
-      : `<div class="empty"><div class="empty-icon">🥟</div><h3>ยังไม่มีรายการ</h3></div>`;
+      : `<div class="empty"><div class="empty-icon"><i data-icon="dumpling"></i></div><h3>ยังไม่มีรายการ</h3></div>`;
   }
 
   async function load() {

@@ -59,7 +59,7 @@
             </tr>
           </thead>
           <tbody id="logRows">
-            <tr><td colspan="4"><div class="empty"><div class="empty-icon">🕘</div>กำลังโหลดรายการ...</div></td></tr>
+            <tr><td colspan="4"><div class="empty"><div class="empty-icon"><i data-icon="clock"></i></div>กำลังโหลดรายการ...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -175,7 +175,7 @@
 
       function renderRows(items) {
         if (!items.length) {
-          logRows.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon">🕘</div>ไม่พบรายการ Log ตามตัวกรอง</div></td></tr>';
+          logRows.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-icon"><i data-icon="clock"></i></div>ไม่พบรายการ Log ตามตัวกรอง</div></td></tr>';
           return;
         }
         logRows.innerHTML = items.map((log, index) => {

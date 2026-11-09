@@ -7,43 +7,43 @@
    roles: บทบาทที่เห็นเมนู / perm: ช่องติ๊กที่ staff ต้องมี */
 const STAFF_MENU = [
   { group: 'หน้าร้าน', items: [
-    { file: 'tables.html',          icon: '🪑', label: 'ผังโต๊ะ',          roles: ['staff', 'manager', 'owner'] },
-    { file: 'queue.html',           icon: '🎫', label: 'คิว',              roles: ['staff', 'manager', 'owner'] },
-    { file: 'bills.html',           icon: '🧾', label: 'บิลที่เปิด',        roles: ['staff', 'manager', 'owner'] },
-    { file: 'order-staff.html',     icon: '📝', label: 'สั่งแทนลูกค้า',     roles: ['staff', 'manager', 'owner'] },
-    { file: 'checkout.html',        icon: '💳', label: 'ชำระเงิน',          roles: ['staff', 'manager', 'owner'], perm: 'payment' },
-    { file: 'shift-close.html',     icon: '💰', label: 'ปิดยอดกะ',          roles: ['staff', 'manager', 'owner'], perm: 'payment' },
-    { file: 'vip.html',             icon: '👑', label: 'จองห้อง VIP',       roles: ['staff', 'manager', 'owner'], perm: 'vip_booking' },
+    { file: 'tables.html',          icon: '<i data-icon="chair"></i>', label: 'ผังโต๊ะ',          roles: ['staff', 'manager', 'owner'] },
+    { file: 'queue.html',           icon: '<i data-icon="ticket"></i>', label: 'คิว',              roles: ['staff', 'manager', 'owner'] },
+    { file: 'bills.html',           icon: '<i data-icon="receipt"></i>', label: 'บิลที่เปิดอยู่',      roles: ['staff', 'manager', 'owner'] },
+    { file: 'order-staff.html',     icon: '<i data-icon="edit"></i>', label: 'สั่งแทนลูกค้า',     roles: ['staff', 'manager', 'owner'] },
+    { file: 'checkout.html',        icon: '<i data-icon="card"></i>', label: 'ชำระเงิน',          roles: ['staff', 'manager', 'owner'], perm: 'payment' },
+    { file: 'shift-close.html',     icon: '<i data-icon="cash"></i>', label: 'ปิดยอดกะ',          roles: ['staff', 'manager', 'owner'], perm: 'payment' },
+    { file: 'vip.html',             icon: '<i data-icon="crown"></i>', label: 'จองห้อง VIP',       roles: ['staff', 'manager', 'owner'], perm: 'vip_booking' },
   ]},
   { group: 'ครัว', items: [
-    { file: 'kitchen.html',         icon: '🔥', label: 'จอครัว',            roles: ['head_chef', 'manager', 'owner'] },
-    { file: 'stock-today.html',     icon: '📦', label: 'จำนวนพร้อมขาย',     roles: ['head_chef', 'manager', 'owner'] },
-    { file: 'prep-today.html',      icon: '📋', label: 'ยอดเตรียมวันนี้',    roles: ['head_chef', 'manager', 'owner'] },
+    { file: 'kitchen.html',         icon: '<i data-icon="flame"></i>', label: 'จอครัว',            roles: ['head_chef', 'manager', 'owner'] },
+    { file: 'stock-today.html',     icon: '<i data-icon="box"></i>', label: 'จำนวนพร้อมขาย',     roles: ['head_chef', 'manager', 'owner'] },
+    { file: 'prep-today.html',      icon: '<i data-icon="clipboard"></i>', label: 'ยอดเตรียมวันนี้',    roles: ['head_chef', 'manager', 'owner'] },
   ]},
   { group: 'ผู้จัดการ', items: [
-    { file: 'dashboard.html',       icon: '📊', label: 'Dashboard',         roles: ['manager', 'owner'] },
-    { file: 'bills-search.html',    icon: '🔍', label: 'ค้นบิล',            roles: ['manager', 'owner'] },
-    { file: 'coupons.html',         icon: '🎟️', label: 'คูปอง',             roles: ['manager', 'owner'] },
-    { file: 'banners.html',         icon: '🖼️', label: 'แบนเนอร์หน้าแรก',   roles: ['manager', 'owner'] },
-    { file: 'rewards.html',         icon: '⭐', label: 'รางวัลแลกแต้ม',      roles: ['manager', 'owner'] },
-    { file: 'prep-plans.html',      icon: '🗓️', label: 'แผนเตรียมของ',      roles: ['manager', 'owner'] },
-    { file: 'ingredients.html',     icon: '🥬', label: 'วัตถุดิบ',           roles: ['manager', 'owner'] },
-    { file: 'suppliers.html',       icon: '🚚', label: 'ซัพพลายเออร์',      roles: ['manager', 'owner'] },
-    { file: 'purchase-orders.html', icon: '📄', label: 'ใบสั่งซื้อ',         roles: ['manager', 'owner'] },
-    { file: 'goods-receipts.html',  icon: '📥', label: 'รับของ',            roles: ['manager', 'owner'] },
-    { file: 'stock.html',           icon: '⚖️', label: 'ปรับสต็อก',         roles: ['manager', 'owner'] },
-    { file: 'reports.html',         icon: '📈', label: 'รายงาน',            roles: ['manager', 'owner'] },
-    { file: 'logs.html',            icon: '🕘', label: 'Log',               roles: ['manager', 'owner'] },
-    { file: 'notifications.html',   icon: '🔔', label: 'การแจ้งเตือน',      roles: ['manager', 'owner'] },
-    { file: 'system.html',          icon: '🩺', label: 'สถานะระบบ',         roles: ['manager', 'owner'] },
+    { file: 'dashboard.html',       icon: '<i data-icon="chart"></i>', label: 'Dashboard',         roles: ['manager', 'owner'] },
+    { file: 'bills-search.html',    icon: '<i data-icon="search"></i>', label: 'ค้นบิล',            roles: ['manager', 'owner'] },
+    { file: 'coupons.html',         icon: '<i data-icon="ticket"></i>', label: 'คูปอง',             roles: ['manager', 'owner'] },
+    { file: 'banners.html',         icon: '<i data-icon="image"></i>', label: 'แบนเนอร์หน้าแรก',   roles: ['manager', 'owner'] },
+    { file: 'rewards.html',         icon: '<i data-icon="star"></i>', label: 'รางวัลแลกแต้ม',      roles: ['manager', 'owner'] },
+    { file: 'prep-plans.html',      icon: '<i data-icon="calendar"></i>', label: 'แผนเตรียมของ',      roles: ['manager', 'owner'] },
+    { file: 'ingredients.html',     icon: '<i data-icon="leaf"></i>', label: 'วัตถุดิบ',           roles: ['manager', 'owner'] },
+    { file: 'suppliers.html',       icon: '<i data-icon="truck"></i>', label: 'ซัพพลายเออร์',      roles: ['manager', 'owner'] },
+    { file: 'purchase-orders.html', icon: '<i data-icon="file"></i>', label: 'ใบสั่งซื้อ',         roles: ['manager', 'owner'] },
+    { file: 'goods-receipts.html',  icon: '<i data-icon="inbox"></i>', label: 'รับของ',            roles: ['manager', 'owner'] },
+    { file: 'stock.html',           icon: '<i data-icon="scale"></i>', label: 'ปรับสต็อก',         roles: ['manager', 'owner'] },
+    { file: 'reports.html',         icon: '<i data-icon="trend"></i>', label: 'รายงาน',            roles: ['manager', 'owner'] },
+    { file: 'logs.html',            icon: '<i data-icon="clock"></i>', label: 'Log',               roles: ['manager', 'owner'] },
+    { file: 'notifications.html',   icon: '<i data-icon="bell"></i>', label: 'การแจ้งเตือน',      roles: ['manager', 'owner'] },
+    { file: 'system.html',          icon: '<i data-icon="pulse"></i>', label: 'สถานะระบบ',         roles: ['manager', 'owner'] },
   ]},
   { group: 'เจ้าของร้าน', items: [
-    { file: 'staff-management.html',icon: '👥', label: 'พนักงาน',           roles: ['owner'] },
-    { file: 'menus.html',           icon: '🍽️', label: 'เมนูและหมวด',       roles: ['owner'] },
-    { file: 'tables-setup.html',    icon: '🛠️', label: 'โต๊ะและห้อง VIP',    roles: ['owner'] },
-    { file: 'settings.html',        icon: '⚙️', label: 'ตั้งค่าร้าน',        roles: ['owner'] },
-    { file: 'holidays.html',        icon: '📅', label: 'วันหยุดราชการ',      roles: ['owner'] },
-    { file: 'tasks.html',           icon: '🤖', label: 'งานระบบ',           roles: ['owner'] },
+    { file: 'staff-management.html',icon: '<i data-icon="users"></i>', label: 'พนักงาน',           roles: ['owner'] },
+    { file: 'menus.html',           icon: '<i data-icon="utensils"></i>', label: 'เมนูและหมวด',       roles: ['owner'] },
+    { file: 'tables-setup.html',    icon: '<i data-icon="wrench"></i>', label: 'โต๊ะและห้อง VIP',    roles: ['owner'] },
+    { file: 'settings.html',        icon: '<i data-icon="gear"></i>', label: 'ตั้งค่าร้าน',        roles: ['owner'] },
+    { file: 'holidays.html',        icon: '<i data-icon="calendar"></i>', label: 'วันหยุดราชการ',      roles: ['owner'] },
+    { file: 'tasks.html',           icon: '<i data-icon="bot"></i>', label: 'งานระบบ',           roles: ['owner'] },
   ]},
 ];
 
@@ -96,7 +96,7 @@ async function initStaffPage({ title, roles, perm } = {}) {
     <div class="app">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo"><a class="logo" href="/admin/${HOME_BY_ROLE[user.role_code] || ''}">
-          <span class="logo-mark">🥟</span><span class="logo-text">นึ่งสุข</span></a></div>
+          <span class="logo-mark logo-img"><img src="/assets/img/logo_rantimsum.png" alt="นึ่งสุข"></span><span class="logo-text">นึ่งสุข</span></a></div>
         ${menuHtml}
       </aside>
       <div class="main">
@@ -126,7 +126,7 @@ async function initStaffPage({ title, roles, perm } = {}) {
   const allowed = (!roles || roles.includes(user.role_code)) && (!perm || canSee(user, { roles: [user.role_code], perm }));
   const content = document.getElementById('content');
   if (!allowed) {
-    content.innerHTML = `<div class="empty"><div class="empty-icon">🔒</div><h3>ไม่มีสิทธิ์เข้าถึงหน้านี้</h3>
+    content.innerHTML = `<div class="empty"><div class="empty-icon"><i data-icon="lock"></i></div><h3>ไม่มีสิทธิ์เข้าถึงหน้านี้</h3>
       <p><a class="btn" href="/admin/${HOME_BY_ROLE[user.role_code]}">กลับหน้าแรก</a></p></div>`;
     return null;
   }
@@ -149,7 +149,7 @@ async function initPublicPage() {
   const name = member && (member.name || (member.member && member.member.name)) || '';
 
   const right = member
-    ? `<div class="dropdown"><button class="avatar" id="avatarBtn">${fmt.esc(name.charAt(0) || '👤')}</button>
+    ? `<div class="dropdown"><button class="avatar" id="avatarBtn">${fmt.esc(name.charAt(0) || '<i data-icon="user"></i>')}</button>
          <div class="dropdown-menu hidden" id="avatarMenu">
            <a href="/customer/member.html">บัญชีของฉัน</a><button id="memberLogout">ออกจากระบบ</button></div></div>`
     : `<a class="btn btn-secondary btn-sm" href="/customer/member.html">เข้าสู่ระบบสมาชิก</a>`;
@@ -157,7 +157,7 @@ async function initPublicPage() {
   const page = document.getElementById('page');
   document.getElementById('app').innerHTML = `
     <nav class="navbar"><div class="navbar-inner">
-      <a class="logo" href="/"><span class="logo-mark">🥟</span><span class="logo-text">นึ่งสุข</span></a>
+      <a class="logo" href="/"><span class="logo-mark logo-img"><img src="/assets/img/logo_rantimsum.png" alt="นึ่งสุข"></span><span class="logo-text">นึ่งสุข</span></a>
       <div class="nav-links" id="navLinks">
         <a href="/#menu">เมนู</a><a href="/#promo">โปรโมชัน</a><a href="/#hours">เวลาเปิด-ปิด</a><a href="/#contact">ติดต่อ</a>
       </div>
@@ -166,7 +166,7 @@ async function initPublicPage() {
     </div></nav>
     <div id="content"></div>
     <footer class="footer" id="contact"><div class="container grid grid-3">
-      <div><a class="logo" href="/"><span class="logo-mark">🥟</span><span class="logo-text">นึ่งสุข</span></a>
+      <div><a class="logo" href="/"><span class="logo-mark logo-img"><img src="/assets/img/logo_rantimsum.png" alt="นึ่งสุข"></span><span class="logo-text">นึ่งสุข</span></a>
         <p class="small muted">ติ่มซำร้อนๆ นึ่งสดทุกเข่ง</p></div>
       <div id="hours"><div class="bold">เวลาเปิด-ปิด</div>
         <div class="small">${t(s.morning_open) || '10:00'}–${t(s.morning_close) || '14:00'} และ ${t(s.evening_open) || '16:00'}–${t(s.evening_close) || '20:00'}</div>

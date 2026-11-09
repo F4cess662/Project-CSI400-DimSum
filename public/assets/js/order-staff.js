@@ -19,13 +19,10 @@ async function initStaffOrder() {
   const unitLabel = (menu) => basketCategories.has(categoryLabel(menu)) ? 'เข่ง'
     : plateCategories.has(categoryLabel(menu)) ? 'จาน'
       : categoryLabel(menu) === 'ชุดเซ็ต' ? 'ชุด' : (menu.unit || 'รายการ');
-  const hasStockLimit = (menu) => menu.available_qty !== null
-    && menu.available_qty !== undefined
-    && Number.isFinite(Number(menu.available_qty));
-  const soldOut = (menu) => Number(menu.is_sold_out) === 1
-    || (hasStockLimit(menu) && Number(menu.available_qty) <= 0);
-  const maxQuantity = (menu) => Math.min(maxPerMenu,
-    hasStockLimit(menu) ? Number(menu.available_qty) : maxPerMenu);
+  // sale_status: 'closed' = หมด (ปิดขาย) สั่งไม่ได้ · 'slow' = หมดชั่วคราว ยังสั่งได้แต่รอนานขึ้น
+  const soldOut = (menu) => menu.sale_status === 'closed' || Number(menu.is_sold_out) === 1;
+  const isSlow = (menu) => menu.sale_status === 'slow';
+  const maxQuantity = () => maxPerMenu;
   const formatPrice = (price) => `${Number(price || 0).toLocaleString('th-TH')} ฿`;
 
   function drawCategories() {
@@ -50,10 +47,11 @@ async function initStaffOrder() {
         const unavailable = soldOut(menu);
         const maxed = quantity >= maxQuantity(menu);
         return `<button type="button" class="menu-item ${unavailable ? 'soldout' : ''}" data-menu-id="${Number(menu.id)}" ${unavailable || maxed ? 'disabled' : ''}>
-          ${unavailable ? '<span class="badge badge-bad">หมด</span>' : ''}
+          ${unavailable ? '<span class="badge badge-bad">หมด</span>' : isSlow(menu) ? badge('temp_out') : ''}
           <small>${fmt.esc(categoryLabel(menu))}</small>
           <strong>${fmt.esc(menu.name)}</strong>
           <span>${formatPrice(menu.price)} / ${fmt.esc(unitLabel(menu))}</span>
+          ${isSlow(menu) ? '<small style="color:#a35b00">ใช้เวลาเตรียมนานกว่าปกติ 5–10 นาที</small>' : ''}
           ${quantity ? `<small>เลือกแล้ว ${fmt.num(quantity)} ${fmt.esc(unitLabel(menu))} (สูงสุด ${maxPerMenu})</small>` : ''}
         </button>`;
       }).join('')
@@ -95,43 +93,35 @@ async function initStaffOrder() {
     drawCart();
   }
 
+  /** โต๊ะ/ห้องที่เปิดบิลอยู่เท่านั้น · value = bill_id · เข้าจากผังโต๊ะด้วย ?bill_id= จะเลือกให้เอง */
   async function loadPlaces() {
     try {
-      const [tables, rooms] = await Promise.all([
-        api.get('tables'),
-        api.get('vip_rooms'),
-      ]);
-      const tableOptions = tables.map((table) => ({
-        value: `table:${Number(table.id)}`,
-        label: `${table.code} · ${table.seats} ที่นั่ง · ${table.status === 'occupied' ? 'มีลูกค้า' : 'ว่าง'}`,
-      }));
-      const roomOptions = rooms.map((room) => ({
-        value: `vip:${Number(room.id)}`,
-        label: `${room.name} · ${room.seats} ที่นั่ง · ${room.status === 'occupied' ? 'มีลูกค้า' : 'ว่าง'}`,
-      }));
+      const bills = await api.get('bills', { status: 'open' });
+      const option = (b) => `<option value="${Number(b.id)}">${fmt.esc(b.place)} · ${fmt.esc(b.guests)} คน · ${fmt.esc(b.bill_no)}</option>`;
+      const tables = bills.filter((b) => !b.vip_room_id);
+      const rooms = bills.filter((b) => b.vip_room_id);
 
-      tableSelect.innerHTML = '<option value="">เลือกโต๊ะหรือห้อง</option>';
-      if (tableOptions.length) {
-        tableSelect.insertAdjacentHTML('beforeend', `<optgroup label="โต๊ะ">${tableOptions.map((option) =>
-          `<option value="${option.value}">${fmt.esc(option.label)}</option>`).join('')}</optgroup>`);
-      }
-      if (roomOptions.length) {
-        tableSelect.insertAdjacentHTML('beforeend', `<optgroup label="ห้อง VIP">${roomOptions.map((option) =>
-          `<option value="${option.value}">${fmt.esc(option.label)}</option>`).join('')}</optgroup>`);
-      }
-      if (!tableOptions.length && !roomOptions.length) {
-        tableSelect.innerHTML = '<option value="">ยังไม่มีโต๊ะหรือห้องที่เปิดใช้งาน</option>';
+      if (!bills.length) {
+        tableSelect.innerHTML = '<option value="">ยังไม่มีโต๊ะที่เปิดบิล · เปิดโต๊ะที่ผังโต๊ะก่อน</option>';
         tableSelect.disabled = true;
+        return;
       }
+      tableSelect.disabled = false;
+      tableSelect.innerHTML = '<option value="">เลือกโต๊ะหรือห้อง</option>'
+        + (tables.length ? `<optgroup label="โต๊ะ">${tables.map(option).join('')}</optgroup>` : '')
+        + (rooms.length ? `<optgroup label="ห้อง VIP">${rooms.map(option).join('')}</optgroup>` : '');
+
+      const preset = new URLSearchParams(location.search).get('bill_id');
+      if (preset && bills.some((b) => String(b.id) === preset)) tableSelect.value = preset;
     } catch (error) {
-      tableSelect.innerHTML = `<option value="">โหลดโต๊ะและห้องไม่สำเร็จ: ${fmt.esc(error.message)}</option>`;
+      tableSelect.innerHTML = `<option value="">โหลดโต๊ะที่เปิดบิลไม่สำเร็จ: ${fmt.esc(error.message)}</option>`;
       tableSelect.disabled = true;
     }
   }
 
   async function loadMenus() {
     try {
-      const result = await api.get('menu');
+      const result = await api.get('menu', { include_closed: 1 }); // เมนูปิดขายแสดงเป็น "หมด"
       menus = result.map((menu) => ({ ...menu, id: Number(menu.id) }))
         .filter((menu) => Number.isInteger(menu.id) && menu.id > 0);
       if (!menus.length) {
@@ -170,6 +160,24 @@ async function initStaffOrder() {
   document.getElementById('clearBtn').addEventListener('click', () => {
     cart.clear();
     drawMenus();
+    drawCart();
+  });
+
+  /** ส่งออเดอร์เข้าครัว (POST /api/orders create_by_staff) */
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.addEventListener('click', async () => {
+    const billId = Number(tableSelect.value);
+    if (!billId) { toast('เลือกโต๊ะหรือห้องก่อน', 'warn'); tableSelect.focus(); return; }
+    const items = [...cart].map(([menu_item_id, qty]) => ({ menu_item_id, qty }));
+    if (!items.length) { toast('ยังไม่มีเมนูในตะกร้า', 'warn'); return; }
+    submitBtn.disabled = true;
+    const result = await run(() => api.post('orders', { action: 'create_by_staff', bill_id: billId, items }));
+    submitBtn.disabled = false;
+    if (result) {
+      cart.clear();
+      document.getElementById('note').value = '';
+    }
+    await loadMenus(); // จำนวนพร้อมขายเปลี่ยน
     drawCart();
   });
 

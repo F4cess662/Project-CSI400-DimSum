@@ -194,6 +194,7 @@ CREATE TABLE order_items (
   unit_price     DECIMAL(10,2) NOT NULL,
   status         ENUM('waiting','cooking','ready','done','cancelled') NOT NULL DEFAULT 'waiting',
   cancelled_qty  INT NOT NULL DEFAULT 0,
+  stock_taken    INT NOT NULL DEFAULT 0,   -- ตัดจากจำนวนพร้อมขายไปจริงกี่หน่วย (สั่งตอนหมดชั่วคราว = 0) ใช้คืนตอนลูกค้ายกเลิก
   cancel_reason  ENUM('customer','out_of_stock','spoiled','other') NULL,
   cancel_note    VARCHAR(255) NULL,
   updated_by     INT NULL,
@@ -498,7 +499,7 @@ INSERT INTO vip_rooms (name, seats) VALUES
   ('VIP 1',15),('VIP 2',15),('VIP 3',15),('VIP 4',15),('VIP 5',15),('VIP 6',15);
 
 INSERT INTO coupons (code, coupon_type, value, start_date, end_date, valid_time_start, valid_time_end, valid_weekdays, exclude_holidays)
-VALUES ('HAPPYHOUR','percent',10,'2026-01-01','2099-12-31','10:00:00','12:00:00','1,2,3,4,5',1);
+VALUES ('HAPPYHOUR','percent',10,'2026-01-01','2027-12-31','10:00:00','12:00:00','1,2,3,4,5',1);
 
 INSERT INTO menu_categories (name, sort_order) VALUES
   ('ซาลาเปา',1),('ขนมจีบ',2),('ห่อสาหร่าย',3),('ฮะเก๋า',4),
@@ -614,15 +615,15 @@ ON DUPLICATE KEY UPDATE name = VALUES(name), tier = VALUES(tier), points_balance
 INSERT INTO coupons
   (code, coupon_type, value, min_spend, start_date, end_date, member_only, is_active)
 VALUES
-  ('WELCOME20', 'percent', 20, 100, '2026-01-01', '2099-12-31', 1, 1),
-  ('BDAY', 'percent', 15, 0, '2026-01-01', '2099-12-31', 1, 1)
+  ('WELCOME20', 'percent', 20, 100, '2026-01-01', '2027-12-31', 1, 1),
+  ('BDAY', 'percent', 15, 0, '2026-01-01', '2027-12-31', 1, 1)
 ON DUPLICATE KEY UPDATE
   coupon_type = VALUES(coupon_type), value = VALUES(value), min_spend = VALUES(min_spend),
   start_date = VALUES(start_date), end_date = VALUES(end_date), member_only = VALUES(member_only), is_active = VALUES(is_active);
 
 -- ผูกคูปองตัวอย่างเข้าบัญชีสมาชิกเพื่อทดสอบหน้าเช็กเอาต์
 INSERT INTO member_coupons (member_id, coupon_id, expires_at)
-SELECT m.id, c.id, '2099-12-31'
+SELECT m.id, c.id, '2027-12-31'
 FROM members m
 JOIN coupons c ON c.code IN ('WELCOME20', 'BDAY')
 WHERE m.phone = '0812345678'
@@ -855,12 +856,12 @@ INSERT INTO members (phone, name, tier, points_balance) VALUES
 ON DUPLICATE KEY UPDATE name = VALUES(name), tier = VALUES(tier), points_balance = VALUES(points_balance);
 
 INSERT INTO coupons (code, coupon_type, value, free_menu_item_id, min_spend, start_date, end_date, member_only, usage_limit) VALUES
-  ('TEST50', 'amount', 50, NULL, 0, '2026-01-01', '2099-12-31', 0, NULL),
-  ('FREEBUN', 'free_item', NULL, (SELECT id FROM menu_items WHERE name = 'ซาลาเปาหมูสับ'), 200, '2026-01-01', '2099-12-31', 0, NULL),
-  ('ONCE10', 'amount', 10, NULL, 0, '2026-01-01', '2099-12-31', 0, 1);
+  ('TEST50', 'amount', 50, NULL, 0, '2026-01-01', '2027-12-31', 0, NULL),
+  ('FREEBUN', 'free_item', NULL, (SELECT id FROM menu_items WHERE name = 'ซาลาเปาหมูสับ'), 200, '2026-01-01', '2027-12-31', 0, NULL),
+  ('ONCE10', 'amount', 10, NULL, 0, '2026-01-01', '2027-12-31', 0, 1);
 
 INSERT INTO member_coupons (member_id, coupon_id, expires_at)
-SELECT m.id, c.id, '2099-12-31' FROM members m JOIN coupons c
+SELECT m.id, c.id, '2027-12-31' FROM members m JOIN coupons c
   ON (m.phone = '0861112222' AND c.code = 'BDAY') OR (m.phone = '0823334444' AND c.code = 'WELCOME20');
 
 -- ===== บิลที่เปิดอยู่ (วันนี้) =====

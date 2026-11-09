@@ -1,0 +1,180 @@
+<!doctype html>
+<!-- จัดการแบนเนอร์หน้า Home (คนที่ 2 · เฟส 3) — manager, owner · สลับมุมมอง การ์ด/รายการ -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>แบนเนอร์หน้าแรก · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <span class="muted small">แนะนำรูป 1200×400 พิกเซล · ไม่เกิน 2MB · ลำดับในหน้านี้คือลำดับสไลด์หน้าแรก</span>
+      <div class="row" style="gap:12px">
+        <div class="tabs">
+          <button class="tab active" data-view="grid">การ์ด</button>
+          <button class="tab" data-view="list">รายการ</button>
+        </div>
+        <button class="btn" id="addBtn">+ เพิ่มแบนเนอร์</button>
+      </div>
+    </div>
+    <div id="view"><div class="loading">กำลังโหลด...</div></div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'แบนเนอร์หน้าแรก', roles: ['manager', 'owner'] });
+      if (!me) return;
+
+      let list = [];
+      let view = 'grid';
+      try { view = localStorage.getItem('banners_view') === 'list' ? 'list' : 'grid'; } catch (e) { /* ใช้ค่าเริ่มต้น */ }
+      const box = document.getElementById('view');
+      const MAX_BYTES = 2 * 1024 * 1024;
+      // กล่องรูปขนาดเดียวกันทุกใบ (สัดส่วน 3:1 = 1200×400) ครอปส่วนเกิน
+      const RATIO = 'aspect-ratio:16/9;object-fit:cover';
+
+      const img = (b, style) => `<img data-img src="${fmt.esc(b.image_path)}" alt="" style="${style};${RATIO}">`;
+      const titleOf = (b) => (b.title ? fmt.esc(b.title) : '<span class="muted">(ไม่มีชื่อ)</span>');
+      const switchOf = (b) => `<label class="switch"><input type="checkbox" data-toggle="${b.id}" ${b.is_active ? 'checked' : ''}><span></span></label>`;
+      const buttons = (b, i) => `
+        <button class="btn btn-secondary btn-icon btn-sm" data-up="${i}" ${i === 0 ? 'disabled' : ''} title="เลื่อนขึ้น">↑</button>
+        <button class="btn btn-secondary btn-icon btn-sm" data-down="${i}" ${i === list.length - 1 ? 'disabled' : ''} title="เลื่อนลง">↓</button>
+        <button class="btn btn-secondary btn-sm" data-edit="${b.id}">${icon('edit')} แก้ไข</button>
+        <button class="btn btn-danger btn-icon btn-sm" data-del="${b.id}" title="ลบ">${icon('trash')}</button>`;
+
+      async function load() {
+        const data = await run(() => api.get('banners', { all: 1 }));
+        if (!data) return;
+        list = data;
+        draw();
+      }
+
+      function drawGrid() {
+        return `<div class="grid grid-3">${list.map((b, i) => `
+          <div class="card">
+            ${img(b, 'width:100%')}
+            <div class="row" style="justify-content:space-between;gap:8px;margin-top:8px">
+              <div class="bold" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${titleOf(b)}</div>
+              ${badge(b.is_active ? 'active' : 'inactive', b.is_active ? 'แสดง' : 'ซ่อน')}
+            </div>
+            <div class="row" style="justify-content:space-between;margin-top:12px">
+              ${switchOf(b)}
+              <div class="row" style="gap:6px">${buttons(b, i)}</div>
+            </div>
+          </div>`).join('')}</div>`;
+      }
+
+      function drawList() {
+        return `<div class="table-wrap"><table class="table">
+          <thead><tr><th>ลำดับ</th><th>รูป</th><th>ชื่อ</th><th>ลิงก์</th><th>แสดง</th><th></th></tr></thead>
+          <tbody>${list.map((b, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${img(b, 'width:180px')}</td>
+              <td class="bold">${titleOf(b)}</td>
+              <td>${b.link_url ? fmt.esc(b.link_url) : '<span class="muted">-</span>'}</td>
+              <td>${switchOf(b)}</td>
+              <td><div class="row" style="gap:6px;flex-wrap:nowrap">${buttons(b, i)}</div></td>
+            </tr>`).join('')}</tbody></table></div>`;
+      }
+
+      function draw() {
+        document.querySelectorAll('[data-view]').forEach((t) => t.classList.toggle('active', t.dataset.view === view));
+        box.innerHTML = list.length
+          ? (view === 'grid' ? drawGrid() : drawList())
+          : `<div class="empty"><div class="empty-icon">${icon('image')}</div>ยังไม่มีแบนเนอร์ กด "+ เพิ่มแบนเนอร์" เพื่อเริ่มต้น</div>`;
+
+        // รูปโหลดไม่ได้ → แสดงกล่องขนาดเดิม ไม่ให้ layout เพี้ยน
+        box.querySelectorAll('img[data-img]').forEach((el) => {
+          el.onerror = () => {
+            const d = document.createElement('div');
+            d.className = 'empty small';
+            d.style.cssText = el.getAttribute('style');
+            d.textContent = 'โหลดรูปไม่ได้';
+            el.replaceWith(d);
+          };
+        });
+        box.querySelectorAll('[data-toggle]').forEach((el) => { el.onchange = () => toggle(Number(el.dataset.toggle), el.checked); });
+        box.querySelectorAll('[data-up]').forEach((el) => { el.onclick = () => move(Number(el.dataset.up), -1); });
+        box.querySelectorAll('[data-down]').forEach((el) => { el.onclick = () => move(Number(el.dataset.down), 1); });
+        box.querySelectorAll('[data-edit]').forEach((el) => { el.onclick = () => openForm(list.find((x) => x.id === Number(el.dataset.edit))); });
+        box.querySelectorAll('[data-del]').forEach((el) => { el.onclick = () => remove(Number(el.dataset.del)); });
+      }
+
+      async function toggle(id, on) {
+        await run(() => api.post('banners', { action: 'update', id, is_active: on ? 1 : 0 }));
+        load();
+      }
+
+      async function move(i, dir) {
+        const ids = list.map((b) => b.id);
+        [ids[i], ids[i + dir]] = [ids[i + dir], ids[i]];
+        await run(() => api.post('banners', { action: 'reorder', ids }));
+        load();
+      }
+
+      async function remove(id) {
+        const b = list.find((x) => x.id === id);
+        if (!(await confirmModal(`ลบแบนเนอร์ ${b.title ? fmt.esc(b.title) : '(ไม่มีชื่อ)'}? ลบแล้วกู้คืนไม่ได้`, 'ลบแบนเนอร์', true))) return;
+        const done = await run(() => api.post('banners', { action: 'delete', id }));
+        if (done !== null) load();
+      }
+
+      function openForm(b) {
+        const editing = !!b;
+        const m = openModal({
+          title: editing ? 'แก้ไขแบนเนอร์' : 'เพิ่มแบนเนอร์',
+          body: `
+            <div class="field"><label>รูปแบนเนอร์ ${editing ? '(ไม่เลือก = ใช้รูปเดิม)' : ''}</label>
+              <input class="input" type="file" id="fImage" accept="image/png,image/jpeg,image/webp,image/gif">
+              <img id="fPreview" alt="" style="width:100%;margin-top:8px;${RATIO}" ${editing ? `src="${fmt.esc(b.image_path)}"` : 'class="hidden"'}></div>
+            <div class="field"><label>ชื่อแบนเนอร์</label><input class="input" id="fTitle" maxlength="100" value="${fmt.esc(b ? b.title || '' : '')}"></div>
+            <div class="field"><label>ลิงก์เมื่อกดแบนเนอร์ (ไม่บังคับ)</label>
+              <input class="input" id="fLink" maxlength="255" value="${fmt.esc(b ? b.link_url || '' : '')}" placeholder="เช่น /customer/menu.html"></div>
+            <label class="row" style="gap:8px"><span class="switch"><input type="checkbox" id="fActive" ${!b || b.is_active ? 'checked' : ''}><span></span></span> แสดงที่หน้าแรก</label>`,
+          footer: '<button class="btn btn-secondary" data-close>ยกเลิก</button><button class="btn" data-save>บันทึก</button>',
+        });
+        const el = (id) => m.el.querySelector('#' + id);
+
+        el('fImage').onchange = () => {
+          const file = el('fImage').files[0];
+          if (!file) return;
+          if (file.size > MAX_BYTES) { toast('รูปต้องมีขนาดไม่เกิน 2MB', 'error'); el('fImage').value = ''; return; }
+          el('fPreview').src = URL.createObjectURL(file);
+          el('fPreview').classList.remove('hidden');
+        };
+
+        m.el.querySelector('[data-save]').onclick = async () => {
+          const file = el('fImage').files[0];
+          if (!editing && !file) return toast('กรุณาเลือกรูปแบนเนอร์', 'error');
+          const fd = new FormData();
+          fd.append('action', editing ? 'update' : 'create');
+          if (editing) fd.append('id', b.id);
+          fd.append('title', el('fTitle').value.trim());
+          fd.append('link_url', el('fLink').value.trim());
+          fd.append('is_active', el('fActive').checked ? '1' : '0');
+          if (file) fd.append('image', file);
+          const done = await run(() => api.upload('banners', fd));
+          if (done !== null) { m.close(); load(); }
+        };
+      }
+
+      document.querySelectorAll('[data-view]').forEach((t) => {
+        t.onclick = () => {
+          view = t.dataset.view;
+          try { localStorage.setItem('banners_view', view); } catch (e) { /* ไม่เก็บก็ไม่เป็นไร */ }
+          draw();
+        };
+      });
+      document.getElementById('addBtn').onclick = () => openForm(null);
+      load();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<!-- ประวัติการแจ้งเตือน (notify-service จำลอง) (คนที่ 2 · เฟส 3) — manager, owner -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>การแจ้งเตือน · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <select class="select" id="channel" style="width:160px">
+          <option value="">ทุกช่องทาง</option>
+          <option value="sms">SMS</option>
+          <option value="line">LINE</option>
+          <option value="system">ระบบ</option>
+        </select>
+        <input class="input" type="date" id="from" style="width:160px" title="ตั้งแต่วันที่">
+        <input class="input" type="date" id="to" style="width:160px" title="ถึงวันที่">
+      </div>
+      <span class="muted small">เป็นการส่งจำลอง (ไม่ได้ส่งจริง) · อัปเดตอัตโนมัติทุก 10 วินาที</span>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>เวลา</th><th>ช่องทาง</th><th>ผู้รับ</th><th>หัวข้อ</th><th>ข้อความ</th><th>สถานะ</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody>
+      </table>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'การแจ้งเตือน', roles: ['manager', 'owner'] });
+      if (!me) return;
+
+      const CH = { sms: ['SMS', 'doing'], line: ['LINE', 'ok'], system: ['ระบบ', 'off'] };
+      const rows = document.getElementById('rows');
+      const $ = (id) => document.getElementById(id);
+
+      async function load() {
+        const data = await run(() => api.get('notifications', {
+          channel: $('channel').value, from: $('from').value, to: $('to').value,
+        }));
+        if (!data) return;
+        rows.innerHTML = data.length ? data.map((n) => {
+          const [label, kind] = CH[n.channel] || [n.channel, 'off'];
+          return `<tr>
+            <td>${fmt.datetime(n.created_at)}</td>
+            <td><span class="badge badge-${kind}">${label}</span></td>
+            <td>${fmt.esc(n.recipient || '-')}</td>
+            <td>${fmt.esc(n.title || '-')}</td>
+            <td>${fmt.esc(n.message)}</td>
+            <td>${n.status === 'sent' ? badge('sent') : badge('cancelled', 'ล้มเหลว')}</td></tr>`;
+        }).join('')
+          : `<tr><td colspan="6"><div class="empty"><div class="empty-icon">${icon('bell')}</div>ยังไม่มีการแจ้งเตือน</div></td></tr>`;
+      }
+
+      ['channel', 'from', 'to'].forEach((id) => $(id).addEventListener('change', load));
+      poll(load, 10);
+    })();
+  </script>
+</body>
+</html>

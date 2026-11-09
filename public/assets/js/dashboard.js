@@ -63,7 +63,7 @@
 
   /* ---------- กราฟโดนัท: โต๊ะว่าง / มีลูกค้า ---------- */
   function donutChart(busy, total) {
-    if (!total) return `<div class="empty"><div class="empty-icon">🪑</div>ยังไม่มีโต๊ะในระบบ</div>`;
+    if (!total) return `<div class="empty"><div class="empty-icon"><i data-icon="chair"></i></div>ยังไม่มีโต๊ะในระบบ</div>`;
     const free = total - busy;
     const size = 200, cx = 100, cy = 100, r = 72, sw = 22, C = 2 * Math.PI * r;
     const gap = busy && free ? 3 : 0;
@@ -146,10 +146,10 @@
     const max = Math.max(1, ...c.menus.map((m) => m.available_qty || 0));
     return `<div class="stack" style="gap:4px;margin-top:8px">${c.menus.map((m) => {
       const n = m.state === 'soldout' ? 0 : m.available_qty === null ? max : m.available_qty;
-      const tip = `${m.name} · ${m.state === 'soldout' ? 'หมด' : 'เหลือ ' + (m.available_qty === null ? 'ไม่จำกัด' : m.available_qty + ' ' + m.unit)}`;
+      const tip = `${m.name} · ${m.state === 'soldout' ? 'หมด' : m.temp_out ? 'หมดชั่วคราว (ยังสั่งได้)' : 'เหลือ ' + (m.available_qty === null ? 'ไม่จำกัด' : m.available_qty + ' ' + m.unit)}`;
       return `<div>
         <div class="row-between small"><span>${esc(m.name)}</span>
-          ${m.state === 'soldout' ? badge('soldout') : `<span class="bold">${qtyText(m)}</span>`}</div>
+          ${m.state === 'soldout' ? badge('soldout') : m.temp_out ? badge('temp_out') : `<span class="bold">${qtyText(m)}</span>`}</div>
         ${splitBar([{ key: STATE_SERIES[m.state], n }, { key: 'track', n: max - n }], 6, tip)}
       </div>`;
     }).join('')}
@@ -164,7 +164,7 @@
     // สีตัวหนังสือเหลือง/เขียว และขอบแดง ยังไม่มี class ใน style.css (ขอ .text-wait .text-ok .card-bad จากคนที่ 1)
     const lines = !c.total ? `<div class="small muted">ยังไม่มีเมนูในหมวดนี้</div>` : [
       soldout.length ? `<div class="small bold text-red">หมด: ${soldout.map((m) => esc(m.name)).join(', ')}</div>` : '',
-      low.length ? `<div class="small bold" style="color:var(--wait)">ใกล้หมด: ${low.map((m) => `${esc(m.name)} เหลือ ${qtyText(m)}`).join(', ')}</div>` : '',
+      low.length ? `<div class="small bold" style="color:var(--wait)">ใกล้หมด: ${low.map((m) => (m.temp_out ? `${esc(m.name)} หมดชั่วคราว` : `${esc(m.name)} เหลือ ${qtyText(m)}`)).join(', ')}</div>` : '',
       !soldout.length && !low.length ? `<div class="small bold" style="color:var(--ok)">✓ พร้อมขายทุกเมนู</div>` : '',
     ].join('');
     return `<div class="card"${c.soldout ? ' style="border-color:var(--bad)"' : ''}>
@@ -187,7 +187,7 @@
     $('menuCategories').innerHTML = cats.length ? cats.map(categoryCard).join('') : `<div class="empty">ยังไม่มีหมวดเมนู</div>`;
 
     const names = cats.flatMap((c) => c.menus.filter((m) => m.state === 'soldout').map((m) => `${m.name} (${c.category})`));
-    $('soldoutAll').textContent = '⚠ เมนูที่หมดตอนนี้: ' + names.join(' · ');
+    $('soldoutAll').textContent = 'เมนูที่หมดตอนนี้: ' + names.join(' · ');
     $('soldoutAll').classList.toggle('hidden', !names.length);
   }
 
@@ -390,9 +390,9 @@
       ? `<div class="stack" style="gap:8px">${list.slice(0, MAX_ROWS).map((m) => `
           <div class="row-between small">
             <span>${esc(m.name)} <span class="caption muted">· ${esc(m.category_name)}</span></span>
-            ${m.available_qty === 0 ? badge('soldout') : badge('inactive', 'ปิดขาย')}
+            ${badge('soldout', 'หมด (ปิดขาย)')}
           </div>`).join('')}${more(list.length)}</div>`
-      : `<div class="empty" style="padding:16px">✅ ทุกเมนูขายได้</div>`;
+      : `<div class="empty" style="padding:16px"><i data-icon="check"></i> ทุกเมนูขายได้</div>`;
   }
 
   function renderStaffList(list, today) {

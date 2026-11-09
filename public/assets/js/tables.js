@@ -10,10 +10,10 @@
   if (!me) return;
 
   const ZONES = [
-    { key: 'bar', title: '🍵 บาร์', cls: 'bar' },
-    { key: 'small', title: '🪑 โต๊ะเล็ก', cls: '' },
-    { key: 'large', title: '🍽️ โต๊ะใหญ่', cls: '' },
-    { key: 'vip', title: '👑 ห้อง VIP', cls: 'vip' },
+    { key: 'bar', title: '<i data-icon="cup"></i> บาร์', cls: 'bar' },
+    { key: 'small', title: '<i data-icon="chair"></i> โต๊ะเล็ก', cls: '' },
+    { key: 'large', title: '<i data-icon="utensils"></i> โต๊ะใหญ่', cls: '' },
+    { key: 'vip', title: '<i data-icon="crown"></i> ห้อง VIP', cls: 'vip' },
   ];
   const floor = document.getElementById('floor');
   const panel = document.getElementById('sidePanel');
