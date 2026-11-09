@@ -376,6 +376,104 @@ prep-today.html ตาราง + แถบความคืบหน้า
 
 ---
 
+## 🔧 แก้ตาม Feedback เฟส 3 (ทำก่อนหรือพร้อมเฟส 4)
+
+```
+ช่วยเขียนโค้ดจริงของระบบร้านติ่มซำ "นึ่งสุข" (งานวิชามหาวิทยาลัย) ส่วนที่ฉันรับผิดชอบ
+ทีม 7 คนต่างคนต่างให้ AI เขียนแล้วค่อยรวมกันใน Git จึงต้องทำตามกติกานี้เคร่งครัด ไม่อย่างนั้นรวมกันไม่ได้
+
+## ไฟล์ที่แนบมา
+- ภาพหน้าจอตัวอย่าง (ถ้ามี) → ใช้เป็นแนวทางการจัดวางเท่านั้น สี/ขนาด/ฟอนต์ให้ใช้ class ใน style.css เสมอ
+  ถ้าไม่มีภาพของหน้าไหน ให้ออกแบบเองจากคำอธิบายด้านล่าง โดยใช้ class ใน style.css ให้หน้าตาเข้ากับหน้าอื่นของร้าน
+- database/dimsum_full.sql → โครงฐานข้อมูล MySQL v5 + ข้อมูลตัวอย่าง (ส่วนที่ 1 = โครงตาราง) (ชื่อตาราง/คอลัมน์ต้องตรงเป๊ะ)
+- lib/ (db.js, response.js, auth.js, log.js, shop.js, queue.js, gateway.js) + routes/_template.js + routes/auth.js → ฟังก์ชันกลางฝั่ง server
+- public/assets/css/style.css + public/assets/js/api.js + public/assets/js/layout.js + public/admin/_template.html + public/_template_customer.html → ฐานหน้าเว็บกลาง
+- docs/API_ร้านติ่มซำ_v5.md → ดูเฉพาะแถว API ของฉัน และแถวของเพื่อนที่หน้าฉันต้องเรียก
+
+## กติกาฝั่ง server (Node.js + Express + MySQL)
+- 1 API = 1 ไฟล์ routes/<ชื่อ>.js ตามแม่แบบ routes/_template.js (server.js โหลดให้อัตโนมัติ ห้ามแก้ server.js)
+- ระบบเป็น Microservices: server หลัก (port 3000) เป็น API Gateway ส่งต่อ /api/kitchen → kitchen-service (4001) ·
+  /api/ingredients, suppliers, purchase_orders, goods_receipts, stock → inventory-service (4002) · /api/notifications → notify-service (4003)
+  API ของ 3 service นี้เขียนที่ services/<service>/routes/<api>.js (เหมือน routes/_template.js แต่ require lib ด้วย '../../../lib/...')
+  ไม่ต้องแก้ server.js, config.js หรือ services/*/index.js · หน้าเว็บเรียก api.get('kitchen') ตามปกติ ไม่ต้องรู้ port
+- service คุยกันผ่าน API หรือคิวเท่านั้น ห้ามอ่านตารางของ service อื่นตรง:
+  callService(req, 'inventory', '/api/ingredients?low_stock=1') (lib/gateway.js · service ดับ = throw 503 ให้ catch แล้วแสดง "ไม่พร้อมใช้")
+  publish('notify', { channel: 'sms'|'line'|'system', to, title, message }, conn) (lib/queue.js · ไม่ต้องรอ notify-service ส่ง)
+  ตารางคลัง (ingredients, suppliers, supplier_prices, purchase_orders, purchase_order_items, goods_receipts, stock_movements) ใช้ได้เฉพาะใน inventory-service
+- ใช้เฉพาะฟังก์ชันใน lib/: query, queryOne, transaction / ok, fail, requireFields, handle /
+  requireLogin, requireRole, requirePerm, mustBe, mustHavePerm, requireMember, loginMember, logoutMember /
+  writeLog / shopSettings, isOpenNow, isOrderOpenNow, currentShift, closedMessage /
+  publish (ส่งงานเข้าคิว) / callService (เรียก API ของ service อื่น)
+  ห้ามแก้หรือเขียน lib ใหม่ ถ้าขาดอะไรให้เขียนเป็นฟังก์ชันภายในไฟล์ route ของฉันเอง
+- GET = อ่าน (ค่าทาง query) / POST = เปลี่ยนข้อมูล ส่ง JSON ที่มี action แยกด้วย switch
+- ตอบผ่าน ok(res, data, 'ข้อความไทย') หรือ throw fail('ข้อความไทย', status) เท่านั้น
+- เช็กสิทธิ์ตามคอลัมน์ "ใครเรียกได้" ในตาราง API · เปลี่ยนข้อมูลสำคัญต้อง writeLog()
+- ค่าที่อยู่ใน shop_settings (เวลา, max_qty_per_item, vip_*) ห้ามเขียนตัวเลขตายตัว อ่านจาก shopSettings()
+- งานที่แก้หลายตารางพร้อมกันใช้ transaction()
+- ห้ามแก้โครงฐานข้อมูล (ALTER/CREATE TABLE) ถ้าต้องการคอลัมน์เพิ่มให้บอกท้ายคำตอบ
+
+## กติกาฝั่งหน้าเว็บ (HTML + CSS + JS ล้วน)
+- ห้าม React/Vue/Tailwind/Bootstrap/jQuery ไม่ต้อง build
+- หน้าพนักงาน: copy โครงจาก public/admin/_template.html → public/admin/<ไฟล์>.html
+  เรียก initStaffPage({ title, roles, perm }) บนสุด (สร้าง sidebar + topbar ให้เอง ห้ามทำ sidebar เอง)
+- หน้าลูกค้าที่มี navbar: copy จาก public/_template_customer.html แล้วเรียก initPublicPage()
+- ใช้ class จาก style.css เท่านั้น: btn btn-secondary btn-danger btn-ghost btn-sm btn-lg / card / table-wrap table /
+  badge-* / tabs tab / input select textarea field / modal / menu-card menu-row / tile / ticket / empty / alert-* / grid-* / split
+  ห้ามเขียน <style> หรือไฟล์ CSS ใหม่ ใช้ style="" ได้เฉพาะ width/max-width/margin เล็กน้อย
+  ถ้าต้องการ class ที่ไม่มี ให้ใช้ของที่ใกล้ที่สุด แล้วบอกท้ายคำตอบว่าอยากขอเพิ่ม class อะไร
+- เรียก API ผ่าน api.js เท่านั้น: api.get / api.post / api.upload / run() / toast() / openModal() / confirmModal() /
+  fmt.baht fmt.time fmt.date fmt.esc / badge(status) / zoneChip / menuImage / poll() / qs()
+  ห้ามเขียน fetch เอง · ข้อความจากผู้ใช้ต้องผ่าน fmt.esc ก่อนใส่ innerHTML
+- JS ของหน้ายาวเกิน ~150 บรรทัดให้แยกเป็น public/assets/js/<ชื่อหน้า>.js
+- หน้าที่ต้องอัปเดตเองใช้ poll(fn, 5–10) ไม่ทำ real-time
+- ชื่อไฟล์หน้าต้องตรงกับ STAFF_MENU ใน layout.js (sidebar ลิงก์ไปตามชื่อนี้)
+- ข้อความบนจอภาษาไทยทั้งหมด
+
+## ถ้าต้องใช้งานของเพื่อนที่ยังไม่มีใน repo
+- ห้ามสร้างไฟล์ชื่อเดียวกับของเพื่อนใน routes/ หรือ public/ (จะชนตอนรวม)
+- ถ้าต้องเรียก API ของเพื่อนที่ยังไม่มี → เขียน API จำลองที่ dev-mocks/routes/<ชื่อapi>.js
+  (require lib ด้วย '../../lib/...' ตอบข้อมูลตายตัวตามรูปแบบใน API_v5 ชื่อฟิลด์ตรงฐานข้อมูล)
+- ถ้าต้องเปิดหน้าของเพื่อนที่ยังไม่มี → ทำหน้าจำลองง่ายๆ ที่ dev-mocks/public/<path เดียวกับของจริง>
+- server ใช้ไฟล์จำลองเฉพาะตอนที่ยังไม่มีไฟล์จริง และ dev-mocks/ ไม่ขึ้น Git
+- ถ้าแค่ต้องการข้อมูลในตาราง (เมนู โต๊ะ บิล) ไม่ต้องทำ API จำลอง ให้ SQL INSERT สำหรับทดสอบแทน
+- โค้ดจริงของฉันต้องเรียก API ด้วยชื่อและรูปแบบตาม API_v5 เป๊ะ จะได้สลับไปใช้ของจริงได้โดยไม่ต้องแก้
+
+## ห้ามแตะไฟล์ของคนอื่น
+แก้/สร้างได้เฉพาะไฟล์ที่ระบุใน "งานของฉัน" เท่านั้น ห้ามแก้ lib/, server.js, config.js, services/*/index.js, style.css, api.js, layout.js, schema
+
+## ส่งมอบ
+1. ทุกไฟล์แบบเต็มไฟล์ (ไม่ตัดทอน) พร้อม path
+2. วิธีทดสอบ API แต่ละ action (ตัวอย่าง JSON ที่ส่ง + ผลที่ควรได้) สำหรับ Thunder Client/Postman
+3. ข้อมูลตัวอย่างที่ต้อง insert เพื่อทดสอบ (SQL INSERT) ถ้ามี
+4. รายการที่ต้องขอคนอื่น (class CSS, คอลัมน์ DB, API ของคนอื่นที่ใช้)
+5. ไฟล์จำลองใน dev-mocks/ (ถ้ามี) แยกหัวข้อไว้ท้ายสุด บอกชัดว่าเป็นไฟล์จำลอง ไม่ต้อง commit
+
+
+## ข้อตกลงที่ทั้งทีมใช้ (Feedback เฟส 3)
+- เวลาร้าน: กะเช้า 10:00–14:00 (ปิดรับออเดอร์ 13:30) · พัก 14:00–16:00 ลูกค้าต้องจ่ายและออก · กะเย็น 16:00–20:00 (ปิดรับออเดอร์ 19:30) · อ่านจาก shopSettings() เสมอ
+- จำนวนพร้อมขาย: เหลือ 0 = "หมดชั่วคราว" ลูกค้ายังสั่งได้ (รอนานขึ้น 5–10 นาที) · เชฟ/ผู้จัดการกดปิดขาย (is_available = 0) = "หมด" สั่งไม่ได้
+  API เมนูส่ง sale_status: 'available' | 'slow' | 'closed' · ระบบไม่ปิดขายเองตอนจำนวนเป็น 0
+- เงิน: แสดงผ่าน fmt.baht → "1,234 บาท" ห้ามพิมพ์ ฿ เอง
+- ทวนรายการ: แสดงลำดับ "1. ขนมจีบกุ้ง × 2 เข่ง" … และบรรทัด "รวม x รายการ"
+- ห้อง VIP ขายค่าห้องเป็นแพ็กเกจ (S 2 ชม. 1,200 · M 3 ชม. 1,600 · L 4 ชม. 2,000 · เหมาวัน 3,500 บาท ≤ 15 คน) มัดจำ 50% ของ (ค่าห้อง + ค่าอาหารสั่งล่วงหน้า) · สั่งอาหารล่วงหน้าเป็นสิทธิ์ห้อง VIP ไม่บังคับ ไม่มีขั้นต่ำ
+  ใช้ห้องได้ถึง :50 (เช่น S 10:00–11:50 รวมเวลาจัดห้อง 10 นาที) รอบถัดไปเริ่มตรงชั่วโมง
+
+---
+# งานของฉัน — คนที่ 7 · แก้ตาม Feedback เฟส 3: การ์ดห้อง VIP + ยอดขายรวมค่าห้อง
+## ไฟล์ที่ฉันสร้าง/แก้ได้ (แนบไฟล์เดิมทั้งหมดมาด้วย)
+- routes/dashboard.js
+- public/assets/js/dashboard.js · public/admin/dashboard.html
+## งาน
+1. การ์ด "ห้อง VIP วันนี้" (Feedback #1): แสดงชื่อแพ็กเกจในแท่ง Gantt · ช่วงเวลาตามแพ็กเกจ (จบ :50)
+   รายการต้องติดตาม: "ยังไม่รับมัดจำ" + **"โทรตาม"** (confirmed เลยเวลาเริ่ม ≥ 10 นาทีแล้วยังไม่มา) พร้อมเบอร์ลูกค้า
+   ตัดเรื่อง "เลยเวลานัด 30 นาที" ออก · การจองที่ released แสดงช่วงที่เหลือเป็นว่าง
+2. ยอดขายวันนี้ (ถ้ามีแล้ว): รวมค่าห้อง VIP + มัดจำที่ยึดวันนี้ · มัดจำที่คืนไม่นับ
+## กฎ
+- อ่านข้อมูลห้องจาก vip_bookings + vip_packages (คอลัมน์ใหม่ของคนที่ 1) · ไม่มีแพ็กเกจ (ข้อมูลเก่า) ให้แสดงจำนวนชั่วโมงแทน
+```
+
+---
+
 ## เฟส 4 — Dashboard เต็ม + ทดสอบรอบสุดท้าย
 
 ```
@@ -459,10 +557,10 @@ prep-today.html ตาราง + แถบความคืบหน้า
 ## หน้าเว็บ (ถ้ามีภาพแนบ ให้จัดวางตามภาพ)
 เพิ่มแบบกราฟ: ยอดขายวันนี้ (+% เทียบเมื่อวาน) · กราฟแท่งรายชั่วโมง · แท่งแนวนอน Top 5 เมนู · เมนูใกล้หมด · วัตถุดิบต่ำกว่าจุดสั่งซื้อ (ปุ่มไปใบสั่งซื้อ) · alert-wait ด้านบนเมื่อมีวัตถุดิบต่ำ
 การ์ดที่มาจาก inventory-service ถ้าระบบคลังดับ ให้ขึ้น "ระบบคลังสินค้าไม่พร้อมใช้" ในการ์ดนั้น ส่วนอื่นของ Dashboard ยังแสดงปกติ
-docs/test-checklist.md: checklist ทดสอบ flow demo ทุกเฟส อ้าง FR/BR + หัวข้อสาธิต Microservices:
+docs/test-checklist.md: checklist ทดสอบ flow demo ทุกเฟส อ้าง FR/BR + **งานแก้ Feedback เฟส 3 ทั้ง 11 ข้อ** + flow หมดชั่วคราว/หมด + กติกาห้อง VIP (มาสาย ปล่อยห้อง เลื่อน คืนมัดจำ) + หัวข้อสาธิต Microservices:
 ปิด kitchen-service แล้วลูกค้ายังสั่งได้ · ปิด notify-service แล้วขอ OTP งานรอในคิว เปิดกลับส่งครบ · ปิด inventory-service แล้ว Dashboard ยังเปิดได้ · npm run start:all เปิด service ที่ดับกลับเอง
 ## กฎธุรกิจที่ต้องเช็ก
-- นับยอดจากบิล paid วันนี้
+- นับยอดจากบิล paid วันนี้ (total_paid + deposit_deducted) + มัดจำห้อง VIP ที่ยึดวันนี้ · มัดจำที่คืนไม่นับ
 - low_ingredients และ unpaid_invoices ห้ามอ่านตารางคลังตรง ให้เรียก
   callService(req, 'inventory', '/api/ingredients?low_stock=1') และ callService(req, 'inventory', '/api/goods_receipts?unpaid=1')
   ใส่ try/catch: service ดับ → ส่ง { available: false } ของส่วนนั้น ห้ามทำให้ทั้ง API error

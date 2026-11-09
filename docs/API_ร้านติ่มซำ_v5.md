@@ -8,10 +8,12 @@
 - ใช้ **Node.js + Express** ชื่อ API เป็น `/api/xxx` ไฟล์อยู่ที่ `routes/xxx.js`
 - อ้างอิงเลข **FR ใน Requirement v5** แทนเลข use case
 - **เมนูมีโซนครัว** (`kitchen_zone`) จอครัวแยกตามโซนได้
-- **ห้อง VIP ขนาดเดียว** 15 คน ยอดขั้นต่ำ 3,000฿ มัดจำ 50% สูงสุด 4 ชั่วโมง (ค่าเหล่านี้อยู่ในตั้งค่าร้าน)
+- **ห้อง VIP ขนาดเดียว** 15 คน · **ขายค่าห้องเป็นแพ็กเกจ** S / M / L / เหมาวัน มัดจำ 50% ของค่าห้อง + ค่าอาหารสั่งล่วงหน้า (สั่งล่วงหน้าไม่บังคับ ไม่มีขั้นต่ำ) (แก้ตาม Feedback เฟส 3 · ราคาอยู่ในตาราง `vip_packages`)
 - **ตัด QR รับแต้ม**: กรอกเบอร์สมาชิกตอนปิดบิลได้แต้มทันที ไม่กรอกไม่ได้แต้ม
 - **คูปองกำหนดวันในสัปดาห์และยกเว้นวันหยุดราชการได้** + API วันหยุดราชการ
 - ตอนดูยอดก่อนจ่าย ระบบแนะนำคูปองที่ใช้ได้ตอนนั้น
+- **จำนวนพร้อมขายเหลือ 0 = หมดชั่วคราว** ลูกค้ายังสั่งได้ · ปิดขาย = หมด (API เมนูส่ง `sale_status`)
+- **เงินแสดงเป็น "บาท"** ผ่าน `fmt.baht` · เลขบิล 4 หลัก `B20261108-0001`
 - แบ่งเป็น **4 เฟส** และมีคอลัมน์ **คนทำ** ตามตารางแบ่งงานใน Requirement v5
 
 ## ข้อตกลงที่ใช้ทุก API
@@ -85,6 +87,23 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 | /api/public | GET action=home / menu | + q, min_price, max_price | กติกาค้นหาเดียวกับ /api/menus · เมนูมี unit เสมอ | สาธารณะ | 6 |
 | /api/dashboard | GET | — | + tables_by_zone, menus_by_category, bills_by_hour (สำหรับกราฟ) | manager+ | 7 |
 
+**API เพิ่ม/เปลี่ยนตาม Feedback เฟส 3** (รายละเอียดเต็มอยู่ในตารางแต่ละหมวดด้านล่าง · ข้อตกลงทีมอยู่ในหัวข้อ "แก้ตาม Feedback เฟส 3" ของ prompt แต่ละคน)
+
+| API | Method / action | สรุปที่เปลี่ยน | คน |
+| --- | --- | --- | --- |
+| /api/vip_packages | GET · POST update | **ใหม่** แพ็กเกจห้อง VIP (GET สาธารณะ ให้หน้าจัดเลี้ยงใช้) | 4 |
+| /api/vip_bookings | POST create | เลือก `package_id` แทน `hours` · pre-order ไม่บังคับ · มัดจำ 50% ของ (ค่าห้อง + ค่าอาหารล่วงหน้า) | 4 |
+| /api/vip_bookings | POST release / reschedule / shop_reschedule · cancel + refund · GET action=affected | **ใหม่** ปล่อยห้อง · เลื่อนวัน · ร้านเลื่อนให้ · คืนมัดจำ · รายการจองที่โดนเหตุสุดวิสัย | 4 |
+| /api/menus | POST reset_stock | **ใหม่** ล้างจำนวนพร้อมขายทุกเมนูเป็น 0 (หมดชั่วคราว) | 3 |
+| /api/menus | POST create / update | กันชื่อซ้ำ/คล้าย (409 · `confirm_similar`) | 3 |
+| /api/menus | POST set_available / add_stock / set_stock | ไม่ปิด/เปิดขายเองตามจำนวนแล้ว เปิดขายตอนจำนวน 0 ได้ | 3 |
+| /api/menu · /api/public action=menu | GET | + `sale_status` (`available` / `slow` / `closed`) · เมนูปิดขายแสดงเป็น "หมด" | 6 |
+| /api/orders | POST create / create_by_staff / cancel | หมดชั่วคราวยังสั่งได้ · ตัดจำนวนเท่าที่มี (`stock_taken`) · ตอบ `slow_items` | 6 |
+| /api/checkout | POST preview / pay | + ค่าห้อง VIP แยกบรรทัด มัดจำหักจากยอดรวมบิล | 5 |
+| /api/bills | POST open · GET action=search | เลขบิล 4 หลัก · ค้นบิลเรียงล่าสุดก่อน | 5 |
+| /api/dashboard | GET | การ์ด VIP + ป้ายโทรตาม · ยอดขายรวมค่าห้อง + มัดจำที่ยึด | 7 |
+| /api/reports | GET | แยกค่าห้อง VIP / ค่าอาหาร · มัดจำที่ยึด | 1 |
+
 ---
 
 ## 1. ผู้ใช้และตั้งค่าร้าน
@@ -99,7 +118,7 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 | /api/users | POST create | username, password, full_name, phone, role_id, can_payment, can_vip_booking | พนักงานใหม่ · staff ติ๊กทั้งสองช่องเป็นค่าเริ่มต้น | owner | FR-49 | P1 | 2 |
 | /api/users | POST update | id + ฟิลด์ที่แก้ (ไม่ส่ง password = ไม่เปลี่ยน) | ข้อมูลที่แก้แล้ว · log ระดับ system | owner | FR-49 | P1 | 2 |
 | /api/users | POST deactivate / activate | id | ปิด/เปิดบัญชี ไม่ลบจริง · ปิดบัญชีตัวเองไม่ได้ | owner | FR-49 | P1 | 2 |
-| /api/settings | GET | — | ตั้งค่าร้านทั้งหมด (รวม vip_min_spend, vip_deposit_percent, vip_max_hours) | สาธารณะ | FR-02, 50 | P1 | 4 |
+| /api/settings | GET | — | ตั้งค่าร้านทั้งหมด (รวม vip_deposit_percent · vip_min_spend, vip_max_hours ไม่ใช้แล้วตั้งแต่ Feedback เฟส 3) | สาธารณะ | FR-02, 50 | P1 | 4 |
 | /api/settings | POST update | เวลาเปิด-ปิด 2 กะ, เวลาปิดรับออเดอร์, ข้อมูลร้าน, max_qty_per_item, ค่าห้อง VIP | ตั้งค่าใหม่ · log ระดับ system | owner | FR-50 | P1 | 4 |
 | /api/holidays | GET | year | วันหยุดราชการของปีนั้น | พนักงาน | FR-50 | P1 | 1 |
 | /api/holidays | POST create / delete | holiday_date, name / id | เพิ่ม/ลบวันหยุด (วันซ้ำเพิ่มไม่ได้) | owner | FR-50 | P1 | 1 |
@@ -111,13 +130,16 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 | /api/categories | GET | — | หมวดที่ใช้งาน เรียงตาม sort_order | สาธารณะ | FR-48 | P1 | 3 |
 | /api/categories | POST create / update / delete | name, sort_order (delete = ซ่อน) | ลบไม่ได้ถ้ายังมีเมนูที่ใช้งานอยู่ | owner | FR-48 | P1 | 3 |
 | /api/menus | GET | q, category_id, kitchen_zone · `?id=` = เมนูเดียว | รายการ/ค้นหาเมนู (ไม่รวมที่ลบแล้ว) | พนักงาน | FR-48 | P1 | 3 |
-| /api/menus | POST create / update | form-data: category_id, name, description, price, unit, **kitchen_zone**, lot_size, image | เมนูใหม่/ที่แก้ · รูปเก็บที่ public/assets/uploads · แก้ราคา = log ระดับ system | owner | FR-48 | P1 | 3 |
+| /api/menus | POST create / update | form-data: category_id, name, description, price, unit, **kitchen_zone**, lot_size, image | เมนูใหม่/ที่แก้ · รูปเก็บที่ public/assets/uploads · แก้ราคา = log ระดับ system · กันชื่อซ้ำ/คล้าย: ตัดช่องว่าง เครื่องหมาย "ไส้" "สับ" แล้วตรงกัน = 409 · ชื่อหนึ่งอยู่ในอีกชื่อ = 409 + data { similar, need_confirm } ส่งซ้ำพร้อม confirm_similar: 1 ได้ | owner | FR-48 | P1 | 3 |
 | /api/menus | POST delete | id | ซ่อน (is_deleted = 1) | owner | FR-48 | P1 | 3 |
-| /api/menus | POST set_available | id, is_available | เปิด/ปิดขาย | หัวหน้าเชฟ, manager+ | FR-21 | P1 | 3 |
-| /api/menus | POST add_stock | id, lots หรือ qty | บวกจำนวนพร้อมขาย (lots × lot_size) · เมนูที่ปิดเพราะหมดเปิดเอง | หัวหน้าเชฟ, manager+ | FR-22, 24 | P2 | 3 |
-| /api/menus | POST set_stock | id, available_qty | แก้เป็นจำนวนที่นับได้จริง | หัวหน้าเชฟ, manager+ | FR-23 | P2 | 3 |
+| /api/menus | POST set_available | id, is_available | เปิด/ปิดขาย · ปิดขาย = "หมด" สั่งไม่ได้ · เปิดขายตอนจำนวน 0 ได้ (= หมดชั่วคราว) | หัวหน้าเชฟ, manager+ | FR-21 | P1 | 3 |
+| /api/menus | POST add_stock | id, lots หรือ qty | บวกจำนวนพร้อมขาย (lots × lot_size) · ไม่เปลี่ยนสถานะเปิด/ปิดขาย | หัวหน้าเชฟ, manager+ | FR-22, 24 | P2 | 3 |
+| /api/menus | POST set_stock | id, available_qty | แก้เป็นจำนวนที่นับได้จริง · ตั้ง 0 = หมดชั่วคราว (ไม่ปิดขาย) | หัวหน้าเชฟ, manager+ | FR-23 | P2 | 3 |
+| /api/menus | POST reset_stock | — | ทุกเมนูที่ไม่ได้ลบและจำกัดจำนวน → available_qty = 0 (หมดชั่วคราว ไม่แตะ is_available) · ใช้ตอนเริ่มหลังหยุดยาว · log menu.reset_stock | หัวหน้าเชฟ, manager+ | FR-23 | P4 | 3 |
 
-ค่า `kitchen_zone`: `steam` นึ่ง · `fry` ทอด · `congee_noodle` โจ๊ก-เส้น · `drink_dessert` เครื่องดื่ม-ของหวาน
+ค่า `kitchen_zone`: `steam` นึ่ง · `fry` ทอด · `congee_noodle` **จานหลัก** (เดิมชื่อ โจ๊ก-เส้น · ค่าในฐานข้อมูลเหมือนเดิม) · `drink_dessert` เครื่องดื่ม-ของหวาน
+
+สถานะขาย `sale_status` (ใช้ตรงกันทุกหน้า): `available` จำนวน > 0 หรือไม่จำกัด · `slow` จำนวน 0 แต่เปิดขาย = **หมดชั่วคราว** ยังสั่งได้ (รอนานขึ้น 5–10 นาที) · `closed` ปิดขาย = **หมด** สั่งไม่ได้ · ระบบไม่ปิดขายเองตอนจำนวนเป็น 0
 
 ## 3. โต๊ะ คิว และบิล
 
@@ -127,12 +149,12 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 | /api/tables | POST create / update / deactivate | code, table_type, seats, pos_x, pos_y | ปิดใช้โต๊ะที่มีลูกค้าอยู่ไม่ได้ | owner | FR-50 | P1 | 4 |
 | /api/vip_rooms | GET | — | ห้อง VIP ทั้งหมด + สถานะ | พนักงาน | FR-50 | P1 | 4 |
 | /api/vip_rooms | POST create / update / deactivate | name, seats (ไม่เกิน 15) | ห้องขนาดเดียว (BR-13) | owner | FR-50 | P1 | 4 |
-| /api/bills | POST open | table_ids[] หรือ vip_room_id, guests | bill_id, bill_no, qr_token, qr_url · เช็ก: ร้านเปิดอยู่ (BR-01), ทุกโต๊ะว่าง, 1 โต๊ะ 1 บิลที่เปิด (BR-26) · qr_url ใช้ BASE_URL | staff+ | FR-06, 07 | P1 | 5 |
+| /api/bills | POST open | table_ids[] หรือ vip_room_id, guests | bill_id, bill_no (B+YYYYMMDD-ลำดับ 4 หลัก นับใหม่ทุกวัน), qr_token, qr_url · เช็ก: ร้านเปิดอยู่ (BR-01), ทุกโต๊ะว่าง, 1 โต๊ะ 1 บิลที่เปิด (BR-26) · qr_url ใช้ BASE_URL | staff+ | FR-06, 07 | P1 | 5 |
 | /api/bills | GET | status=open | บิลที่เปิดอยู่ (เลขบิล, โต๊ะ, เวลาเปิด, ยอดรวม) | พนักงาน | FR-20, 25 | P1 | 5 |
 | /api/bills | POST cancel | bill_id | ยกเลิกโต๊ะที่เปิดผิด เฉพาะบิลที่ยังไม่มีออเดอร์ · โต๊ะกลับเป็นว่าง QR ใช้ไม่ได้ | manager+ | FR-08 | P1 | 5 |
 | /api/bills | GET | id | บิลเดียว + ออเดอร์ทุกรอบ + สถานะรายการ | พนักงาน | FR-20, 25 | P2 | 5 |
 | /api/bills | POST void | bill_id, reason | ยกเลิกบิลที่มีออเดอร์หรือจ่ายแล้ว (BR-11) · เหตุผลเก็บใน log | manager+ | FR-30 | P2 | 5 |
-| /api/bills | GET | action=search, date, table_id, time_from, time_to | บิลย้อนหลัง + ใครเปิด/ปิด + สั่งผ่าน QR หรือพนักงานคนไหน | manager+ | FR-53 | P2 | 5 |
+| /api/bills | GET | action=search, date, table_id, time_from, time_to | บิลย้อนหลัง + ใครเปิด/ปิด + สั่งผ่าน QR หรือพนักงานคนไหน · เรียงล่าสุดอยู่บน | manager+ | FR-53 | P2 | 5 |
 | /api/queue | POST issue | party_size | queue_no แยกกลุ่ม (บาร์ / 2–4 / 5–8) · หลังปิดรับออเดอร์ออกคิวไม่ได้ | staff+ | FR-03 | P2 | 4 |
 | /api/queue | GET | — | คิวที่รออยู่ แยกตามกลุ่ม | staff+ | FR-04 | P2 | 4 |
 | /api/queue | POST call / skip / seat | id (seat ส่ง bill_id ด้วย) | call นับครั้ง · เรียก 3 ครั้งหรือเกิน 5 นาทีข้ามได้ (BR-03) | staff+ | FR-04 | P2 | 4 |
@@ -142,11 +164,11 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 | API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ | FR | เฟส | คน |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | /api/public | GET | action=home | เมนูแยกหมวด + เวลาเปิด-ปิด + ช่องทางติดต่อ | สาธารณะ | FR-01, 02 | P1 | 6 |
-| /api/public | GET | action=menu, token | เลขโต๊ะ + เมนู (ปิดขายขึ้น "หมด") + ปิดรับออเดอร์หรือยัง · บิลไม่ open = error | สาธารณะ | FR-09 | P1 | 6 |
+| /api/public | GET | action=menu, token | เลขโต๊ะ + เมนู (รวมที่ปิดขาย) + `sale_status` ต่อเมนู + ปิดรับออเดอร์หรือยัง · บิลไม่ open = error | สาธารณะ | FR-09 | P1 | 6 |
 | /api/public | GET | action=bill_status, token | ออเดอร์แยกรอบ + สถานะรายการ + ยอดบิล + รายการที่หัวหน้าเชฟยกเลิกพร้อมเหตุผล | สาธารณะ | FR-12, 18 | P2 | 6 |
-| /api/orders | POST create | token, items[{menu_item_id, qty}] | ออเดอร์รอบถัดไป · เช็ก: บิล open, ยังไม่ปิดรับออเดอร์ (FR-14), ไม่เกิน 10 ต่อเมนู (BR-06), จำนวนพร้อมขายพอ (FR-11) · เก็บราคาตอนสั่ง · ตัดจำนวนพร้อมขาย | สาธารณะ (token) | FR-10, 11, 14 | P2 | 6 |
+| /api/orders | POST create | token, items[{menu_item_id, qty}] | ออเดอร์รอบถัดไป · เช็ก: บิล open, ยังไม่ปิดรับออเดอร์ (FR-14), ไม่เกิน 10 ต่อเมนู (BR-06), เมนูยังเปิดขาย (ปิดขาย = 409 "หมดแล้ว") · จำนวน 0 = หมดชั่วคราว **ยังสั่งได้** · เก็บราคาตอนสั่ง · ตัดจำนวนพร้อมขายเท่าที่มี ไม่ต่ำกว่า 0 (บันทึก order_items.stock_taken) · ตอบ slow_items = เมนูที่รอนานขึ้น | สาธารณะ (token) | FR-10, 11, 14 | P2 | 6 |
 | /api/orders | POST create_by_staff | bill_id, items[] | เหมือน create + บันทึก created_by | staff+ | FR-52 | P2 | 6 |
-| /api/orders | POST cancel | token, order_id | ยกเลิกทั้งออเดอร์เมื่อทุกรายการยัง waiting (BR-07) · คืนจำนวนพร้อมขาย | สาธารณะ (token) | FR-13 | P2 | 6 |
+| /api/orders | POST cancel | token, order_id | ยกเลิกทั้งออเดอร์เมื่อทุกรายการยัง waiting (BR-07) · คืนจำนวนพร้อมขายเท่าที่ตัดไปจริง (stock_taken) | สาธารณะ (token) | FR-13 | P2 | 6 |
 | /api/kitchen | GET | zone (ไม่ส่ง = ทุกโซน) | รายการที่ยังไม่ done เรียงตามเวลาสั่ง (FIFO) + เลขโต๊ะ + โซน · จอโซนส่ง zone / จอหัวหน้าเชฟไม่ส่ง | หัวหน้าเชฟ, manager+ | FR-15, 16 | P2 | 7 |
 | /api/kitchen | POST update_status | item_id, status | เปลี่ยนทีละขั้น waiting → cooking → ready → done · โซน drink_dessert ข้าม ready ได้ (ข้าม QC) · บันทึก updated_by | หัวหน้าเชฟ, manager+ | FR-17 | P2 | 7 |
 | /api/kitchen | POST cancel_item | item_id, cancel_qty, reason, note | ยกเลิกทั้งหมด/บางส่วน · วัตถุดิบหมด = จำนวนพร้อมขายเป็น 0 ปิดเมนู · เสีย/อื่นๆ = ไม่คืนจำนวน (BR-08) | หัวหน้าเชฟ, manager+ | FR-18, 19 | P2 | 7 |
@@ -157,8 +179,8 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 | API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ | FR | เฟส | คน |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | /api/members | GET | action=lookup, code (**เบอร์โทร** หรือบาร์โค้ด) | สมาชิก + แต้มคงเหลือ + รางวัลที่แลกได้ + คูปองในบัญชีที่ยังไม่ใช้ | staff+ [รับเงิน] | FR-26 | P3 | 6 |
-| /api/checkout | POST preview | bill_ids[], member_id, reward_ids[], coupon_code | คำนวณให้ดูก่อน (ไม่บันทึก) ตาม BR-10 · **suggested_coupons** = คูปองที่ใช้ได้ตอนนั้น (เช่น Happy Hour) · points_to_earn | staff+ [รับเงิน] | FR-26, 27 | P2 / P3 | 5 |
-| /api/checkout | POST pay | bill_ids[], payment_method, member_id, reward_ids[], coupon_code | ปิดบิล + โต๊ะว่าง + QR หมดอายุ (FR-29) · ถ้ามี member_id: ตัดแต้มที่แลก + **บวกแต้มเข้าบัญชีทันที** (BR-18) · ไม่มี member_id ไม่ได้แต้ม · ได้ข้อมูลใบเสร็จ + points_earned (FR-28) · เฟส 2 ส่งแค่ bill_ids + payment_method | staff+ [รับเงิน] | FR-25–29, 41 | P2 / P3 | 5 |
+| /api/checkout | POST preview | bill_ids[], member_id, reward_ids[], coupon_code | คำนวณให้ดูก่อน (ไม่บันทึก) ตาม BR-10 · **suggested_coupons** = คูปองที่ใช้ได้ตอนนั้น (เช่น Happy Hour) · points_to_earn · บิลจากการจองห้อง VIP: + room_fee (ค่าห้องแยกบรรทัด) มัดจำหักจากยอดรวมบิล (ค่าห้อง + ค่าอาหาร) · เหมาวันค่าห้องอยู่บิลเช้าเท่านั้น · บิลห้อง VIP ไม่มีออเดอร์ชำระได้ | staff+ [รับเงิน] | FR-26, 27 | P2 / P3 | 5 |
+| /api/checkout | POST pay | bill_ids[], payment_method, member_id, reward_ids[], coupon_code | ปิดบิล + โต๊ะว่าง + QR หมดอายุ (FR-29) · ถ้ามี member_id: ตัดแต้มที่แลก + **บวกแต้มเข้าบัญชีทันที** (BR-18) · ไม่มี member_id ไม่ได้แต้ม · ได้ข้อมูลใบเสร็จ + points_earned (FR-28) · เฟส 2 ส่งแค่ bill_ids + payment_method · ใบเสร็จรายการมีลำดับ + จำนวนรายการ · แต้มคิดจากยอดชำระทั้งหมด (รวมค่าห้อง) | staff+ [รับเงิน] | FR-25–29, 41 | P2 / P3 | 5 |
 | /api/shifts | GET | date, shift | ยอดเงินสดในระบบของกะ | staff+ [รับเงิน] | FR-31 | P2 | 2 |
 | /api/shifts | POST close | shift, counted_cash | บันทึกปิดยอด + ส่วนต่าง | staff+ [รับเงิน] | FR-31 | P2 | 2 |
 
@@ -166,17 +188,27 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 
 ## 6. ห้อง VIP
 
+แก้ตาม Feedback เฟส 3: ขาย**ค่าห้อง**เป็นแพ็กเกจ · สั่งอาหารล่วงหน้าเป็นสิทธิ์ห้อง VIP ไม่บังคับ ไม่มีขั้นต่ำ · มัดจำ 50% ของ (ค่าห้อง + ค่าอาหารล่วงหน้า) · เริ่มตรงชั่วโมง ออกก่อน 10 นาที อยู่ภายในรอบเดียว (เหมาวัน = ทั้ง 2 รอบ แยก 2 บิล)
+
 | API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ | FR | เฟส | คน |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| /api/vip_bookings | GET | action=availability, date | ตารางห้อง × ชั่วโมง ว่าง/จองแล้ว | staff+ [จอง VIP] | FR-32 | P3 | 4 |
-| /api/vip_bookings | GET | date · `?id=` = การจองเดียว | การจองของวัน / รายละเอียด + pre-order | staff+ [จอง VIP] | FR-32 | P3 | 4 |
-| /api/vip_bookings | POST create | vip_room_id, booking_date, start_time, hours, customer_name, customer_phone, guests, items[] | เช็ก: ต้นชั่วโมง, 1–4 ชั่วโมง, ไม่ข้ามช่วงปิด, ห้องว่างทุกชั่วโมง (BR-12), คนไม่เกิน 15, ยอด pre-order ≥ 3,000฿ (BR-13) · มัดจำ = 50% ของยอด | staff+ [จอง VIP] | FR-33 | P3 | 4 |
+| /api/vip_packages | GET | — | แพ็กเกจที่เปิดใช้ [{ id, code, name, hours (null = เหมาวัน), price }] เรียงตาม sort_order | สาธารณะ | FR-33 | P4 | 4 |
+| /api/vip_packages | POST update | id, name, price, is_active | แก้แพ็กเกจ · log ระดับ system | owner | FR-50 | P4 | 4 |
+| /api/vip_bookings | GET | action=availability, date | ตารางห้อง × ชั่วโมง ว่าง/จองแล้ว · ช่วงที่ถูกปล่อยเป็นว่าง | staff+ [จอง VIP] | FR-32 | P3 | 4 |
+| /api/vip_bookings | GET | date · `?id=` = การจองเดียว | การจองของวัน / รายละเอียด + แพ็กเกจ + room_fee + pre-order + ปุ่มที่กดได้ (can_*) + can_call_follow (เลยนัด ≥ 10 นาทีแล้วยังไม่มา) | staff+ [จอง VIP] | FR-32 | P3 | 4 |
+| /api/vip_bookings | GET | action=affected, date, vip_room_id | การจองที่โดนเหตุสุดวิสัย เรียงตามลำดับการจอง (created_at) | manager+ | FR-37 | P4 | 4 |
+| /api/vip_bookings | POST create | vip_room_id, booking_date, start_time, **package_id**, customer_name, customer_phone, guests, items[] (ไม่บังคับ) | เช็ก: ต้นชั่วโมง, เวลาจบ = เริ่ม + ชั่วโมงแพ็กเกจ − 10 นาที อยู่ในรอบเดียว (เหมาวันล็อก 2 รอบ), ห้องว่าง (BR-12), คนไม่เกิน 15 (BR-13) · room_fee = ราคาแพ็กเกจ · มัดจำ = (room_fee + ยอด pre-order) × vip_deposit_percent% · จองช่วงที่กำลังเดินอยู่ได้ (นับจากต้นชั่วโมง ราคาเต็ม) | staff+ [จอง VIP] | FR-33 | P3 | 4 |
 | /api/vip_bookings | POST confirm_deposit | id | สถานะ → confirmed + บันทึกคนรับมัดจำ | staff+ [จอง VIP] | FR-34 | P3 | 4 |
-| /api/vip_bookings | POST update_preorder | id, items[] | แก้ได้ถึงก่อนวันจอง 1 วัน (BR-15) · ยอดใหม่ต้องยัง ≥ ขั้นต่ำ | staff+ [จอง VIP] | FR-35 | P3 | 4 |
-| /api/vip_bookings | POST arrive | id | เปิดบิลห้อง VIP (ตรรกะเดียวกับ /api/bills open) + ส่ง pre-order เป็นออเดอร์รอบที่ 1 | staff+ [จอง VIP] | FR-36 | P3 | 4 |
-| /api/vip_bookings | POST no_show / cancel | id | ห้องกลับเป็นว่าง · มัดจำไม่คืน (BR-16) · no_show กดได้หลังเลย 30 นาที | staff+ [จอง VIP] | FR-37 | P3 | 4 |
+| /api/vip_bookings | POST update_preorder | id, items[] | แก้ได้ถึงก่อนวันจอง 1 วัน (BR-15) · ไม่มียอดขั้นต่ำ · ก่อนรับมัดจำคำนวณมัดจำใหม่ · หลังรับมัดจำแล้วมัดจำไม่เปลี่ยน (ส่วนต่างจ่ายตอนชำระ) | staff+ [จอง VIP] | FR-35 | P3 | 4 |
+| /api/vip_bookings | POST arrive | id | เปิดบิลห้อง VIP + ส่ง pre-order (ถ้ามี) เป็นออเดอร์รอบที่ 1 · กดได้ตลอดช่วงจอง (ไม่จำกัดมาสาย) · เหมาวันกดได้รอบละครั้ง (bill_id / evening_bill_id) | staff+ [จอง VIP] | FR-36 | P3 | 4 |
+| /api/vip_bookings | POST release | id | ลูกค้ายืนยันไม่มา → released · มัดจำไม่คืน · เวลาที่เหลือของห้องกลับเป็นว่าง | staff+ [จอง VIP] | FR-37 | P4 | 4 |
+| /api/vip_bookings | POST reschedule | id, booking_date, start_time, package_id | ลูกค้าเลื่อน: ได้ 1 ครั้ง · ไม่เกินวันเดิม + 14 วัน · แจ้งก่อนวันจองเดิม ≥ 1 วัน · ห้องว่าง · มัดจำย้ายตาม · เปลี่ยนแพ็กเกจได้ (ส่วนต่างจ่ายตอนชำระ) · เต็ม = 409 | staff+ [จอง VIP] | FR-35 | P4 | 4 |
+| /api/vip_bookings | POST shop_reschedule | id, booking_date, start_time, reason | ร้านเลื่อนให้ (เหตุสุดวิสัย) · ไม่นับสิทธิ์เลื่อน ไม่จำกัด 14 วัน · บันทึกเหตุผล | manager+ | FR-37 | P4 | 4 |
+| /api/vip_bookings | POST no_show | id | กดได้หลังจบช่วงจอง · มัดจำไม่คืน (BR-16) | staff+ [จอง VIP] | FR-37 | P3 | 4 |
+| /api/vip_bookings | POST cancel | id, reason, refund (0/1) | ลูกค้ายกเลิก (refund 0) = มัดจำไม่คืน · ร้านยกเลิกเพราะเหตุสุดวิสัย (refund 1 · manager+) = คืนมัดจำ บันทึกใครคืนเมื่อไหร่ | staff+ [จอง VIP] / refund: manager+ | FR-37 | P3 / P4 | 4 |
 
-ค่าขั้นต่ำ มัดจำ และชั่วโมงสูงสุด อ่านจาก `shop_settings` (vip_min_spend, vip_deposit_percent, vip_max_hours) ห้ามเขียนตัวเลขตายตัวในโค้ด
+มัดจำ % และเวลาเปิด-ปิดแต่ละรอบ อ่านจาก `shop_settings` · ราคาแพ็กเกจอ่านจาก `vip_packages` ห้ามเขียนตัวเลขตายตัวในโค้ด
+ยอดขาย: ค่าห้องนับเป็นรายได้ · มัดจำที่ยึด (no_show / released / ลูกค้ายกเลิก) นับเป็นรายได้ · มัดจำที่คืนไม่นับ
 
 ## 7. สมาชิก แต้ม คูปอง
 
@@ -202,10 +234,10 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 
 | API | Method / action | ส่งอะไร | ได้อะไร / กติกา | ใครเรียกได้ | FR | เฟส | คน |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| /api/dashboard | GET | — | P1: โต๊ะที่มีลูกค้า, เมนูที่ปิดขาย, พนักงานที่ใช้งาน · P2+: ยอดขายวันนี้, เมนูใกล้หมด · P3+: การจองห้อง VIP วันนี้ · P4: วัตถุดิบต่ำกว่าจุดสั่งซื้อซ้ำ | manager+ | FR-47, 57 | P1 → P4 | 7 |
+| /api/dashboard | GET | — | P1: โต๊ะที่มีลูกค้า, เมนูที่ปิดขาย, พนักงานที่ใช้งาน · P2+: ยอดขายวันนี้, เมนูใกล้หมด · P3+: การจองห้อง VIP วันนี้ · P4: วัตถุดิบต่ำกว่าจุดสั่งซื้อซ้ำ · Feedback เฟส 3: การ์ด VIP แสดงแพ็กเกจ + ป้ายโทรตาม · ยอดขายรวมค่าห้อง + มัดจำที่ยึด | manager+ | FR-47, 57 | P1 → P4 | 7 |
 | /api/prep_plans | GET | date | แต่ละเมนู: ขายได้วันนี้, เฉลี่ยวันเดียวกัน 4 สัปดาห์ก่อน, ยอดแนะนำ +10% (BR-24) | manager+ | FR-45 | P4 | 3 |
 | /api/prep_plans | POST confirm | date, items[{menu_item_id, confirmed_qty}] | ยอดที่ยืนยัน = จำนวนพร้อมขายเริ่มต้นของวันนั้น | manager+ | FR-46 | P4 | 3 |
-| /api/reports | GET | from, to | ยอดรวม, ยอดต่อเมนู, ยอดต่อวิธีชำระ, จำนวนบิล | manager+ | — | P4 | 1 |
+| /api/reports | GET | from, to | ยอดรวม, ยอดต่อเมนู, ยอดต่อวิธีชำระ, จำนวนบิล · แยกค่าห้อง VIP / ค่าอาหาร · มัดจำที่ยึด | manager+ | — | P4 | 1 |
 | /api/logs | GET | level, user_id, from, to | ผู้จัดการเห็นเฉพาะ operation · เจ้าของร้านเห็นทั้งหมด | manager+ | FR-51 | P2 | 1 |
 
 ## 9. จัดซื้อและสต็อกวัตถุดิบ
@@ -235,4 +267,5 @@ service ดับ → path นั้นตอบ `503 "ระบบ...ขัด�
 | **P1** | auth ✅, roles, users, settings, holidays, categories, menus (ยกเว้น add_stock/set_stock), tables, vip_rooms, bills (open, cancel, GET open), public (home, menu), dashboard |
 | **P2** | menus (add_stock, set_stock), bills (detail, void, search), queue, public (bill_status), orders, kitchen, checkout (แบบไม่มีสมาชิก), shifts, logs |
 | **P3** | members, rewards, coupons, banners, checkout (สมาชิก แต้ม คูปอง), vip_bookings, tasks |
+| **แก้ Feedback เฟส 3** | vip_packages, vip_bookings (แพ็กเกจ release reschedule shop_reschedule affected cancel+refund), menus (reset_stock, กันชื่อซ้ำ), checkout (ค่าห้อง), bills (เลข 4 หลัก, search เรียงล่าสุด), dashboard, reports |
 | **P4** | prep_plans, reports, suppliers, ingredients, purchase_orders, goods_receipts, stock, dashboard (ส่วนวัตถุดิบ) |
