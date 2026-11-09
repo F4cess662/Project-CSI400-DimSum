@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>งานระบบ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+  <template id="page">
+    <div class="grid grid-2">
+      <section class="card">
+        <h3 class="card-title">🎂 แจกคูปองวันเกิดรายเดือน</h3>
+        <p class="muted">แจกคูปองรหัส BDAY ให้สมาชิกที่เกิดในเดือนที่เลือก คูปองจะเข้าบัญชีสมาชิก และระบบป้องกันการแจกซ้ำในรอบเดือนเดียวกัน</p>
+        <div class="field">
+          <label for="birthdayMonth">เดือนเกิดของสมาชิก</label>
+          <select class="select" id="birthdayMonth">
+            <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option>
+            <option value="3">มีนาคม</option><option value="4">เมษายน</option>
+            <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option>
+            <option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+            <option value="9">กันยายน</option><option value="10">ตุลาคม</option>
+            <option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+          </select>
+        </div>
+        <div class="alert alert-ok" id="birthdayCount">กำลังนับสมาชิก...</div>
+        <button class="btn btn-lg" id="issueBirthday">แจกคูปองวันเกิด</button>
+      </section>
+
+      <section class="card">
+        <h3 class="card-title">♻️ รีเซ็ตแต้มสมาชิกสิ้นปี</h3>
+        <div class="alert alert-wait">
+          คำเตือน: ระบบจะบันทึกแต้มคงเหลือเป็นรายการหมดอายุ (expire) แล้วตั้งแต้มสมาชิกเป็น 0 ไม่สามารถย้อนกลับได้
+        </div>
+        <p class="muted">ประมวลผลเฉพาะสมาชิกที่มีแต้มมากกว่า 0 และบันทึกประวัติกับการปรับยอดใน Transaction เดียวกัน</p>
+        <button class="btn btn-danger btn-lg" id="resetPoints">รีเซ็ตแต้มทั้งหมด</button>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:20px">
+      <h3 class="card-title">ประวัติงานระบบ</h3>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>วันเวลา</th><th>ผู้ดำเนินการ</th><th>รายการ</th><th>รายละเอียด</th></tr></thead>
+          <tbody id="taskHistory"><tr><td colspan="4" class="loading">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'งานระบบ', roles: ['owner'] });
+      if (!me) return;
+
+      const monthEl = document.getElementById('birthdayMonth');
+      const countEl = document.getElementById('birthdayCount');
+      const historyEl = document.getElementById('taskHistory');
+      const issueBtn = document.getElementById('issueBirthday');
+      const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      monthEl.value = String(new Date().getMonth() + 1);
+
+      async function loadSummary() {
+        const data = await run(() => api.get('tasks', { month: monthEl.value }));
+        if (!data) return;
+        countEl.textContent = `สมาชิกที่เกิดเดือน${monthNames[Number(data.month) - 1]}: ${fmt.num(data.birthday_member_count)} คน`;
+        historyEl.innerHTML = data.history.length ? data.history.map((row) => {
+          let detail = row.detail || '-';
+          try {
+            const parsed = typeof detail === 'string' ? JSON.parse(detail) : detail;
+            detail = Object.entries(parsed).map(([key, value]) => `${key}: ${value}`).join(' · ');
+          } catch { /* แสดงข้อความเดิมเมื่อไม่ใช่ JSON */ }
+          return `<tr>
+            <td>${fmt.esc(fmt.datetime(row.created_at))}</td>
+            <td>${fmt.esc(row.full_name || 'ระบบ')}</td>
+            <td>${fmt.esc(row.action === 'tasks.birthday_coupons' ? 'แจกคูปองวันเกิด' : 'รีเซ็ตแต้มสิ้นปี')}</td>
+            <td>${fmt.esc(detail)}</td>
+          </tr>`;
+        }).join('') : `<tr><td colspan="4"><div class="empty">ยังไม่มีประวัติงานระบบ</div></td></tr>`;
+      }
+
+      monthEl.onchange = loadSummary;
+      issueBtn.onclick = async () => {
+        const month = Number(monthEl.value);
+        if (!await confirmModal(`ยืนยันแจกคูปอง BDAY ให้สมาชิกที่เกิดเดือน${monthNames[month - 1]}?`, 'ยืนยันแจก')) return;
+        issueBtn.disabled = true;
+        const result = await run(() => api.post('tasks', { action: 'birthday_coupons', month }));
+        issueBtn.disabled = false;
+        if (result) {
+          await loadSummary();
+        }
+      };
+
+      document.getElementById('resetPoints').onclick = () => {
+        const first = openModal({
+          title: 'ยืนยันรีเซ็ตแต้มสิ้นปี',
+          body: `<div class="alert alert-wait">การดำเนินการนี้จะทำให้แต้มคงเหลือของสมาชิกทุกคนเป็น 0 และบันทึกประวัติแต้มหมดอายุ</div>
+                 <p>หากต้องการดำเนินการต่อ ให้พิมพ์คำว่า <b>รีเซ็ต</b> ในช่องด้านล่าง</p>
+                 <div class="field"><label for="resetConfirmText">พิมพ์คำว่า รีเซ็ต</label><input class="input" id="resetConfirmText" autocomplete="off"></div>`,
+          footer: `<button class="btn btn-secondary" data-close>ยกเลิก</button><button class="btn btn-danger" id="resetFirstConfirm" disabled>ยืนยันขั้นที่ 1</button>`
+        });
+        const input = first.el.querySelector('#resetConfirmText');
+        const firstBtn = first.el.querySelector('#resetFirstConfirm');
+        input.oninput = () => { firstBtn.disabled = input.value.trim() !== 'รีเซ็ต'; };
+        firstBtn.onclick = async () => {
+          first.close();
+          if (!await confirmModal('ยืนยันครั้งสุดท้าย: ต้องการรีเซ็ตแต้มสมาชิกทั้งหมดใช่หรือไม่?', 'รีเซ็ตแต้มทั้งหมด', true)) return;
+          const result = await run(() => api.post('tasks', { action: 'year_end_reset' }));
+          if (result) {
+            await loadSummary();
+          }
+        };
+      };
+
+      await loadSummary();
+    })();
+  </script>
+</body>
+</html>

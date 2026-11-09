@@ -1,85 +1,57 @@
+
 const router = require('express').Router();
-const { query, queryOne, transaction } = require('../lib/db');
+const { query, queryOne } = require('../lib/db');
 const { ok, fail, requireFields, handle } = require('../lib/response');
-const { requireMember, mustBe, mustHavePerm } = require('../lib/auth');
+const { requireMember, requireLogin, requireRole, mustBe } = require('../lib/auth');
 const { writeLog } = require('../lib/log');
-const { nowTime } = require('../lib/shop');
-const config = require('../config');
 
-// =====================================================================
-// ส่วนหลังบ้าน (คนที่ 2) — FR-42
-//   GET ?all=1  → รายการคูปองทั้งหมด (manager+)
-//   GET ?code=  → เช็กคูปองใบเดียวว่าใช้ได้ไหม + เหตุผล (staff+ ที่ติ๊ก [รับเงิน])
-//   POST action create / update / deactivate (manager+)
-// GET ที่ไม่มี all/code ยังเป็นของฝั่งลูกค้าตามเดิม (ด้านล่าง)
-// =====================================================================
-const WEEKDAY_TH = { 1: 'จันทร์', 2: 'อังคาร', 3: 'พุธ', 4: 'พฤหัส', 5: 'ศุกร์', 6: 'เสาร์', 7: 'อาทิตย์' };
+const COUPON_TYPES = ['amount', 'percent', 'free_item'];
 
-/** เช็กคูปองตามกติกา BR-23 / BR-27 (ลำดับและข้อความเดียวกับ checkCoupon ใน checkout.js)
- *  ?spend= และ ?member_id= ส่งหรือไม่ส่งก็ได้ ไม่ส่ง = ข้ามการเช็กข้อนั้น */
-async function checkCode(req) {
-  await mustHavePerm(req, 'payment');
-  const code = String(req.query.code).trim().toUpperCase();
-  const c = await queryOne('SELECT * FROM coupons WHERE code = ?', [code]);
-  const no = (reason) => ({ valid: false, reason, coupon: c || null });
-  if (!c || c.is_active !== 1) return no(`ไม่พบคูปอง ${code} หรือปิดใช้งานแล้ว`);
-
-  // วันที่/เวลาปัจจุบันตามเวลาไทย · วันในสัปดาห์ 1=จันทร์ … 7=อาทิตย์
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: config.timezone }).format(new Date());
-  const weekday = ((new Date(today + 'T00:00:00Z').getUTCDay() + 6) % 7) + 1;
-  const time = nowTime();
-
-  if (today < c.start_date) return no(`คูปอง ${c.code} เริ่มใช้ได้ ${c.start_date}`);
-  if (today > c.end_date) return no(`คูปอง ${c.code} หมดอายุแล้ว`);
-  if (c.valid_weekdays) {
-    const days = String(c.valid_weekdays).split(',').map(Number);
-    if (!days.includes(weekday)) return no(`คูปอง ${c.code} ใช้ได้เฉพาะวัน${days.map((d) => WEEKDAY_TH[d]).join(' ')}`);
-  }
-  if (c.exclude_holidays === 1) {
-    const hol = await queryOne('SELECT name FROM public_holidays WHERE holiday_date = ?', [today]);
-    if (hol) return no(`คูปอง ${c.code} ใช้ไม่ได้ในวันหยุดราชการ (${hol.name})`);
-  }
-  if (c.valid_time_start && c.valid_time_end && (time < c.valid_time_start || time > c.valid_time_end)) {
-    return no(`คูปอง ${c.code} ใช้ได้เวลา ${c.valid_time_start.slice(0, 5)}–${c.valid_time_end.slice(0, 5)} น.`);
-  }
-  const spend = req.query.spend;
-  if (spend !== undefined && spend !== '' && Number(spend) < Number(c.min_spend)) {
-    return no(`คูปอง ${c.code} ต้องมียอดขั้นต่ำ ${Number(c.min_spend)} บาท`);
-  }
-  const memberId = Number(req.query.member_id) || null;
-  if (c.member_only === 1 && !memberId) return no(`คูปอง ${c.code} ใช้ได้เฉพาะสมาชิก`);
-  if (c.usage_limit !== null) {
-    const u = await queryOne('SELECT COUNT(*) AS n FROM coupon_usages WHERE coupon_id = ?', [c.id]);
-    if (u.n >= c.usage_limit) return no(`คูปอง ${c.code} ถูกใช้ครบจำนวนแล้ว`);
-  }
-  if (c.per_member_limit !== null && memberId) {
-    const u = await queryOne('SELECT COUNT(*) AS n FROM coupon_usages WHERE coupon_id = ? AND member_id = ?', [c.id, memberId]);
-    if (u.n >= c.per_member_limit) return no(`สมาชิกใช้คูปอง ${c.code} ครบสิทธิ์แล้ว`);
-  }
-  return { valid: true, reason: '', coupon: c };
+function validDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-router.get('/',
-  // ไม่มี all/code → ข้ามไปใช้ GET ของลูกค้าด้านล่าง
-  (req, res, next) => (req.query.code || req.query.all ? next() : next('route')),
-  handle(async (req, res) => {
-    if (req.query.code) return ok(res, await checkCode(req));
-    await mustBe(req, ['manager', 'owner']);
-    const rows = await query(
-      `SELECT c.*, mi.name AS free_item_name,
-              (SELECT COUNT(*) FROM member_coupons mc WHERE mc.coupon_id = c.id) AS collected_count,
-              (SELECT COUNT(*) FROM coupon_usages cu WHERE cu.coupon_id = c.id) AS used_count
-         FROM coupons c LEFT JOIN menu_items mi ON mi.id = c.free_menu_item_id
-        ORDER BY c.is_active DESC, c.end_date DESC, c.id DESC`);
-    return ok(res, rows);
-  }));
+function nullableLimit(value, label) {
+  if (value === '' || value === null || value === undefined) return null;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) {
+    throw fail(`${label}ต้องเป็นจำนวนเต็มมากกว่า 0 หรือเว้นว่าง`, 400);
+  }
+  return number;
+}
 
+// GET /api/coupons
+// สมาชิก: ดูคูปองที่เปิดใช้งานและอยู่ในช่วงเวลา
+// แอดมิน: GET /api/coupons?all=1 ดูคูปองทั้งหมด
 router.get('/', handle(async (req, res) => {
+  const includeAll = req.query.all === '1';
+
+  if (includeAll) {
+    await mustBe(req, ['manager', 'owner']);
+
+    const rows = await query(
+      `SELECT c.*,
+              mi.name AS free_item_name,
+              (SELECT COUNT(*) FROM member_coupons mc
+                WHERE mc.coupon_id = c.id) AS total_collected,
+              (SELECT COUNT(*) FROM coupon_usages cu
+                WHERE cu.coupon_id = c.id) AS total_used
+         FROM coupons c
+         LEFT JOIN menu_items mi ON mi.id = c.free_menu_item_id
+        ORDER BY c.is_active DESC, c.id DESC`
+    );
+
+    return ok(res, rows);
+  }
+
   const sessionMemberId = req.session && req.session.memberId;
   const member = sessionMemberId
     ? await queryOne('SELECT id FROM members WHERE id = ?', [sessionMemberId])
     : null;
   const memberId = member ? member.id : null;
+
   const coupons = await query(
     `SELECT c.*,
             mi.name AS free_item_name,
@@ -93,26 +65,276 @@ router.get('/', handle(async (req, res) => {
         AND c.start_date <= CURDATE()
         AND c.end_date >= CURDATE()
       ORDER BY c.end_date, c.id`,
-    [memberId],
+    [memberId]
   );
 
   return ok(res, {
     isLoggedIn: Boolean(memberId),
     coupons: coupons.map((coupon) => {
-      const limit = coupon.per_member_limit == null ? 1 : Number(coupon.per_member_limit);
+      const limit = coupon.per_member_limit == null
+        ? 1 : Number(coupon.per_member_limit);
+
       return {
-       ...coupon,
-       collected: Number(coupon.my_count) >= limit,
-       sold_out: coupon.usage_limit != null
-         && Number(coupon.total_collected) >= Number(coupon.usage_limit),
+        ...coupon,
+        collected: Number(coupon.my_count) >= limit,
+        sold_out: coupon.usage_limit != null
+          && Number(coupon.total_collected) >= Number(coupon.usage_limit),
       };
     }),
   });
 }));
 
+// POST /api/coupons
+// manager/owner: เพิ่ม แก้ไข เปิด/ปิด และลบคูปอง
+router.post('/', requireRole(['manager', 'owner']), handle(async (req, res) => {
+  const body = req.body || {};
+  const action = body.action;
+
+  if (action === 'delete') {
+    requireFields(body, ['id']);
+    const id = Number(body.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      throw fail('รหัสคูปองไม่ถูกต้อง', 400);
+    }
+
+    const existing = await queryOne(
+      'SELECT id, code FROM coupons WHERE id = ?',
+      [id]
+    );
+
+    if (!existing) throw fail('ไม่พบคูปองที่ต้องการลบ', 404);
+
+    const references = await queryOne(
+      `SELECT
+        (SELECT COUNT(*) FROM member_coupons WHERE coupon_id = ?) AS collected,
+        (SELECT COUNT(*) FROM coupon_usages WHERE coupon_id = ?) AS used`,
+      [id, id]
+    );
+
+    if (Number(references.collected) > 0 || Number(references.used) > 0) {
+      throw fail('คูปองนี้มีประวัติการเก็บหรือใช้งานแล้ว กรุณาปิดใช้งานแทนการลบ', 409);
+    }
+
+    await writeLog(req, 'coupon.delete', 'coupons', id, {
+      code: existing.code,
+    });
+
+    await query('DELETE FROM coupons WHERE id = ?', [id]);
+    return ok(res, { id }, 'ลบคูปองแล้ว');
+  }
+
+  if (action === 'activate' || action === 'deactivate') {
+    requireFields(body, ['id']);
+    const id = Number(body.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      throw fail('รหัสคูปองไม่ถูกต้อง', 400);
+    }
+
+    const existing = await queryOne(
+      'SELECT id, is_active FROM coupons WHERE id = ?',
+      [id]
+    );
+
+    if (!existing) throw fail('ไม่พบคูปอง', 404);
+
+    const active = action === 'activate' ? 1 : 0;
+
+    await query('UPDATE coupons SET is_active = ? WHERE id = ?', [active, id]);
+
+    await writeLog(
+      req,
+      active ? 'coupon.activate' : 'coupon.deactivate',
+      'coupons',
+      id,
+      { is_active: active }
+    );
+
+    return ok(
+      res,
+      { id, is_active: active },
+      active ? 'เปิดใช้งานคูปองแล้ว' : 'ปิดใช้งานคูปองแล้ว'
+    );
+  }
+
+  if (action !== 'create' && action !== 'update') {
+    throw fail('ไม่รู้จัก action นี้', 400);
+  }
+
+  const isUpdate = action === 'update';
+
+  requireFields(body, isUpdate
+    ? ['id', 'code', 'coupon_type', 'start_date', 'end_date']
+    : ['code', 'coupon_type', 'start_date', 'end_date']
+  );
+
+  const id = isUpdate ? Number(body.id) : null;
+  if (isUpdate && (!Number.isInteger(id) || id <= 0)) {
+    throw fail('รหัสคูปองไม่ถูกต้อง', 400);
+  }
+
+  const code = String(body.code).trim().toUpperCase();
+  const couponType = String(body.coupon_type);
+  const startDate = String(body.start_date);
+  const endDate = String(body.end_date);
+
+  if (!code || code.length > 30) {
+    throw fail('รหัสคูปองต้องมีความยาว 1–30 ตัวอักษร', 400);
+  }
+
+  if (!COUPON_TYPES.includes(couponType)) {
+    throw fail('ประเภทคูปองไม่ถูกต้อง', 400);
+  }
+
+  if (!validDate(startDate) || !validDate(endDate) || startDate > endDate) {
+    throw fail('กรุณาตรวจสอบวันเริ่มต้นและวันสิ้นสุด', 400);
+  }
+
+  const minSpend = body.min_spend === '' || body.min_spend == null
+    ? 0 : Number(body.min_spend);
+
+  if (!Number.isFinite(minSpend) || minSpend < 0) {
+    throw fail('ยอดซื้อขั้นต่ำไม่ถูกต้อง', 400);
+  }
+
+  let value = null;
+  let freeMenuItemId = null;
+
+  if (couponType === 'free_item') {
+    requireFields(body, ['free_menu_item_id']);
+    freeMenuItemId = Number(body.free_menu_item_id);
+
+    if (!Number.isInteger(freeMenuItemId) || freeMenuItemId <= 0) {
+      throw fail('กรุณาเลือกเมนูฟรี', 400);
+    }
+
+    const menu = await queryOne(
+      'SELECT id FROM menu_items WHERE id = ? AND is_deleted = 0',
+      [freeMenuItemId]
+    );
+
+    if (!menu) throw fail('ไม่พบเมนูที่เลือกหรือเมนูถูกลบแล้ว', 404);
+  } else {
+    value = Number(body.value);
+
+    if (!Number.isFinite(value) || value <= 0) {
+      throw fail('กรุณาระบุมูลค่าส่วนลดมากกว่า 0', 400);
+    }
+
+    if (couponType === 'percent' && value > 100) {
+      throw fail('ส่วนลดเปอร์เซ็นต์ต้องไม่เกิน 100%', 400);
+    }
+  }
+
+  const validTimeStart = body.valid_time_start || null;
+  const validTimeEnd = body.valid_time_end || null;
+  const timePattern = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+  if (Boolean(validTimeStart) !== Boolean(validTimeEnd)) {
+    throw fail('กรุณาระบุเวลาเริ่มต้นและสิ้นสุดให้ครบ', 400);
+  }
+
+  if (validTimeStart && (
+    !timePattern.test(validTimeStart) ||
+    !timePattern.test(validTimeEnd) ||
+    validTimeStart >= validTimeEnd
+  )) {
+    throw fail('ช่วงเวลาใช้งานไม่ถูกต้อง', 400);
+  }
+
+  const validWeekdays = body.valid_weekdays
+    ? String(body.valid_weekdays).trim() : null;
+
+  if (validWeekdays && validWeekdays.length > 20) {
+    throw fail('ข้อมูลวันที่ใช้งานยาวเกินไป', 400);
+  }
+
+  const usageLimit = nullableLimit(body.usage_limit, 'จำนวนสิทธิ์รวม');
+  const perMemberLimit = nullableLimit(body.per_member_limit, 'จำนวนสิทธิ์ต่อสมาชิก');
+
+  const excludeHolidays = body.exclude_holidays ? 1 : 0;
+  const memberOnly = body.member_only ? 1 : 0;
+
+  const active = body.is_active === undefined
+    ? 1
+    : (body.is_active === true || body.is_active === 1 || body.is_active === '1' ? 1 : 0);
+
+  const values = [
+    code, couponType, value, freeMenuItemId, minSpend,
+    startDate, endDate, validTimeStart, validTimeEnd,
+    validWeekdays, excludeHolidays, memberOnly,
+    usageLimit, perMemberLimit
+  ];
+
+  if (!isUpdate) {
+    const duplicate = await queryOne(
+      'SELECT id FROM coupons WHERE code = ?',
+      [code]
+    );
+
+    if (duplicate) throw fail('รหัสคูปองนี้มีอยู่แล้ว', 409);
+
+    const inserted = await query(
+      `INSERT INTO coupons
+        (code, coupon_type, value, free_menu_item_id, min_spend,
+         start_date, end_date, valid_time_start, valid_time_end,
+         valid_weekdays, exclude_holidays, member_only,
+         usage_limit, per_member_limit, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      values
+    );
+
+    await writeLog(req, 'coupon.create', 'coupons', inserted.insertId, {
+      code, coupon_type: couponType, value,
+    });
+
+    return ok(res, { id: inserted.insertId, is_active: 1 }, 'เพิ่มคูปองแล้ว');
+  }
+
+  const existing = await queryOne(
+    'SELECT id, is_active FROM coupons WHERE id = ?',
+    [id]
+  );
+
+  if (!existing) throw fail('ไม่พบคูปองที่ต้องการแก้ไข', 404);
+
+  const duplicate = await queryOne(
+    'SELECT id FROM coupons WHERE code = ? AND id <> ?',
+    [code, id]
+  );
+
+  if (duplicate) throw fail('รหัสคูปองนี้ถูกใช้แล้ว', 409);
+
+  const finalActive = body.is_active === undefined
+    ? Number(existing.is_active) : active;
+
+  await query(
+    `UPDATE coupons
+        SET code = ?, coupon_type = ?, value = ?, free_menu_item_id = ?,
+            min_spend = ?, start_date = ?, end_date = ?,
+            valid_time_start = ?, valid_time_end = ?,
+            valid_weekdays = ?, exclude_holidays = ?, member_only = ?,
+            usage_limit = ?, per_member_limit = ?, is_active = ?
+      WHERE id = ?`,
+    [...values, finalActive, id]
+  );
+
+  await writeLog(req, 'coupon.update', 'coupons', id, {
+    code, coupon_type: couponType, value, is_active: finalActive,
+  });
+
+  return ok(res, { id, is_active: finalActive }, 'บันทึกการแก้ไขคูปองแล้ว');
+}));
+
+// ระบบเดิม: สมาชิกกดเก็บคูปอง
 router.post('/:id/collect', requireMember, handle(async (req, res) => {
   const couponId = Number(req.params.id);
-  if (!Number.isInteger(couponId) || couponId <= 0) throw fail('รหัสคูปองไม่ถูกต้อง', 422);
+  if (!Number.isInteger(couponId) || couponId <= 0) {
+    throw fail('รหัสคูปองไม่ถูกต้อง', 422);
+  }
+
+  const { transaction } = require('../lib/db');
 
   await transaction(async (conn) => {
     const [coupons] = await conn.execute(
@@ -122,23 +344,30 @@ router.post('/:id/collect', requireMember, handle(async (req, res) => {
           AND start_date <= CURDATE()
           AND end_date >= CURDATE()
         FOR UPDATE`,
-      [couponId],
+      [couponId]
     );
+
     const coupon = coupons[0];
     if (!coupon) throw fail('ไม่พบคูปอง หรือคูปองหมดอายุแล้ว', 404);
 
     const [[mine]] = await conn.execute(
       'SELECT COUNT(*) AS n FROM member_coupons WHERE member_id = ? AND coupon_id = ?',
-      [req.member.id, couponId],
+      [req.member.id, couponId]
     );
-    const perMemberLimit = coupon.per_member_limit == null ? 1 : Number(coupon.per_member_limit);
-    if (Number(mine.n) >= perMemberLimit) throw fail('คุณเก็บคูปองนี้ครบสิทธิ์แล้ว', 400);
+
+    const perMemberLimit = coupon.per_member_limit == null
+      ? 1 : Number(coupon.per_member_limit);
+
+    if (Number(mine.n) >= perMemberLimit) {
+      throw fail('คุณเก็บคูปองนี้ครบสิทธิ์แล้ว', 400);
+    }
 
     if (coupon.usage_limit != null) {
       const [[total]] = await conn.execute(
         'SELECT COUNT(*) AS n FROM member_coupons WHERE coupon_id = ?',
-        [couponId],
+        [couponId]
       );
+
       if (Number(total.n) >= Number(coupon.usage_limit)) {
         throw fail('คูปองถูกเก็บครบแล้ว', 400);
       }
@@ -147,7 +376,7 @@ router.post('/:id/collect', requireMember, handle(async (req, res) => {
     await conn.execute(
       `INSERT INTO member_coupons (member_id, coupon_id, issued_at, expires_at)
        VALUES (?, ?, NOW(), ?)`,
-      [req.member.id, couponId, coupon.end_date],
+      [req.member.id, couponId, coupon.end_date]
     );
   });
 
