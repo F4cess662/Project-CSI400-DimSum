@@ -84,6 +84,38 @@
         </div>
     </div>
 
+    <!-- ทวนรายการก่อนส่งเข้าครัว -->
+    <div id="reviewModal" class="modal" hidden onclick="if(event.target===this) closeReview()">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3>ทวนรายการอาหาร</h3>
+                <button class="rm" onclick="closeReview()" aria-label="ปิด">
+                    <svg class="ic"><use href="#i-close" /></svg>
+                </button>
+            </div>
+            <div id="reviewList" class="history-list"></div>
+            <div id="reviewTotal" class="order-total"></div>
+            <div style="display:flex;gap:12px;margin-top:16px">
+                <button class="history-btn" style="flex:1;justify-content:center" onclick="closeReview()">แก้ไข</button>
+                <button id="reviewOkBtn" class="confirm" style="flex:2;margin:0" onclick="submitOrder()">
+                    <svg class="ic"><use href="#i-fork" /></svg> ยืนยันสั่งอาหาร
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- กล่องยืนยันทั่วไป (แทน confirm() ของเบราว์เซอร์) -->
+    <div id="askModal" class="modal" hidden>
+        <div class="modal-box" style="max-width:420px">
+            <div class="modal-head"><h3 id="askTitle">ยืนยัน</h3></div>
+            <p id="askText" style="margin:16px 0"></p>
+            <div style="display:flex;gap:12px">
+                <button id="askNo" class="history-btn" style="flex:1;justify-content:center">ไม่ใช่</button>
+                <button id="askYes" class="confirm" style="flex:1;margin:0">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
 <div class="main">
     <aside class="sidebar">
         <h2>เลือกเมนู</h2>

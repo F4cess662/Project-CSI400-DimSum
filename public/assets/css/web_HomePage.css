@@ -1034,3 +1034,298 @@ body {
         right: 12px;
     }
 }
+/* =========================================================
+   แผ่นเมนู (web_menu.html) · ดึงจาก /api/menu · โทนเดียวกับแผ่นเมนูโปสเตอร์
+   ========================================================= */
+.mb-board {
+    width: min(100%, 1180px);
+    margin: 0 auto;
+    padding: 28px clamp(14px, 3vw, 36px) 36px;
+    border: 1px solid #ecd6a6;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(255, 250, 236, 0.97), rgba(255, 244, 214, 0.97));
+    box-shadow: 0 12px 34px rgba(91, 52, 29, 0.12);
+}
+
+.mb-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.mb-head h1 {
+    color: #6b3a1f;
+    font-size: clamp(26px, 3.6vw, 40px);
+    line-height: 1.2;
+}
+
+.mb-tagline {
+    color: #9a6a3a;
+    font-size: clamp(15px, 1.8vw, 18px);
+}
+
+.mb-head .menu-serving-note {
+    margin: 0;
+}
+
+.mb-jump {
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 999px;
+    background: rgba(255, 250, 236, 0.95);
+    scrollbar-width: none;
+}
+
+.mb-jump::-webkit-scrollbar {
+    display: none;
+}
+
+.mb-jump a {
+    flex: none;
+    padding: 6px 16px;
+    border: 1px solid #e8c99a;
+    border-radius: 999px;
+    background: #fff;
+    color: #6b3a1f;
+    font-size: 15px;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.mb-jump a:hover {
+    background: #f9e3a3;
+}
+
+.mb-section {
+    margin-top: 26px;
+    scroll-margin-top: 70px;
+}
+
+.mb-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 6px 24px 6px 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f6d98a, #fbeab8 85%, transparent);
+    color: #5a2f17;
+    font-size: clamp(20px, 2.4vw, 26px);
+    font-weight: 600;
+}
+
+.mb-title svg {
+    width: 38px;
+    height: 38px;
+    padding: 6px;
+    border-radius: 50%;
+    background: #fffaf0;
+}
+
+.mb-title svg,
+.mb-noimg svg {
+    fill: none;
+    stroke: #6b3a1f;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* การ์ดเมนูทั่วไป */
+.mb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.mb-item,
+.mb-set {
+    position: relative;
+    border: 1px solid #efdcb4;
+    border-radius: 14px;
+    background: #fffdf7;
+    box-shadow: 0 4px 12px rgba(120, 80, 30, 0.07);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mb-item:hover,
+.mb-set:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(120, 80, 30, 0.13);
+}
+
+.mb-item {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 12px;
+}
+
+.mb-photo {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background: #f7ead0;
+}
+
+.mb-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mb-noimg {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.mb-noimg svg {
+    width: 44%;
+    height: 44%;
+    opacity: 0.5;
+}
+
+.mb-item h3 {
+    margin: 10px 12px 2px;
+    color: #4a2a17;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.mb-desc {
+    margin: 0 12px;
+    color: #9a7a58;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.mb-price {
+    margin: auto 12px 0;
+    padding-top: 8px;
+    color: #8f3528;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.mb-price span {
+    color: #9a7a58;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+/* ชุดเซ็ต: การ์ดใหญ่ + ป้ายราคาสีเหลือง */
+.mb-set-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+    gap: 16px;
+}
+
+.mb-set-body {
+    position: relative;
+    padding: 14px 16px 18px;
+}
+
+.mb-set h3 {
+    color: #4a2a17;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.mb-set h3 small {
+    display: block;
+    color: #9a6a3a;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.mb-serves {
+    display: inline-block;
+    margin: 6px 0 4px;
+    padding: 2px 12px;
+    border-radius: 999px;
+    background: #8f3528;
+    color: #fff3d6;
+    font-size: 13px;
+}
+
+.mb-set ul {
+    margin: 6px 0 0;
+    padding-left: 20px;
+    color: #5c3b22;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.mb-set-price {
+    width: fit-content;
+    margin: 12px 0 0 auto;
+    padding: 8px 20px;
+    border-radius: 999px 999px 999px 999px / 70% 70% 70% 70%;
+    background: #f9d97a;
+    color: #5a2f17;
+    font-size: 22px;
+    font-weight: 700;
+    box-shadow: inset 0 -3px 0 rgba(160, 110, 20, 0.18);
+}
+
+/* เมนูหมด (ปิดขาย) */
+.is-out .mb-photo img {
+    filter: grayscale(0.85);
+    opacity: 0.6;
+}
+
+.mb-tag {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #8f3528;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.mb-empty {
+    padding: 40px 0;
+    color: #9a7a58;
+    text-align: center;
+}
+
+.mb-footnote {
+    margin-top: 28px;
+    color: #9a7a58;
+    font-size: 13px;
+    text-align: right;
+}
+
+@media (max-width: 600px) {
+    .mb-board {
+        border-radius: 18px;
+    }
+
+    .mb-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .mb-set-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mb-item h3 {
+        font-size: 15px;
+    }
+}

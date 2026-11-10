@@ -23,7 +23,7 @@ async function initStaffOrder() {
   const soldOut = (menu) => menu.sale_status === 'closed' || Number(menu.is_sold_out) === 1;
   const isSlow = (menu) => menu.sale_status === 'slow';
   const maxQuantity = () => maxPerMenu;
-  const formatPrice = (price) => `${Number(price || 0).toLocaleString('th-TH')} ฿`;
+  const formatPrice = (price) => fmt.baht(price);
 
   function drawCategories() {
     const categories = categoryOrder.filter((category) => menus.some((menu) => categoryLabel(menu) === category));
@@ -163,13 +163,45 @@ async function initStaffOrder() {
     drawCart();
   });
 
+  /** หน้าต่างทวนรายการ "1. ขนมจีบกุ้ง × 2 เข่ง 118 บาท" … → Promise<boolean> */
+  function reviewOrder(rows) {
+    const total = rows.reduce((s, r) => s + Number(r.menu.price) * r.qty, 0);
+    const place = tableSelect.options[tableSelect.selectedIndex]?.text || '';
+    return new Promise((resolve) => {
+      let answered = false;
+      const done = (v) => { if (!answered) { answered = true; resolve(v); } };
+      const m = openModal({
+        title: 'ทวนรายการก่อนส่งเข้าครัว',
+        body: `<p class="muted" style="margin:0 0 8px">${fmt.esc(place)}</p>
+          <ol style="margin:0;padding-left:20px">
+            ${rows.map(({ menu, qty }) => `<li style="margin:6px 0">
+              ${fmt.esc(menu.name)} × ${fmt.num(qty)} ${fmt.esc(unitLabel(menu))}
+              <b style="float:right">${fmt.baht(Number(menu.price) * qty)}</b>
+              ${isSlow(menu) ? '<br><small style="color:#a35b00">รอนานขึ้น 5–10 นาที</small>' : ''}
+            </li>`).join('')}
+          </ol>
+          <p style="margin:12px 0 0;text-align:right"><b>รวม ${rows.length} รายการ · ยอด ${fmt.baht(total)}</b></p>`,
+        footer: `<button class="btn btn-secondary" data-close>แก้ไข</button>
+                 <button class="btn" data-ok>ยืนยันส่งเข้าครัว</button>`,
+      });
+      m.el.querySelector('[data-ok]').onclick = () => { m.close(); done(true); };
+      m.el.parentElement.addEventListener('click', (e) => {
+        if (e.target.closest('[data-close]') || e.target === m.el.parentElement) done(false);
+      });
+    });
+  }
+
   /** ส่งออเดอร์เข้าครัว (POST /api/orders create_by_staff) */
   const submitBtn = document.getElementById('submitBtn');
   submitBtn.addEventListener('click', async () => {
     const billId = Number(tableSelect.value);
     if (!billId) { toast('เลือกโต๊ะหรือห้องก่อน', 'warn'); tableSelect.focus(); return; }
-    const items = [...cart].map(([menu_item_id, qty]) => ({ menu_item_id, qty }));
-    if (!items.length) { toast('ยังไม่มีเมนูในตะกร้า', 'warn'); return; }
+    const rows = [...cart]
+      .map(([id, qty]) => ({ menu: menus.find((m) => m.id === id), qty }))
+      .filter((r) => r.menu && !soldOut(r.menu));
+    if (!rows.length) { toast('ยังไม่มีเมนูในตะกร้า', 'warn'); return; }
+    if (!await reviewOrder(rows)) return;   // ทวนรายการก่อนส่ง · กด "แก้ไข" = กลับไปแก้ตะกร้า
+    const items = rows.map(({ menu, qty }) => ({ menu_item_id: menu.id, qty }));
     submitBtn.disabled = true;
     const result = await run(() => api.post('orders', { action: 'create_by_staff', bill_id: billId, items }));
     submitBtn.disabled = false;
