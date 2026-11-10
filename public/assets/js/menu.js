@@ -59,7 +59,7 @@ function renderTabs() {
     const tabs = [{ id: 'all', name: 'ทั้งหมด' }, ...[...cats].map(([id, name]) => ({ id, name }))];
 
     $('catTabs').innerHTML = tabs.map(t => `
-    <button class="chip ${String(t.id) === String(activeCat) ? 'active' : ''}" onclick="selectCat('${t.id}')">${t.name}</button>
+    <button class="chip ${String(t.id) === String(activeCat) ? 'active' : ''}" onclick="selectCat('${t.id}')">${esc(t.name)}</button>
   `).join('');
 }
 
@@ -79,11 +79,11 @@ function renderMenu() {
         return `
     <div class="card ${m.is_sold_out ? 'sold-out' : ''}" data-id="${id}">
       <div class="img">
-        <img src="${m.image_path || ''}" alt="${m.name}">
+        ${m.image_path ? `<img src="${esc(m.image_path)}" alt="${esc(m.name)}" onerror="this.remove()">` : ''}
         ${m.is_sold_out ? '<span class="badge">หมด</span>' : ''}
       </div>
       <div class="body">
-        <div class="name">${m.name}</div>
+        <div class="name">${esc(m.name)}</div>
         <div class="price">${Number(m.price).toLocaleString()} บาท <span class="unit">/ ${unitOf(m)}</span></div>
         ${m.sale_status === 'slow' ? `<div class="slow-note">${SLOW_NOTE}</div>` : ''}
         ${stepper(id, q, m.is_sold_out)}
@@ -124,9 +124,9 @@ function renderCart() {
 
     $('cartList').innerHTML = rows.length ? rows.map(({ m, q }) => `
     <div class="cart-item">
-      <div class="thumb"><img src="${m.image_path || ''}" alt=""></div>
+      <div class="thumb">${m.image_path ? `<img src="${esc(m.image_path)}" alt="" onerror="this.remove()">` : ''}</div>
       <div>
-        <div class="nm">${m.name}</div>
+        <div class="nm">${esc(m.name)}</div>
         <div class="pr">${Number(m.price).toLocaleString()} บาท <span class="unit">/ ${unitOf(m)}</span></div>
         ${stepper(idOf(m), q)}
       </div>
@@ -141,13 +141,52 @@ const postOrder = body => fetch(ORDER_API, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
 }).then(r => r.json());
 
-async function confirmOrder() {
+/** กล่องยืนยันในหน้า (หน้านี้ไม่ได้โหลด api.js จึงใช้ confirmModal() ไม่ได้) → Promise<boolean> */
+function askConfirm(text, okText = 'ยืนยัน', title = 'ยืนยัน') {
+    return new Promise(resolve => {
+        $('askTitle').textContent = title;
+        $('askText').textContent = text;
+        $('askYes').textContent = okText;
+        $('askModal').hidden = false;
+        const done = v => { $('askModal').hidden = true; resolve(v); };
+        $('askYes').onclick = () => done(true);
+        $('askNo').onclick = () => done(false);
+        $('askModal').onclick = e => { if (e.target === $('askModal')) done(false); };
+    });
+}
+
+/** รายการที่จะส่งจริง (ตัดเมนูที่เพิ่งปิดขาย) */
+function orderRows() {
+    return [...cart]
+        .map(([id, q]) => ({ m: allItems.find(x => idOf(x) === id), q: Math.min(q, MAX_QTY) }))
+        .filter(r => r.m && !r.m.is_sold_out);
+}
+
+/** กดยืนยันสั่ง → เปิดหน้าทวนรายการก่อน */
+function confirmOrder() {
     if (blocked) return alert(blocked);
-    const items = [...cart]
-        .filter(([id]) => !allItems.find(x => idOf(x) === id)?.is_sold_out)   // กันเมนูที่เพิ่งหมด
-        .map(([menu_item_id, qty]) => ({ menu_item_id, qty: Math.min(qty, MAX_QTY) }));
-    if (!items.length) return;
+    const rows = orderRows();
+    if (!rows.length) return;
+    const total = rows.reduce((s, r) => s + r.m.price * r.q, 0);
+    $('reviewList').innerHTML = rows.map(({ m, q }, i) => `
+    <div class="order-row">
+      <span>${i + 1}. ${esc(m.name)} × ${q} ${esc(unitOf(m))}
+        ${m.sale_status === 'slow' ? `<br><small style="color:#c25e00">รอนานขึ้น 5–10 นาที</small>` : ''}</span>
+      <span style="white-space:nowrap">${(m.price * q).toLocaleString()} บาท</span>
+    </div>`).join('');
+    $('reviewTotal').textContent = `รวม ${rows.length} รายการ · ยอด ${total.toLocaleString()} บาท`;
+    $('reviewOkBtn').disabled = false;
+    $('reviewModal').hidden = false;
+}
+
+function closeReview() { $('reviewModal').hidden = true; }
+
+async function submitOrder() {
+    const items = orderRows().map(({ m, q }) => ({ menu_item_id: idOf(m), qty: q }));
+    if (!items.length) return closeReview();
+    $('reviewOkBtn').disabled = true;
     $('confirmBtn').disabled = true;
+    closeReview();
     try {
         const res = await postOrder({ action: 'create', token, items });
         if (res.success) {
@@ -210,7 +249,7 @@ async function openHistory() {
 
 /** ยกเลิกทั้งรอบ ได้เฉพาะตอนครัวยังไม่เริ่มทำ (BR-07) */
 async function cancelRound(orderId, roundNo) {
-    if (!confirm(`ยกเลิกออเดอร์รอบที่ ${roundNo}?`)) return;
+    if (!await askConfirm(`ยกเลิกออเดอร์รอบที่ ${roundNo}?`, 'ยกเลิกรอบนี้', 'ยกเลิกออเดอร์')) return;
     try {
         const res = await postOrder({ action: 'cancel', token, order_id: orderId });
         alert(res.success ? `ยกเลิกรอบที่ ${roundNo} แล้ว` : (res.message || 'ยกเลิกไม่สำเร็จ'));
@@ -220,4 +259,4 @@ async function cancelRound(orderId, roundNo) {
 }
 
 function closeHistory() { $('historyModal').hidden = true; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHistory(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeHistory(); closeReview(); } });

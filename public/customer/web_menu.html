@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Home Page</title>
+    <title>นึ่งสุข - เมนูอาหาร</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="/assets/css/web_HomePage.css">
     <link rel="stylesheet" href="/assets/css/customer-background.css">
     <script src="/assets/js/customerNavbar.js" defer></script>
-    <script src="/customer/web_homePage.js" defer></script>
+    <script src="/assets/js/web_menu.js" defer></script>
 </head>
 
 <body>
@@ -35,14 +35,13 @@
             <a href="/memberAccount" id="navAccount" hidden>บัญชีสมาชิก</a>
         </div>
     </nav>
+
     <main class="page">
         <section class="details">
             <div class="slider">
                 <div class="slides">
                     <img src="/assets/img/banners/banner_1.jpg" class="slide active" alt="banner1">
-
                     <img src="/assets/img/banners/banner_2.jpg" class="slide" alt="banner2">
-
                 </div>
                 <button type="button" class="slider-btn prev" onclick="plusSlides(-1)" aria-label="รูปก่อนหน้า">
                     &#10094;
@@ -52,97 +51,59 @@
                 </button>
 
                 <div class="indicators">
-                    <button type="button" class="dot active" onclick="showSlide(0)" aria-label="แสดงรูปที่ 1">
-                    </button>
-
-                    <button type="button" class="dot" onclick="showSlide(1)" aria-label="แสดงรูปที่ 2">
-                    </button>
-
+                    <button type="button" class="dot active" aria-label="แสดงรูปที่ 1"></button>
+                    <button type="button" class="dot" aria-label="แสดงรูปที่ 2"></button>
                 </div>
-
             </div>
         </section>
 
-        <!-- แผ่นเมนูอาหาร -->
-        <main class="menu-page">
-
-            <section class="menu-poster-section">
-
-                <header class="menu-poster-heading">
-                    <h1>เมนูอาหารร้านนึ่งสุข</h1>
+        <!-- เมนูอาหาร: ดึงจาก GET /api/menu · เจ้าของเปลี่ยนรูป/ราคาหลังบ้าน หน้านี้เปลี่ยนตาม -->
+        <section class="menu-page">
+            <div class="mb-board">
+                <header class="mb-head">
+                    <div>
+                        <h1>เมนูอาหารร้านนึ่งสุข</h1>
+                        <p class="mb-tagline">อร่อยสดใหม่ นึ่งสุขทุกคำ</p>
+                    </div>
                     <p class="menu-serving-note">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 13h16l-1.6 6H5.6L4 13Z" />
                             <path d="M6 10a2 2 0 0 1 4 0m0 0a2 2 0 0 1 4 0m0 0a2 2 0 0 1 4 0" />
                             <path d="M12 3v2m-5-1 1 2m9-2-1 2" />
                         </svg>
-                        1 เข่ง มีทั้งหมด <strong>4 ชิ้น</strong>
+                        ติ่มซำนึ่ง เข่งละ <strong>3–4 ชิ้น</strong>
                     </p>
                 </header>
 
-                <div class="menu-poster">
-                    <img src="/assets/img/menuTimsum.jpg" alt="แผ่นเมนูอาหารร้านนึ่งสุข" id="menuPoster">
+                <nav class="mb-jump" id="menuJump" aria-label="ไปที่หมวดเมนู"></nav>
+
+                <div id="menuBoard">
+                    <p class="mb-empty">กำลังโหลดเมนู...</p>
                 </div>
 
-            </section>
+                <p class="mb-footnote">* ราคานี้อาจมีการเปลี่ยนแปลงได้โดยไม่ต้องแจ้งให้ทราบล่วงหน้า</p>
+            </div>
+        </section>
+    </main>
 
-        </main>
-
-        <!-- หน้าต่างขยายภาพ -->
-        <div class="poster-modal" id="posterModal">
-            <button type="button" class="poster-close" id="closePoster" aria-label="ปิดภาพ">&times;</button>
-
-            <img src="/assets/img/menu/menu-poster.jpg" alt="แผ่นเมนูอาหารขนาดใหญ่">
+    <footer class="footer">
+        <div>
+            <div class="logo"></div>
+            <h1>นึ่งสุข</h1>
         </div>
-
-        <script>
-            const menuPoster = document.getElementById("menuPoster");
-            const posterModal = document.getElementById("posterModal");
-            const closePoster = document.getElementById("closePoster");
-
-            menuPoster.addEventListener("click", function () {
-                posterModal.classList.add("show");
-                document.body.style.overflow = "hidden";
-            });
-
-            closePoster.addEventListener("click", function () {
-                posterModal.classList.remove("show");
-                document.body.style.overflow = "";
-            });
-
-            posterModal.addEventListener("click", function (event) {
-                if (event.target === posterModal) {
-                    posterModal.classList.remove("show");
-                    document.body.style.overflow = "";
-                }
-            });
-
-            document.addEventListener("keydown", function (event) {
-                if (event.key === "Escape") {
-                    posterModal.classList.remove("show");
-                    document.body.style.overflow = "";
-                }
-            });
-        </script>
-
-        <footer class="footer">
-            <div>
-                <div class="logo"></div>
-                <h1>นึ่งสุข</h1>
-            </div>
-            <div>
-                <h1>เวลาเปิด-ปิด</h1>
-                <p>
-                    10:00 - 14:00 (ปิดรับออเดอร์ 13:30)
-                    16:00 - 20:00 (ปิดรับออเดอร์ 19:30)
-                </p>
-            </div>
-            <div>
-                <h1>ติดต่อ</h1>
-                <p>ร้านนิ่งสุข</p>
-                <p>โทร 02-000-0000</p>
-            </div>
-        </footer>
+        <div>
+            <h1>เวลาเปิด-ปิด</h1>
+            <p>
+                10:00 - 14:00 (ปิดรับออเดอร์ 13:30)
+                16:00 - 20:00 (ปิดรับออเดอร์ 19:30)
+            </p>
+        </div>
+        <div>
+            <h1>ติดต่อ</h1>
+            <p>ร้านนึ่งสุข</p>
+            <p>โทร 02-000-0000</p>
+        </div>
+    </footer>
 </body>
 
 </html>

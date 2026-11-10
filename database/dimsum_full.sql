@@ -206,28 +206,51 @@ CREATE TABLE order_items (
   CHECK (cancelled_qty >= 0 AND cancelled_qty <= qty)
 ) ENGINE=InnoDB;
 
+-- แพ็กเกจห้อง VIP (Feedback เฟส 3): S 2 ชม. · M 3 ชม. · L 4 ชม. · เหมาวัน (hours = NULL)
+CREATE TABLE vip_packages (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  code         VARCHAR(20)  NOT NULL UNIQUE,
+  name         VARCHAR(100) NOT NULL,
+  hours        INT NULL,                         -- NULL = เหมาวัน
+  price        DECIMAL(10,2) NOT NULL DEFAULT 0,
+  sort_order   INT NOT NULL DEFAULT 0,
+  is_active    TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB;
+
 CREATE TABLE vip_bookings (
   id                   INT AUTO_INCREMENT PRIMARY KEY,
   vip_room_id          INT NOT NULL,
+  package_id           INT NULL,                 -- แพ็กเกจที่จอง (vip_packages)
   booking_date         DATE NOT NULL,
   start_time           TIME NOT NULL,
-  hours                INT NOT NULL,
+  hours                INT NULL,                 -- NULL = เหมาวัน
   customer_name        VARCHAR(100) NOT NULL,
   customer_phone       VARCHAR(20)  NOT NULL,
   guests               INT NOT NULL,
   preorder_total       DECIMAL(10,2) NOT NULL,
-  deposit_amount       DECIMAL(10,2) NOT NULL,
+  room_fee             DECIMAL(10,2) NOT NULL DEFAULT 0,   -- ค่าห้องตามแพ็กเกจ
+  deposit_amount       DECIMAL(10,2) NOT NULL,             -- มัดจำ % ของ (ค่าห้อง + ค่าอาหารสั่งล่วงหน้า)
   deposit_received_at  DATETIME NULL,
   deposit_received_by  INT NULL,
-  status               ENUM('pending_deposit','confirmed','arrived','no_show','cancelled') NOT NULL DEFAULT 'pending_deposit',
+  status               ENUM('pending_deposit','confirmed','arrived','no_show','cancelled','released') NOT NULL DEFAULT 'pending_deposit',
   bill_id              INT NULL,
+  evening_bill_id      INT NULL,                 -- เหมาวัน: บิลกะเย็น (แยกจากบิลกะเช้า)
   created_by           INT NOT NULL,
   created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reschedule_count     TINYINT UNSIGNED NOT NULL DEFAULT 0,  -- เลื่อนได้ 1 ครั้ง
+  rescheduled_from     JSON NULL,                -- วัน/เวลาเดิมก่อนเลื่อน
+  released_at          DATETIME NULL,            -- ปล่อยห้องคืน
+  cancel_reason        VARCHAR(255) NULL,
+  deposit_refunded_at  DATETIME NULL,
+  deposit_refunded_by  INT NULL,
   FOREIGN KEY (vip_room_id)         REFERENCES vip_rooms(id),
   FOREIGN KEY (deposit_received_by) REFERENCES users(id),
   FOREIGN KEY (bill_id)             REFERENCES bills(id),
   FOREIGN KEY (created_by)          REFERENCES users(id),
-  CHECK (hours >= 1)
+  CONSTRAINT fk_vip_booking_package      FOREIGN KEY (package_id)          REFERENCES vip_packages(id) ON DELETE SET NULL,
+  CONSTRAINT fk_vip_booking_evening_bill FOREIGN KEY (evening_bill_id)     REFERENCES bills(id)        ON DELETE SET NULL,
+  CONSTRAINT fk_vip_booking_refunded_by  FOREIGN KEY (deposit_refunded_by) REFERENCES users(id)        ON DELETE SET NULL,
+  CHECK (hours IS NULL OR hours >= 1)
 ) ENGINE=InnoDB;
 
 CREATE TABLE vip_booking_items (
@@ -498,6 +521,9 @@ INSERT INTO dining_tables (code, table_type, seats) VALUES
 INSERT INTO vip_rooms (name, seats) VALUES
   ('VIP 1',15),('VIP 2',15),('VIP 3',15),('VIP 4',15),('VIP 5',15),('VIP 6',15);
 
+INSERT INTO vip_packages (code, name, hours, price, sort_order) VALUES
+  ('S','แพ็กเกจ S',2,1200,1),('M','แพ็กเกจ M',3,1600,2),('L','แพ็กเกจ L',4,2000,3),('FULLDAY','เหมาวัน',NULL,3500,4);
+
 INSERT INTO coupons (code, coupon_type, value, start_date, end_date, valid_time_start, valid_time_end, valid_weekdays, exclude_holidays)
 VALUES ('HAPPYHOUR','percent',10,'2026-01-01','2027-12-31','10:00:00','12:00:00','1,2,3,4,5',1);
 
@@ -582,6 +608,42 @@ WHERE NOT EXISTS (SELECT 1 FROM menu_items m WHERE m.name = s.name);
 UPDATE menu_items SET available_qty = 0, is_available = 0 WHERE name = 'เสี่ยวหลงเปา';
 
 DROP TEMPORARY TABLE seed_menu;
+
+-- รูปเมนู (ตัดจากแผ่นเมนูโปสเตอร์ public/assets/img/menu/)
+-- ใส่เฉพาะเมนูที่ยังไม่มีรูป → import ซ้ำไม่ทับรูปที่เจ้าของอัปโหลดหลังบ้าน
+-- เมนูที่ไม่มีในโปสเตอร์ (เสี่ยวหลงเปา ถุงทอง ฟองเต้าหู้ ขนมปังหน้ากุ้ง หมี่หยก) ยังไม่มีรูป
+UPDATE menu_items m
+JOIN (
+  SELECT 'ซาลาเปาหมูสับ' AS name, '/assets/img/menu/bun-pork.jpg' AS img
+  UNION ALL SELECT 'ซาลาเปาหมูแดง',          '/assets/img/menu/bun-bbq-pork.jpg'
+  UNION ALL SELECT 'ซาลาเปาครีม',            '/assets/img/menu/bun-cream.jpg'
+  UNION ALL SELECT 'ซาลาเปาถั่วแดง',         '/assets/img/menu/bun-red-bean.jpg'
+  UNION ALL SELECT 'ซาลาเปาเห็ดหอม',         '/assets/img/menu/bun-mushroom.jpg'
+  UNION ALL SELECT 'ซาลาเปาหมูสับไข่เค็ม',    '/assets/img/menu/bun-salted-egg.jpg'
+  UNION ALL SELECT 'ซาลาเปาไข่เค็มลาวาทอด',  '/assets/img/menu/bun-lava.jpg'
+  UNION ALL SELECT 'ขนมจีบหมู',              '/assets/img/menu/shumai-pork.jpg'
+  UNION ALL SELECT 'ขนมจีบกุ้ง',             '/assets/img/menu/shumai-shrimp.jpg'
+  UNION ALL SELECT 'ขนมจีบปู',               '/assets/img/menu/shumai-crab.jpg'
+  UNION ALL SELECT 'ขนมจีบเห็ดหอมวุ้นเส้น',   '/assets/img/menu/shumai-veg.jpg'
+  UNION ALL SELECT 'หมูห่อสาหร่าย',          '/assets/img/menu/seaweed-pork.jpg'
+  UNION ALL SELECT 'กุ้งห่อสาหร่าย',         '/assets/img/menu/seaweed-shrimp.jpg'
+  UNION ALL SELECT 'ปูห่อสาหร่าย',           '/assets/img/menu/seaweed-crab.jpg'
+  UNION ALL SELECT 'ฮะเก๋ากุ้ง',             '/assets/img/menu/hakao-shrimp.jpg'
+  UNION ALL SELECT 'ฮะเก๋าปู',               '/assets/img/menu/hakao-crab.jpg'
+  UNION ALL SELECT 'ก๋วยเตี๋ยวหลอดหมูสับ',    '/assets/img/menu/rice-roll.jpg'
+  UNION ALL SELECT 'ขาไก่นึ่งเต้าซี่น้ำแดง',   '/assets/img/menu/chicken-feet-steamed.jpg'
+  UNION ALL SELECT 'ขาไก่ต้มน้ำแดง',         '/assets/img/menu/chicken-feet-braised.jpg'
+  UNION ALL SELECT 'ซี่โครงหมูน้ำแดง',       '/assets/img/menu/pork-ribs.jpg'
+  UNION ALL SELECT 'บักกุ๊ดเต๊หม้อดิน',       '/assets/img/menu/bak-kut-teh.jpg'
+  UNION ALL SELECT 'ปลากระพงนึ่งซีอิ๊ว',      '/assets/img/menu/sea-bass.jpg'
+  UNION ALL SELECT 'ขนมผักกาดทอด',           '/assets/img/menu/turnip-cake.jpg'
+  UNION ALL SELECT 'เผือกทอด',               '/assets/img/menu/taro-fried.jpg'
+  UNION ALL SELECT 'Set A: Single Delight',   '/assets/img/menu/set-a.jpg'
+  UNION ALL SELECT 'Set B: Duo Signature',    '/assets/img/menu/set-b.jpg'
+  UNION ALL SELECT 'Set C: Family & Gathering', '/assets/img/menu/set-c.jpg'
+) p ON p.name = m.name
+SET m.image_path = p.img
+WHERE m.image_path IS NULL OR m.image_path = '';
 
 -- ---------------------------------------------------------
 -- 1.5) แบนเนอร์หน้า Home (สไลด์)
