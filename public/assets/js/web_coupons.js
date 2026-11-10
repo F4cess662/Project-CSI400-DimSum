@@ -50,7 +50,7 @@ function renderCoupons(coupons, isLoggedIn) {
       <article class="card">
         <span class="tag">${escapeHtml(coupon.code)}</span>
         <div class="discount">${discountText(coupon)}</div>
-        <p class="meta">ขั้นต่ำ ${Number(coupon.min_spend).toLocaleString("th-TH")} บาท</p>
+        ${Number(coupon.min_spend) > 0 ? `<p class="meta">ขั้นต่ำ ${Number(coupon.min_spend).toLocaleString("th-TH")} บาท</p>` : ""}
         <p class="meta">ใช้ได้ถึง ${escapeHtml(thaiDate(coupon.end_date))}</p>
         ${time}
         ${memberOnly}

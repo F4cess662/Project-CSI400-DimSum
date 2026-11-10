@@ -694,3 +694,97 @@ html {
         padding: 60px 10px 14px;
     }
 }
+/* =========================================================
+   แพ็กเกจห้อง VIP (web_catering.js · ดึงจาก /api/vip_packages)
+   ========================================================= */
+.package-section {
+    margin-top: 48px;
+}
+
+.package-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: 18px;
+}
+
+.package-card {
+    display: flex;
+    flex-direction: column;
+    padding: 22px 20px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--white);
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.package-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 40px rgba(94, 57, 25, 0.14);
+}
+
+.package-card.is-fullday {
+    border-color: #e8c27a;
+    background: linear-gradient(180deg, #fff8e6, var(--white));
+}
+
+.package-code {
+    display: inline-grid;
+    place-items: center;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 10px;
+    border-radius: 14px;
+    background: #fff3d4;
+    color: #b47a17;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.package-head h3 {
+    margin: 12px 0 2px;
+    font-size: 20px;
+}
+
+.package-hours {
+    color: var(--brown-light);
+    font-size: 14px;
+}
+
+.package-price {
+    margin: 14px 0;
+    color: #9a6411;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.package-facts {
+    display: grid;
+    gap: 10px;
+    margin-top: auto;
+    padding: 14px 0 0;
+    border-top: 1px dashed var(--border);
+    color: #614c3e;
+    font-size: 14px;
+    line-height: 1.55;
+    list-style: none;
+}
+
+.package-facts b {
+    display: block;
+    color: var(--brown);
+    font-size: 13px;
+}
+
+.package-facts small {
+    color: var(--brown-light);
+    font-size: 12px;
+}
+
+.package-note,
+.package-empty {
+    margin-top: 16px;
+    color: var(--brown-light);
+    font-size: 14px;
+    text-align: center;
+}

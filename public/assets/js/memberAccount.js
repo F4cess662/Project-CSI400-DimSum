@@ -18,10 +18,13 @@ function formatDate(value) {
     : new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(date);
 }
 
+// หน้านี้ไม่ได้โหลด api.js จึงจัดรูปแบบเงินเอง → "1,234 บาท"
+const baht = (n) => `${Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })} บาท`;
+
 function couponValue(coupon) {
   if (coupon.coupon_type === "percent") return `ลด ${Number(coupon.value)}%`;
   if (coupon.coupon_type === "amount") {
-    return `ลด ฿${Number(coupon.value).toLocaleString("th-TH")}`;
+    return `ลด ${baht(coupon.value)}`;
   }
   return `ฟรี${coupon.free_item_name || "สินค้า"}`;
 }
@@ -51,7 +54,7 @@ function renderCoupons() {
   return `<div class="grid">${coupons.map((coupon) => {
     const [statusText, statusClass] = couponStatus(coupon.status);
     const minSpend = Number(coupon.min_spend) > 0
-      ? `<p>เมื่อซื้อครบ ฿${Number(coupon.min_spend).toLocaleString("th-TH")}</p>` : "";
+      ? `<p>เมื่อซื้อครบ ${baht(coupon.min_spend)}</p>` : "";
     const value = escapeHtml(couponValue(coupon));
     return `<article class="ticket">
       <div class="info"><b class="code">${escapeHtml(coupon.code)}</b>

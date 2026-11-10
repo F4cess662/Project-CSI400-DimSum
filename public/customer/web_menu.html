@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="/assets/css/web_HomePage.css">
     <link rel="stylesheet" href="/assets/css/customer-background.css">
     <script src="/assets/js/customerNavbar.js" defer></script>
+    <script src="/assets/js/banner-slider.js" defer></script>
     <script src="/assets/js/web_menu.js" defer></script>
 </head>
 
@@ -40,8 +41,8 @@
         <section class="details">
             <div class="slider">
                 <div class="slides">
-                    <img src="/assets/img/banners/banner_1.jpg" class="slide active" alt="banner1">
-                    <img src="/assets/img/banners/banner_2.jpg" class="slide" alt="banner2">
+                    <!-- รูปสำรอง: แสดงเมื่อ /api/banners ล่มหรือยังไม่มีแบนเนอร์ -->
+                    <img src="/assets/img/banners/special-menu.webp" class="slide" alt="เมนู Special">
                 </div>
                 <button type="button" class="slider-btn prev" onclick="plusSlides(-1)" aria-label="รูปก่อนหน้า">
                     &#10094;
@@ -50,10 +51,7 @@
                     &#10095;
                 </button>
 
-                <div class="indicators">
-                    <button type="button" class="dot active" aria-label="แสดงรูปที่ 1"></button>
-                    <button type="button" class="dot" aria-label="แสดงรูปที่ 2"></button>
-                </div>
+                <div class="indicators"></div>
             </div>
         </section>
 

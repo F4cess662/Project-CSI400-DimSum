@@ -2,22 +2,7 @@
 // ดึงเมนูจาก GET /api/menu (รูป image_path ที่เจ้าของอัปโหลด) แล้ววาดเป็นแผ่นเมนูแยกหมวด
 // หน้านี้ไม่ได้โหลด api.js จึงมี esc / baht / fetch ของตัวเอง
 
-/* ---------- สไลด์แบนเนอร์ ---------- */
-let currentSlide = 0;
-
-function showSlide(index) {
-    const slides = document.querySelectorAll('.slide');
-    const dots = document.querySelectorAll('.dot');
-    if (!slides.length) return;
-    currentSlide = (index + slides.length) % slides.length;
-    document.querySelector('.slides').style.transform = `translateX(-${currentSlide * 100}%)`;
-    dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide));
-}
-
-function plusSlides(step) { showSlide(currentSlide + step); }
-
-document.querySelectorAll('.dot').forEach((dot, i) => dot.addEventListener('click', () => showSlide(i)));
-setInterval(() => showSlide(currentSlide + 1), 4000);
+// สไลด์แบนเนอร์อยู่ที่ /assets/js/banner-slider.js (ดึงจาก /api/banners)
 
 /* ---------- เมนู ---------- */
 const SET_CATEGORY = 'ชุดเซ็ต';
