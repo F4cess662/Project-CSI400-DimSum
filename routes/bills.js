@@ -153,12 +153,14 @@ async function openBill(req, res, b) {
       places = tables.map((t) => t.code).sort();
     }
 
-    // เลขบิล B+YYYYMMDD-ลำดับ 3 หลัก (นับใหม่ทุกวัน)
+    // เลขบิล B+YYYYMMDD-ลำดับ 4 หลัก นับใหม่ทุกวัน (Feedback #9 · รองรับ 9,999 บิล/วัน · เกินนั้นเลขยาวขึ้นเองไม่ซ้ำ)
+    // หาลำดับล่าสุดจากตัวเลข ไม่ใช่เรียงข้อความ (บิลเก่า 3 หลัก "-099" กับ 4 หลัก "-0100" เรียงข้อความผิด)
     const prefix = 'B' + todayCode() + '-';
     const [[last]] = await conn.execute(
-      'SELECT bill_no FROM bills WHERE bill_no LIKE ? ORDER BY bill_no DESC LIMIT 1 FOR UPDATE', [prefix + '%']);
-    const seq = last ? Number(last.bill_no.slice(prefix.length)) + 1 : 1;
-    const billNo = prefix + String(seq).padStart(3, '0');
+      `SELECT MAX(CAST(SUBSTRING(bill_no, ?) AS UNSIGNED)) AS seq FROM bills WHERE bill_no LIKE ? FOR UPDATE`,
+      [prefix.length + 1, prefix + '%']);
+    const seq = Number((last && last.seq) || 0) + 1;
+    const billNo = prefix + String(seq).padStart(4, '0');
 
     const [ins] = await conn.execute(
       'INSERT INTO bills (bill_no, guests, vip_room_id, qr_token, opened_by) VALUES (?, ?, ?, ?, ?)',
@@ -401,8 +403,8 @@ async function searchBills(req, res) {
           GROUP BY o.bill_id
        ) s ON s.bill_id = b.id
       WHERE ${where.join(' AND ')}
-      ORDER BY b.opened_at DESC
-      LIMIT 500`, params);
+      ORDER BY b.opened_at DESC, b.id DESC
+      LIMIT 500`, params);   // ล่าสุดอยู่บน (Feedback #8) · เปิดวินาทีเดียวกันเรียงตาม id
 
   return ok(res, rows.map(({ void_detail, ...r }) => {
     const d = parseDetail(void_detail);
