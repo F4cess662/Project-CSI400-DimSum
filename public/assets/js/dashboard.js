@@ -123,8 +123,8 @@
    * ความกว้างเป็น % จึงพอดีการ์ดทุกขนาด · ขอบมนด้วย clipPath · เส้นคั่นสีพื้นการ์ดระหว่างส่วน
    */
   let barSeq = 0;
-  function splitBar(parts, height, tip) {
-    const id = 'bar' + (barSeq++);
+  function splitBar(parts, height, tip, prefix = 'bar') {
+    const id = prefix + (barSeq++);                    // prefix ต่างกันต่อการ์ด กัน id ของ clipPath ซ้ำกัน
     const sum = parts.reduce((s, p) => s + p.n, 0);
     let x = 0;
     const segs = sum ? parts.filter((p) => p.n > 0).map((p) => {
@@ -204,22 +204,44 @@
   const SHIFT_LABEL = { morning: 'กะเช้า', evening: 'กะเย็น' };
   const hh = (h) => String(h).padStart(2, '0') + ':00';
 
-  function hourlyBars(rows, W) {
+  /** ค่าสูงสุดของแกน y ให้เป็นเลขกลมๆ (1, 2, 2.5, 5 × 10ⁿ) อย่างน้อย 4 */
+  const niceMax = (v) => {
+    if (v <= 4) return 4;
+    const p = 10 ** Math.floor(Math.log10(v)), n = v / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+  };
+  /** เงินแบบสั้นสำหรับแกน/ป้ายกราฟ เช่น 1500 → "1.5k" */
+  const shortBaht = (v) => (v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(Math.round(v)));
+
+  /**
+   * กราฟแท่งตั้งรายชั่วโมง ใช้ได้ทั้ง "จำนวนบิล" และ "ยอดขาย"
+   * opt: { value(r), axis(v), peak(v), tip(r, range), summary, aria }
+   */
+  const HOURLY_BILLS = {
+    value: (r) => r.count, axis: String, peak: String,
+    tip: (r, range) => `${range} · เปิด ${r.count} บิล`,
+  };
+  const HOURLY_SALES = {
+    value: (r) => r.amount, axis: shortBaht, peak: shortBaht,
+    tip: (r, range) => `${range} · ${fmt.baht(r.amount)} · ${r.bills} บิล`,
+  };
+
+  function hourlyBars(rows, W, opt = HOURLY_BILLS) {
     if (!rows.length) return `<div class="empty">ยังไม่มีข้อมูล</div>`;
     const shifts = [...new Set(rows.map((r) => r.shift))];
-    const H = 240, left = 28, top = 26, gapW = 24;
+    const H = 240, left = opt === HOURLY_SALES ? 44 : 28, top = 26, gapW = 24;
     const plotW = W - left - gapW * (shifts.length - 1);
     const band = plotW / rows.length;
     const oneLine = band >= 96;                                    // แคบ → แสดงช่วงเวลา 2 บรรทัด
     const bottom = oneLine ? 26 : 44, plotH = H - top - bottom;
     const barW = Math.min(band * 0.55, 40);
-    const maxVal = Math.max(...rows.map((r) => r.count));
-    const yMax = Math.max(4, Math.ceil(maxVal / 2) * 2);          // แกน y เป็นเลขคู่ อย่างน้อย 4
+    const maxVal = Math.max(...rows.map(opt.value));
+    const yMax = niceMax(maxVal);
     const yOf = (v) => top + plotH - (v / yMax) * plotH;
     const grid = [0, yMax / 2, yMax].map((v) => `
       <line x1="${left}" x2="${W}" y1="${yOf(v)}" y2="${yOf(v)}" stroke="${COLOR.grid}" stroke-width="1"/>
-      <text x="${left - 8}" y="${yOf(v) + 5}" text-anchor="end" fill="${COLOR.muted}">${v}</text>`).join('');
-    const peak = rows.findIndex((r) => r.count === maxVal && maxVal > 0);
+      <text x="${left - 8}" y="${yOf(v) + 5}" text-anchor="end" fill="${COLOR.muted}">${opt.axis(v)}</text>`).join('');
+    const peak = rows.findIndex((r) => opt.value(r) === maxVal && maxVal > 0);
 
     let x = left, prevShift = null, extras = '';
     const bars = rows.map((r, i) => {
@@ -231,25 +253,52 @@
         extras += `<text x="${x + 4}" y="${top - 10}" fill="${COLOR.muted}" font-size="12">${SHIFT_LABEL[r.shift] || ''}</text>`;
         prevShift = r.shift;
       }
-      const cx = x + band / 2, h = (r.count / yMax) * plotH;
+      const val = opt.value(r);
+      const cx = x + band / 2, h = (val / yMax) * plotH;
       const range = `${hh(r.hour)}–${hh(r.hour + 1)}`;
-      const tip = `${range} · เปิด ${r.count} บิล`;
+      const tip = opt.tip(r, range);
       const labelY = top + plotH + 20;
       const label = oneLine
         ? `<text x="${cx}" y="${labelY}" text-anchor="middle" fill="${COLOR.muted}" font-size="12">${range}</text>`
         : `<text x="${cx}" y="${labelY}" text-anchor="middle" fill="${COLOR.muted}" font-size="12">${hh(r.hour)}–<tspan x="${cx}" dy="16">${hh(r.hour + 1)}</tspan></text>`;
       const g = `<g><title>${tip}</title>
         <rect x="${x}" y="${top}" width="${band}" height="${plotH}" fill="transparent"/>
-        ${h > 0 ? `<path d="${endRoundedRect(cx - barW / 2, yOf(r.count), barW, h, 4, 'up')}" fill="${COLOR.wait}"/>` : ''}
-        ${i === peak ? `<text x="${cx}" y="${yOf(r.count) - 6}" text-anchor="middle" fill="${COLOR.ink}" font-weight="600">${r.count}</text>` : ''}
+        ${h > 0 ? `<path d="${endRoundedRect(cx - barW / 2, yOf(val), barW, h, 4, 'up')}" fill="${opt === HOURLY_SALES ? COLOR.ok : COLOR.wait}"/>` : ''}
+        ${val > 0 && (i === peak || band >= 48) ? `<text x="${cx}" y="${yOf(val) - 6}" text-anchor="middle" fill="${COLOR.ink}" font-size="${i === peak ? FONT : 12}" font-weight="${i === peak ? 700 : 400}">${opt.peak(val)}</text>` : ''}
         ${label}
       </g>`;
       x += band;
       return g;
     }).join('');
-    const total = rows.reduce((s, r) => s + r.count, 0);
-    return `<div class="small muted" style="margin-bottom:8px">รวมวันนี้ ${fmt.num(total)} บิล · เฉพาะเวลาที่ร้านเปิด</div>` +
-      svgOpen(W, H, `บิลที่เปิดวันนี้รายชั่วโมง รวม ${total} บิล`) + grid + extras + bars + '</svg>';
+    const total = rows.reduce((s, r) => s + opt.value(r), 0);
+    const summary = opt === HOURLY_SALES
+      ? `ยอดจากบิลที่ชำระวันนี้ ${fmt.baht(total)} (ไม่รวมมัดจำที่ยึด) · นับตามเวลาที่ชำระเงิน · เฉพาะเวลาที่ร้านเปิด`
+      : `รวมวันนี้ ${fmt.num(total)} บิล · นับตามเวลาที่เปิดบิล · เฉพาะเวลาที่ร้านเปิด`;
+    const aria = opt === HOURLY_SALES ? `ยอดขายวันนี้รายชั่วโมง รวม ${fmt.baht(total)}` : `บิลที่เปิดวันนี้รายชั่วโมง รวม ${total} บิล`;
+    return `<div class="small muted" style="margin-bottom:8px">${summary}</div>` +
+      svgOpen(W, H, aria) + grid + extras + bars + '</svg>';
+  }
+
+  // การ์ดรายชั่วโมง (เฟส 4): แท็บ ยอดขาย / จำนวนบิล · ค่าเริ่มต้น = ยอดขาย
+  let hourlyMode = 'sales';
+  const hourlyCard = $('chartHours').closest('.card');
+  hourlyCard.querySelector('.card-title').textContent = 'รายชั่วโมงวันนี้';
+  const hourlyTabs = document.createElement('div');
+  hourlyTabs.className = 'tabs';
+  hourlyTabs.style.marginBottom = '12px';
+  hourlyTabs.innerHTML = `<button class="tab active" data-mode="sales">ยอดขาย</button><button class="tab" data-mode="bills">จำนวนบิล</button>`;
+  $('chartHours').before(hourlyTabs);
+  hourlyTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-mode]');
+    if (!btn) return;
+    hourlyMode = btn.dataset.mode;
+    hourlyTabs.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === btn));
+    if (lastData) renderHourly(lastData);
+  });
+  function renderHourly(d) {
+    $('chartHours').innerHTML = hourlyMode === 'sales' && d.sales_by_hour
+      ? hourlyBars(d.sales_by_hour, widthOf('chartHours'), HOURLY_SALES)
+      : hourlyBars(d.bills_by_hour, widthOf('chartHours'), HOURLY_BILLS);
   }
 
   /* ---------- ห้อง VIP วันนี้ (เฟส 3 + Feedback เฟส 3): ไทม์ไลน์ + โดนัทสถานะ + รายการต้องติดตาม ---------- */
@@ -409,6 +458,11 @@
   }
 
   /* ---------- ยอดขายวันนี้ (Feedback เฟส 3): บิลที่ชำระ + ค่าห้อง VIP + มัดจำที่ยึด · มัดจำที่คืนไม่นับ ---------- */
+  // เฟส 4: ป้าย % เทียบเมื่อวาน ใต้ยอดรวม (สร้างด้วย JS เพราะเฟสนี้แก้ HTML ไม่ได้)
+  const salesChange = document.createElement('div');
+  salesChange.style.marginTop = '4px';
+  $('salesTotal').parentElement.append(salesChange);
+
   function renderSales(s) {
     if (!s) return;
     $('salesTotal').textContent = fmt.baht(s.total);
@@ -417,6 +471,139 @@
     $('salesRoom').textContent = fmt.baht(s.room_fee);
     $('salesDeposit').textContent = fmt.baht(s.deposit_forfeited);
     $('salesDepositSub').textContent = `มัดจำที่ยึด (ไม่มา/ยกเลิก ${fmt.num(s.forfeited_count)} การจอง)`;
+    if (!s.yesterday) { salesChange.innerHTML = ''; return; }
+    // เทียบเมื่อวาน "ถึงเวลาเดียวกัน" · ใช้ลูกศร + คำ ไม่อาศัยสีอย่างเดียว
+    const pct = s.change_pct;
+    const tag = pct === null ? `<span class="badge badge-off">เมื่อวานถึงเวลานี้ยังไม่มียอด</span>`
+      : pct > 0 ? `<span class="badge badge-ok">▲ เพิ่มขึ้น ${pct}%</span>`
+      : pct < 0 ? `<span class="badge badge-bad">▼ ลดลง ${Math.abs(pct)}%</span>`
+      : `<span class="badge badge-off">เท่าเดิม</span>`;
+    salesChange.innerHTML = `${tag}<div class="caption muted" style="margin-top:4px">
+      เทียบเมื่อวานถึงเวลาเดียวกัน ${fmt.baht(s.yesterday.total)} · ทั้งวันเมื่อวาน ${fmt.baht(s.yesterday.total_full_day)}</div>`;
+  }
+
+  /* ---------- เฟส 4: Top 5 เมนู · เมนูใกล้หมด · วัตถุดิบต่ำ · ใบแจ้งหนี้ค้างจ่าย ---------- */
+  // แจ้งเตือนวัตถุดิบต่ำด้านบนสุด (alert-wait)
+  const ingredientAlert = document.createElement('div');
+  ingredientAlert.className = 'alert alert-wait hidden';
+  ingredientAlert.style.marginBottom = '16px';
+  $('loadError').after(ingredientAlert);
+
+  const salesCard = $('salesTotal').closest('.card');
+  const menuRow = document.createElement('div');
+  menuRow.className = 'grid grid-2 section';
+  menuRow.innerHTML = `
+    <div class="card">
+      <div class="row-between"><h3 class="card-title">เมนูขายดีวันนี้ (Top 5)</h3><span class="small muted">นับจำนวนที่สั่ง</span></div>
+      <div id="topMenus"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+    <div class="card">
+      <div class="row-between">
+        <h3 class="card-title">เมนูใกล้หมด</h3>
+        <a class="btn btn-ghost btn-sm" href="/admin/stock-today.html">เติมจำนวน →</a>
+      </div>
+      <div id="lowMenus"><div class="loading">กำลังโหลด...</div></div>
+    </div>`;
+  const stockRow = document.createElement('div');
+  stockRow.className = 'grid grid-2 section';
+  stockRow.innerHTML = `
+    <div class="card">
+      <div class="row-between">
+        <h3 class="card-title">วัตถุดิบต่ำกว่าจุดสั่งซื้อ</h3>
+        <a class="btn btn-secondary btn-sm" href="/admin/purchase-orders.html">ไปใบสั่งซื้อ →</a>
+      </div>
+      <div id="lowIngredients"><div class="loading">กำลังโหลด...</div></div>
+    </div>
+    <div class="card">
+      <div class="row-between">
+        <h3 class="card-title">ใบแจ้งหนี้รอจ่าย</h3>
+        <a class="btn btn-ghost btn-sm" href="/admin/goods-receipts.html">รับของ / จ่ายเงิน →</a>
+      </div>
+      <div id="unpaidInvoices"><div class="loading">กำลังโหลด...</div></div>
+    </div>`;
+  salesCard.after(menuRow);
+  menuRow.after(stockRow);
+
+  // การ์ด "เร็วๆ นี้" ไม่ต้องใช้แล้ว (ทุกส่วนทำครบในเฟส 4)
+  [...document.querySelectorAll('.card-title')].filter((t) => t.textContent.trim() === 'เร็วๆ นี้')
+    .forEach((t) => t.closest('.card').remove());
+
+  /** แท่งนอน Top 5: ความยาวตามจำนวน · ป้ายขวา = จำนวน + หน่วย · tooltip มียอดเงิน */
+  function topMenuBars(list, W) {
+    if (!list.length) return `<div class="empty" style="padding:16px">วันนี้ยังไม่มีออเดอร์</div>`;
+    const labelW = Math.min(170, W * 0.4), valueW = 72, rowH = 36, barH = 18;
+    const plotW = W - labelW - valueW, max = Math.max(...list.map((m) => m.qty));
+    const body = list.map((m, i) => {
+      const y = i * rowH + (rowH - barH) / 2, ty = y + barH / 2 + 5;
+      const w = Math.max((m.qty / max) * plotW, 4);
+      const chars = Math.floor(labelW / 9);
+      const name = m.name.length > chars ? m.name.slice(0, chars - 1) + '…' : m.name;
+      return `<g><title>${esc(`${i + 1}. ${m.name} · ${m.qty} ${m.unit} · ${fmt.baht(m.amount)}`)}</title>
+        <rect x="0" y="${i * rowH}" width="${W}" height="${rowH}" fill="transparent"/>
+        <text x="0" y="${ty}" fill="${COLOR.ink}">${i + 1}. ${esc(name)}</text>
+        <path d="${endRoundedRect(labelW, y, w, barH, 4, 'right')}" fill="${i === 0 ? COLOR.ok : COLOR.wait}"/>
+        <text x="${W}" y="${ty}" text-anchor="end" fill="${COLOR.ink}" font-weight="600">${fmt.num(m.qty)} ${esc(m.unit)}</text>
+      </g>`;
+    }).join('');
+    return svgOpen(W, list.length * rowH, `เมนูขายดีวันนี้ ${list.length} อันดับ`) + body + '</svg>';
+  }
+
+  function lowMenuList(list) {
+    if (!list.length) return `<div class="small bold" style="color:var(--ok)">✓ ไม่มีเมนูใกล้หมด</div>`;
+    return `<div class="stack" style="gap:8px">${list.slice(0, MAX_ROWS).map((m) => `
+      <div class="row-between small">
+        <span>${esc(m.name)} <span class="caption muted">· ${esc(m.category_name)}</span></span>
+        ${m.temp_out ? badge('temp_out') : `<span class="badge badge-wait">เหลือ ${fmt.num(m.available_qty)} ${esc(m.unit)}</span>`}
+      </div>`).join('')}${more(list.length)}
+      <div class="caption muted">ใกล้หมด = เหลือไม่เกิน 1 ล็อต · หมดชั่วคราว = เหลือ 0 แต่ลูกค้ายังสั่งได้</div></div>`;
+  }
+
+  /** การ์ดที่มาจาก inventory-service: ระบบคลังดับ → ขึ้นข้อความในการ์ดนั้นอย่างเดียว */
+  const inventoryDown = (part) => `<div class="alert alert-bad">${esc(part.message || 'ระบบคลังสินค้าไม่พร้อมใช้')}</div>
+    <div class="caption muted" style="margin-top:8px">ส่วนอื่นของ Dashboard ยังใช้งานได้ตามปกติ</div>`;
+
+  /** วัตถุดิบต่ำ: แถบคงเหลือเทียบจุดสั่งซื้อซ้ำ (เต็มหลอด = เท่าจุดสั่งซื้อ) */
+  function lowIngredientList(part) {
+    if (!part) return '';
+    if (!part.available) return inventoryDown(part);
+    if (!part.items.length) return `<div class="small bold" style="color:var(--ok)">✓ วัตถุดิบทุกอย่างยังเกินจุดสั่งซื้อ</div>`;
+    return `<div class="stack" style="gap:8px">${part.items.slice(0, MAX_ROWS).map((g) => {
+      const tip = `${g.name} · คงเหลือ ${g.qty_on_hand} ${g.unit} · จุดสั่งซื้อ ${g.reorder_point} ${g.unit}`;
+      return `<div>
+        <div class="row-between small"><span>${esc(g.name)}</span>
+          <span class="bold">${fmt.num(g.qty_on_hand)} / ${fmt.num(g.reorder_point)} ${esc(g.unit)}</span></div>
+        ${splitBar([{ key: g.qty_on_hand <= 0 ? 'soldout' : 'low', n: Math.max(g.qty_on_hand, 0) },
+          { key: 'track', n: Math.max(g.reorder_point - g.qty_on_hand, 0) }], 8, tip, 'ing')}
+      </div>`;
+    }).join('')}${more(part.items.length)}
+      <div class="caption muted">ตัวเลข = คงเหลือ / จุดสั่งซื้อซ้ำ</div></div>`;
+  }
+
+  function unpaidInvoiceList(part) {
+    if (!part) return '';
+    if (!part.available) return inventoryDown(part);
+    if (!part.items.length) return `<div class="small bold" style="color:var(--ok)">✓ ไม่มีใบแจ้งหนี้ค้างจ่าย</div>`;
+    return `<div class="bold" style="margin-bottom:8px">รวม ${fmt.baht(part.total)} · ${part.count} ใบ</div>
+      <div class="stack" style="gap:8px">${part.items.slice(0, MAX_ROWS).map((g) => `
+        <div class="row-between small">
+          <span>${esc(g.supplier_name || g.po_no || 'ใบรับของ #' + g.id)}
+            <span class="caption muted">· ${g.invoice_no ? 'เลขที่ ' + esc(g.invoice_no) : 'ไม่มีเลขใบแจ้งหนี้'}${g.received_at ? ' · รับของ ' + fmt.date(g.received_at) : ''}</span></span>
+          <span class="bold">${fmt.baht(g.invoice_amount)}</span>
+        </div>`).join('')}${more(part.items.length)}</div>`;
+  }
+
+  function renderStock(d) {
+    $('topMenus').innerHTML = d.top_menus ? topMenuBars(d.top_menus, widthOf('topMenus')) : '';
+    $('lowMenus').innerHTML = d.low_menus ? lowMenuList(d.low_menus) : '';
+    $('lowIngredients').innerHTML = lowIngredientList(d.low_ingredients);
+    $('unpaidInvoices').innerHTML = unpaidInvoiceList(d.unpaid_invoices);
+    const low = d.low_ingredients;
+    const showAlert = low && low.available && low.items.length > 0;
+    ingredientAlert.classList.toggle('hidden', !showAlert);
+    if (showAlert) {
+      ingredientAlert.innerHTML = `⚠ วัตถุดิบต่ำกว่าจุดสั่งซื้อ ${low.count} รายการ: ${low.items.slice(0, 5).map((g) => esc(g.name)).join(', ')}${low.count > 5 ? ' …' : ''}
+        · <a href="/admin/purchase-orders.html">ไปออกใบสั่งซื้อ →</a>`;
+    }
   }
 
   /* ---------- รายการย่อ ---------- */
@@ -458,6 +645,7 @@
     $('staffSummary').textContent = `เข้าระบบวันนี้ ${loggedIn} จาก ${d.active_staff.length} คน`;
 
     renderSales(d.sales_today);
+    renderStock(d);
     renderCharts(d);
     renderMenuStatus(d.menus_by_category);
     renderMenuList(d.unavailable_menus);
@@ -472,8 +660,9 @@
         label: ZONE_LABEL[z.zone] || z.zone, value: z.busy, total: z.busy + z.free, unit: z.zone === 'vip' ? 'ห้อง' : 'โต๊ะ',
       })),
       widthOf('chartZones'), 'จำนวนโต๊ะที่มีลูกค้าเทียบกับทั้งหมด แยกตามโซน');
-    $('chartHours').innerHTML = hourlyBars(d.bills_by_hour, widthOf('chartHours'));
+    renderHourly(d);
     renderVip(d);
+    $('topMenus').innerHTML = d.top_menus ? topMenuBars(d.top_menus, widthOf('topMenus')) : '';
   }
 
   let lastData = null, resizeTimer = null;

@@ -1,9 +1,12 @@
 /**
  * /api/dashboard — ภาพรวมร้านสำหรับผู้จัดการ/เจ้าของร้าน (FR-47, FR-57)
  * GET → { shop, tables, vip_rooms, open_bills, unavailable_menus, active_staff,
- *         tables_by_zone, menus_by_category, bills_by_hour, sales_today, vip_today, generated_at }
+ *         tables_by_zone, menus_by_category, bills_by_hour, sales_today, sales_by_hour, top_menus, low_menus,
+ *         low_ingredients, unpaid_invoices, vip_today, generated_at }
  * tables_by_zone / menus_by_category / bills_by_hour = ข้อมูลกราฟ (Feedback เฟส 1) · vip_today = เฟส 3
  * sales_today + แพ็กเกจ/โทรตามใน vip_today = Feedback เฟส 3
+ * เฟส 4: sales_today (+ เทียบเมื่อวาน), sales_by_hour, top_menus, low_menus,
+ *        low_ingredients / unpaid_invoices (เรียก inventory-service · ดับแล้วส่วนนั้นเป็น { available: false })
  *
  * ออกแบบให้ขยายตามเฟส: เฟสถัดไปเพิ่ม key ใหม่ในก้อนเดียวกันโดยไม่แก้ key เดิม
  *   P2+: sales_today, low_menus · P3+: vip_today · P4: low_ingredients
@@ -14,6 +17,7 @@ const { query, queryOne } = require('../lib/db');
 const { ok, handle } = require('../lib/response');
 const { requireRole } = require('../lib/auth');
 const { shopSettings, currentShift, isOrderOpenNow } = require('../lib/shop');
+const { callService } = require('../lib/gateway');
 const config = require('../config');
 
 /** เวลาปัจจุบันของไทยเป็น 'YYYY-MM-DD HH:MM:SS' (รูปแบบเดียวกับวันเวลาจากฐานข้อมูล) */
@@ -276,24 +280,28 @@ async function loadVipToday(vipRooms) {
 }
 
 /**
- * P2/P3: ยอดขายวันนี้ (Feedback เฟส 3: รวมค่าห้อง VIP + มัดจำที่ยึดวันนี้ · มัดจำที่คืนไม่นับ)
- *   บิลที่ชำระวันนี้ (status = 'paid', closed_at วันนี้): ยอด = total_paid + deposit_deducted
+ * ยอดขายของวันหนึ่ง (Feedback เฟส 3 / เฟส 4: รวมค่าห้อง VIP + มัดจำที่ยึด · มัดจำที่คืนไม่นับ)
+ *   daysAgo = 0 วันนี้ · 1 เมื่อวาน · sameTime = นับถึงเวลาเดียวกับตอนนี้ของวันนั้น (ใช้เทียบกับวันนี้ให้ยุติธรรม)
+ *   บิลที่ชำระ (status = 'paid', closed_at ในวันนั้น): ยอด = total_paid + deposit_deducted
  *     (total_paid = เงินที่รับตอนปิดบิล · deposit_deducted = มัดจำที่รับไว้ก่อนแล้วหักในบิล) = อาหาร + ค่าห้อง − ส่วนลด
  *     ค่าห้อง = room_fee ของการจองที่ bill_id ชี้มาที่บิลนั้น (เงื่อนไขเดียวกับ routes/checkout.js)
  *   มัดจำที่ยึด: การจองที่รับมัดจำแล้วแต่ "ไม่มา"/"ยกเลิก" และไม่ได้คืนมัดจำ (deposit_refunded_at IS NULL)
  *     นับวันที่กดไม่มา/ยกเลิก (activity_logs action vip_booking.no_show / vip_booking.cancel)
  * → { total, bills, food, room_fee, deposit_forfeited, forfeited_count }
  */
-async function loadSalesToday() {
+async function loadSalesOn(daysAgo, sameTime = false) {
+  const d = Number(daysAgo);
+  const from = `CURDATE() - INTERVAL ${d} DAY`;
+  const to = sameTime ? `NOW() - INTERVAL ${d} DAY` : `CURDATE() - INTERVAL ${d - 1} DAY`;
   const [paid, room, forfeited] = await Promise.all([
     queryOne(
       `SELECT COUNT(*) AS bills, COALESCE(SUM(total_paid + deposit_deducted), 0) AS amount
        FROM bills
-       WHERE status = 'paid' AND closed_at >= CURDATE() AND closed_at < CURDATE() + INTERVAL 1 DAY`),
+       WHERE status = 'paid' AND closed_at >= ${from} AND closed_at < ${to}`),
     queryOne(
       `SELECT COALESCE(SUM(k.room_fee), 0) AS amount
        FROM vip_bookings k JOIN bills b ON b.id = k.bill_id
-       WHERE b.status = 'paid' AND b.closed_at >= CURDATE() AND b.closed_at < CURDATE() + INTERVAL 1 DAY
+       WHERE b.status = 'paid' AND b.closed_at >= ${from} AND b.closed_at < ${to}
          AND k.status NOT IN ('cancelled', 'no_show', 'released')`),
     queryOne(
       `SELECT COUNT(*) AS n, COALESCE(SUM(k.deposit_amount), 0) AS amount
@@ -303,7 +311,7 @@ async function loadSalesToday() {
          AND EXISTS (SELECT 1 FROM activity_logs l
                      WHERE l.target_type = 'vip_bookings' AND l.target_id = k.id
                        AND l.action IN ('vip_booking.no_show', 'vip_booking.cancel')
-                       AND l.created_at >= CURDATE() AND l.created_at < CURDATE() + INTERVAL 1 DAY)`),
+                       AND l.created_at >= ${from} AND l.created_at < ${to})`),
   ]);
   const billsAmount = Number(paid.amount);
   const roomFee = Math.min(Number(room.amount), billsAmount);
@@ -316,6 +324,119 @@ async function loadSalesToday() {
     deposit_forfeited: depositForfeited,
     forfeited_count: Number(forfeited.n),
   };
+}
+
+/**
+ * P2/P3/P4: ยอดขายวันนี้ + เทียบเมื่อวาน
+ * → { ...ยอดวันนี้ (ดู loadSalesOn), yesterday: { total, total_full_day }, change_pct }
+ *   change_pct = % เทียบเมื่อวาน "ถึงเวลาเดียวกัน" (เช่น 12:00 วันนี้ เทียบ 12:00 เมื่อวาน) · เมื่อวานเป็น 0 → null
+ */
+async function loadSalesToday() {
+  const [today, ySameTime, yFull] = await Promise.all([loadSalesOn(0), loadSalesOn(1, true), loadSalesOn(1)]);
+  const base = ySameTime.total;
+  return {
+    ...today,
+    yesterday: { total: base, total_full_day: yFull.total },
+    change_pct: base > 0 ? Math.round(((today.total - base) / base) * 1000) / 10 : null,
+  };
+}
+
+/**
+ * P4: ยอดขายวันนี้รายชั่วโมง (บิลที่ชำระ นับตามชั่วโมงที่ปิดบิล) เฉพาะชั่วโมงที่ร้านเปิด แยกกะเช้า/เย็น
+ * → [{ hour: 10, shift: 'morning', amount: 1234, bills: 3 }, ...]   ชั่วโมงที่ไม่มีบิล = 0
+ */
+async function loadSalesByHour() {
+  const [s, rows] = await Promise.all([
+    shopSettings(),
+    query(
+      `SELECT HOUR(closed_at) AS hour, COUNT(*) AS bills, COALESCE(SUM(total_paid + deposit_deducted), 0) AS amount
+       FROM bills
+       WHERE status = 'paid' AND closed_at >= CURDATE() AND closed_at < CURDATE() + INTERVAL 1 DAY
+       GROUP BY HOUR(closed_at)`),
+  ]);
+  const byHour = new Map(rows.map((r) => [Number(r.hour), { amount: Number(r.amount), bills: Number(r.bills) }]));
+  const row = (hour, shift) => ({ hour, shift, ...(byHour.get(hour) || { amount: 0, bills: 0 }) });
+  return [
+    ...shiftHours(s.morning_open, s.morning_close).map((h) => row(h, 'morning')),
+    ...shiftHours(s.evening_open, s.evening_close).map((h) => row(h, 'evening')),
+  ];
+}
+
+/**
+ * P4: เมนูขายดีวันนี้ 5 อันดับ (นับจากออเดอร์ที่สั่งวันนี้ ไม่นับออเดอร์/รายการที่ยกเลิก และบิลที่ยกเลิก)
+ * → [{ menu_item_id, name, unit, qty, amount }]   เรียงตามจำนวน มากไปน้อย
+ */
+async function loadTopMenus() {
+  const rows = await query(
+    `SELECT m.id AS menu_item_id, m.name, m.unit,
+            SUM(oi.qty - oi.cancelled_qty) AS qty,
+            SUM((oi.qty - oi.cancelled_qty) * oi.unit_price) AS amount
+     FROM order_items oi
+     JOIN orders o ON o.id = oi.order_id
+     JOIN bills b ON b.id = o.bill_id
+     JOIN menu_items m ON m.id = oi.menu_item_id
+     WHERE o.created_at >= CURDATE() AND o.created_at < CURDATE() + INTERVAL 1 DAY
+       AND o.cancelled_at IS NULL AND oi.status <> 'cancelled' AND b.status <> 'cancelled'
+     GROUP BY m.id, m.name, m.unit
+     HAVING qty > 0
+     ORDER BY qty DESC, amount DESC
+     LIMIT 5`);
+  return rows.map((r) => ({ ...r, qty: Number(r.qty), amount: Number(r.amount) }));
+}
+
+/**
+ * P2+/P4: เมนูใกล้หมด = ยังเปิดขายอยู่ แต่จำนวนพร้อมขายเหลือไม่เกิน 1 ล็อต (รวม "หมดชั่วคราว" ที่เหลือ 0)
+ * เมนูที่ไม่จำกัดจำนวน (available_qty = NULL) ไม่นับ · เมนูที่ปิดขาย (หมด) อยู่ใน unavailable_menus แทน
+ * → [{ id, name, unit, available_qty, lot_size, category_name, temp_out }]   เหลือน้อยขึ้นก่อน
+ */
+async function loadLowMenus() {
+  const rows = await query(
+    `SELECT m.id, m.name, m.unit, m.available_qty, m.lot_size, c.name AS category_name
+     FROM menu_items m JOIN menu_categories c ON c.id = m.category_id
+     WHERE m.is_deleted = 0 AND NOT ${SOLDOUT_SQL}
+       AND m.available_qty IS NOT NULL AND m.available_qty <= m.lot_size
+     ORDER BY m.available_qty, c.sort_order, m.name`);
+  return rows.map((r) => ({ ...r, temp_out: r.available_qty <= 0 }));
+}
+
+/** ข้อมูลจาก service อื่นอาจมาเป็น array ตรงๆ หรือห่อใน { items } / { rows } */
+const listOf = (data) => (Array.isArray(data) ? data : (data && (data.items || data.rows)) || []);
+
+/**
+ * P4: ข้อมูลจากระบบคลังสินค้า (inventory-service) — ห้ามอ่านตารางคลังตรง เรียกผ่าน callService เท่านั้น
+ * service ดับ/ยังไม่มี API → ส่วนนั้นเป็น { available: false, message } แต่ Dashboard ส่วนอื่นยังทำงานปกติ
+ *   low_ingredients: { available: true, count, items: [{ id, name, unit, qty_on_hand, reorder_point }] }
+ *   unpaid_invoices: { available: true, count, total, items: [{ id, po_id, po_no, supplier_name, invoice_no, invoice_amount, received_at }] }
+ */
+async function loadInventory(req) {
+  const down = (e) => ({
+    available: false,
+    message: e && e.status === 503 ? 'ระบบคลังสินค้าไม่พร้อมใช้' : `ระบบคลังสินค้าไม่พร้อมใช้ (${(e && e.message) || 'ไม่ทราบสาเหตุ'})`,
+  });
+  const [ingredients, invoices] = await Promise.all([
+    callService(req, 'inventory', '/api/ingredients?low_stock=1').then(
+      (data) => {
+        // กันกรณี API คืนวัตถุดิบทั้งหมด: กรองซ้ำเฉพาะที่ qty_on_hand ≤ reorder_point
+        const items = listOf(data)
+          .filter((i) => Number(i.qty_on_hand) <= Number(i.reorder_point))
+          .map((i) => ({ id: i.id, name: i.name, unit: i.unit, qty_on_hand: Number(i.qty_on_hand), reorder_point: Number(i.reorder_point) }))
+          .sort((a, b) => a.qty_on_hand / (a.reorder_point || 1) - b.qty_on_hand / (b.reorder_point || 1));
+        return { available: true, count: items.length, items };
+      },
+      down),
+    callService(req, 'inventory', '/api/goods_receipts?unpaid=1').then(
+      (data) => {
+        const items = listOf(data)
+          .filter((g) => !Number(g.is_paid))
+          .map((g) => ({
+            id: g.id, po_id: g.po_id, po_no: g.po_no || null, supplier_name: g.supplier_name || null,
+            invoice_no: g.invoice_no || null, invoice_amount: Number(g.invoice_amount || 0), received_at: g.received_at || null,
+          }));
+        return { available: true, count: items.length, total: items.reduce((s, g) => s + g.invoice_amount, 0), items };
+      },
+      down),
+  ]);
+  return { low_ingredients: ingredients, unpaid_invoices: invoices };
 }
 
 /** พนักงานที่บัญชียังใช้งาน + เวลาล็อกอินล่าสุด (จาก activity_logs) */
@@ -332,10 +453,11 @@ async function loadActiveStaff() {
 // GET /api/dashboard
 router.get('/', requireRole(['manager', 'owner']), handle(async (req, res) => {
   const [shift, orderOpen, tables, vipRooms, openBills, unavailableMenus, activeStaff,
-    menusByCategory, billsByHour, salesToday] = await Promise.all([
+    menusByCategory, billsByHour, salesToday, salesByHour, topMenus, lowMenus, inventory] = await Promise.all([
     currentShift(), isOrderOpenNow(), loadTables(), loadVipRooms(),
     loadOpenBills(), loadUnavailableMenus(), loadActiveStaff(),
     loadMenusByCategory(), loadBillsByHour(), loadSalesToday(),
+    loadSalesByHour(), loadTopMenus(), loadLowMenus(), loadInventory(req),
   ]);
   const vipToday = await loadVipToday(vipRooms);
   return ok(res, {
@@ -349,6 +471,11 @@ router.get('/', requireRole(['manager', 'owner']), handle(async (req, res) => {
     menus_by_category: menusByCategory,
     bills_by_hour: billsByHour,
     sales_today: salesToday,
+    sales_by_hour: salesByHour,
+    top_menus: topMenus,
+    low_menus: lowMenus,
+    low_ingredients: inventory.low_ingredients,
+    unpaid_invoices: inventory.unpaid_invoices,
     vip_today: vipToday,
     generated_at: nowDateTime(),
   });
