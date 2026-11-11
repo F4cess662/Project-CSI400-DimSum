@@ -51,7 +51,7 @@
       footer: `<button class="btn btn-secondary" data-close>ปิด</button>
                <button class="btn" data-print><i data-icon="printer"></i> พิมพ์สลิป</button>`,
     });
-    m.el.querySelector('[data-print]').onclick = () => window.print();
+    m.el.querySelector('[data-print]').onclick = () => printSlip(m.el.querySelector('.slip'));
     return m;
   }
 
@@ -213,6 +213,7 @@
 
     panelEl.innerHTML = `
       <div class="stack">
+        ${closingSoon() ? CLOSING_ALERT : ''}
         <div class="row-between">
           <div>
             <h3 style="margin:0">${table.is_vip ? 'ห้อง' : 'โต๊ะ'} ${fmt.esc(bill.place || table.code)}</h3>
@@ -345,7 +346,61 @@
     }
     return renderAvailable(table, panelEl);
   };
+  /* ---------- พิมพ์ / บันทึก PDF ขนาดสลิป (ใบเสร็จ + สลิป QR) ----------
+     พิมพ์จาก iframe ที่มีแค่สลิป + @page ของมันเอง → กว้าง 80 มม. สูงพอดีเนื้อหา 1 หน้า (Feedback #6)
+     ขนาดนี้ใช้ได้กับปลายทาง "บันทึกเป็น PDF" และเครื่องพิมพ์ใบเสร็จ 80 มม.
+     ไม่ใส่ @page ใน style.css เพราะจะบังคับขนาดกระดาษของทุกหน้า (เช่น รายงานยอดขาย) */
+  function printSlip(el) {
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:80mm;height:600px;border:0';
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument;
+    doc.open();
+    doc.write(`<!doctype html><html lang="th"><head><meta charset="utf-8">
+      <link rel="stylesheet" href="/assets/css/style.css">
+      <style>html,body{margin:0;background:#fff}.print-area{position:static}.slip{margin:0;width:80mm;box-sizing:border-box}</style>
+      <style id="pageSize"></style></head>
+      <body><div class="print-area">${el.outerHTML}</div></body></html>`);
+    doc.close();
+    let printed = false;
+    const go = () => {
+      if (printed) return;
+      printed = true;
+      const slip = doc.querySelector('.slip');
+      const heightMm = Math.ceil(slip.getBoundingClientRect().height * 25.4 / 96) + 2;
+      doc.getElementById('pageSize').textContent = `@page { size: 80mm ${heightMm}mm; margin: 0; }`;
+      frame.contentWindow.addEventListener('afterprint', () => setTimeout(() => frame.remove(), 100));
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    };
+    // รอ stylesheet + รูป (QR) โหลดครบก่อนพิมพ์ ไม่อย่างนั้นได้สลิปไม่มีรูป · กันค้างไว้ 3 วินาที
+    const waits = [...doc.querySelectorAll('link[rel="stylesheet"]')].map((l) => (l.sheet ? null : l))
+      .concat([...doc.images].map((img) => (img.complete ? null : img))).filter(Boolean);
+    let left = waits.length;
+    if (!left) go();
+    waits.forEach((x) => { x.onload = x.onerror = () => { if (--left === 0) go(); }; });
+    setTimeout(go, 3000);
+  }
+
+  /* ---------- เตือนเก็บเงินก่อนปิดร้าน ----------
+     ช่วงหลังปิดรับออเดอร์ ถึงเวลาปิดกะ (เช่น 13:30–14:00) ลูกค้าต้องจ่ายและออกก่อนปิดกะ
+     อ่านเวลาจากตั้งค่าร้าน (window.SHOP ที่ layout.js โหลดให้) · เทียบเวลาไทย */
+  function closingSoon() {
+    const s = window.SHOP || {};
+    if (!s.morning_last_order || !s.evening_last_order) return false;
+    const now = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    }).format(new Date());
+    return (now >= s.morning_last_order && now < s.morning_close)
+        || (now >= s.evening_last_order && now < s.evening_close);
+  }
+  const CLOSING_ALERT = '<div class="alert alert-wait"><i data-icon="clock"></i> ใกล้ปิดร้าน กรุณาเก็บเงินโต๊ะที่ยังไม่จ่าย</div>';
+
   window.showBillQr = showBillQr;
   window.billItemsHtml = billItemsHtml;
+  window.closingSoon = closingSoon;
+  window.printSlip = printSlip;
+  window.CLOSING_ALERT = CLOSING_ALERT;
   window.olIcon = olIcon;
 })();

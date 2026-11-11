@@ -14,6 +14,11 @@
  * ลำดับคิด (BR-10): ยอดอาหาร → หักรางวัลแลกแต้ม → หักคูปอง = ยอดชำระ → หักมัดจำห้อง VIP = ยอดที่ต้องจ่าย
  * แต้มที่ได้ = floor(ยอดชำระ / 100) บวกเข้าบัญชีทันที ใช้ได้ครั้งถัดไป (BR-18) · ไม่มีสมาชิกไม่ได้แต้ม
  * bills.total_paid = เงินที่รับตอนปิดบิล (ไม่รวมมัดจำที่รับไปก่อนแล้ว ดูมัดจำที่ deposit_deducted)
+ *
+ * ห้อง VIP (Feedback เฟส 3): บิลที่ vip_bookings.bill_id ชี้มา + room_fee เป็นบรรทัด "ค่าห้อง VIP <แพ็กเกจ>"
+ *   ส่วนลดแต้ม/คูปองหักจากค่าอาหารเท่านั้น · มัดจำ (50% ของค่าห้อง + อาหารล่วงหน้า) หักจากยอดรวมทั้งบิล
+ *   เหมาวัน: ค่าห้อง + มัดจำอยู่บิลเช้า (bill_id) · บิลเย็น (evening_bill_id) มีแต่ค่าอาหาร
+ *   บิลจากการจองห้องไม่มีออเดอร์ก็ชำระได้ (จ่ายค่าห้องอย่างเดียว) · bills.subtotal เก็บ อาหาร + ค่าห้อง
  */
 const router = require('express').Router();
 const config = require('../config');
@@ -88,11 +93,15 @@ async function loadBills(run, billIds, lock = false) {
   const [{ n: orderCount } = { n: 0 }] = await run(
     `SELECT COUNT(*) AS n FROM orders WHERE bill_id IN (${marks(billIds)})`, billIds);
 
-  // มัดจำห้อง VIP: บิลที่เปิดจากการจอง (vip_bookings.bill_id) และรับมัดจำแล้ว — หักทุกครั้ง ไม่เกี่ยวกับสมาชิก
-  const deposits = await run(
-    `SELECT id, bill_id, deposit_amount, customer_name FROM vip_bookings
-      WHERE bill_id IN (${marks(billIds)}) AND deposit_received_at IS NOT NULL
-        AND status NOT IN ('cancelled', 'no_show')`, billIds);
+  // การจองห้อง VIP ที่ผูกกับบิล (Feedback เฟส 3):
+  //   bill_id = บิลแรก (เหมาวัน = บิลกะเช้า) → คิดค่าห้อง room_fee + หักมัดจำ (ถ้ารับมัดจำแล้ว) ที่บิลนี้ครั้งเดียว
+  //   evening_bill_id = บิลกะเย็นของเหมาวัน → ไม่มีค่าห้อง ไม่มีมัดจำ (จ่ายไปในบิลเช้าแล้ว)
+  const bookings = await run(
+    `SELECT vb.id, vb.bill_id, vb.evening_bill_id, vb.room_fee, vb.deposit_amount, vb.deposit_received_at,
+            vp.name AS package_name
+       FROM vip_bookings vb LEFT JOIN vip_packages vp ON vp.id = vb.package_id
+      WHERE (vb.bill_id IN (${marks(billIds)}) OR vb.evening_bill_id IN (${marks(billIds)}))
+        AND vb.status NOT IN ('cancelled', 'no_show', 'released')`, [...billIds, ...billIds]);
 
   const result = bills.map((b) => {
     // รวมเมนูเดียวกันราคาเดียวกันเป็นบรรทัดเดียว (สั่งหลายรอบ)
@@ -110,7 +119,10 @@ async function loadBills(run, billIds, lock = false) {
       line.amount = money(line.amount + Number(it.amount));
       lines.set(key, line);
     }
-    const dep = deposits.filter((d) => d.bill_id === b.id);
+    const first = bookings.filter((d) => d.bill_id === b.id);           // บิลแรกของการจอง: ค่าห้อง + มัดจำ
+    const evening = bookings.some((d) => d.evening_bill_id === b.id);   // บิลกะเย็นของเหมาวัน
+    const roomFee = money(first.reduce((a, d) => a + Number(d.room_fee || 0), 0));
+    const pkg = first.map((d) => d.package_name).filter(Boolean)[0];
     return {
       id: b.id,
       bill_no: b.bill_no,
@@ -119,14 +131,20 @@ async function loadBills(run, billIds, lock = false) {
       guests: b.guests,
       opened_at: b.opened_at,
       lines: [...lines.values()],
-      subtotal: money([...lines.values()].reduce((a, l) => a + l.amount, 0)),
+      subtotal: money([...lines.values()].reduce((a, l) => a + l.amount, 0)),   // ค่าอาหารเท่านั้น
+      room_fee: roomFee,
+      room_label: roomFee ? 'ค่าห้อง VIP' + (pkg ? ' ' + pkg : '') : null,
+      is_booking: first.length > 0 || evening,                                  // บิลจากการจองห้อง (ไม่มีออเดอร์ก็จ่ายได้)
+      is_evening_bill: evening,
       pending_items: pending,
-      deposit: money(dep.reduce((a, d) => a + Number(d.deposit_amount), 0)),
-      vip_booking_ids: dep.map((d) => d.id),
+      deposit: money(first.filter((d) => d.deposit_received_at)
+        .reduce((a, d) => a + Number(d.deposit_amount), 0)),
+      vip_booking_ids: [...new Set([...first.map((d) => d.id),
+        ...bookings.filter((d) => d.evening_bill_id === b.id).map((d) => d.id)])],
     };
   });
 
-  return { bills: result, has_orders: Number(orderCount) > 0 };
+  return { bills: result, has_orders: Number(orderCount) > 0, has_booking: result.some((b) => b.is_booking) };
 }
 
 /* =========================================================
@@ -227,7 +245,7 @@ function couponLabel(c) {
  */
 async function calculate(run, billIds, opts = {}) {
   const lock = !!opts.lock;
-  const { bills, has_orders } = await loadBills(run, billIds, lock);
+  const { bills, has_orders, has_booking } = await loadBills(run, billIds, lock);
   const now = thaiNow();
   const menus = menuInBills(bills);
   const subtotal = money(bills.reduce((a, b) => a + b.subtotal, 0));
@@ -294,18 +312,22 @@ async function calculate(run, billIds, opts = {}) {
     }
   }
 
-  const total = money(afterRewards - discountCoupon);                     // ยอดชำระ
+  // ลำดับยอด: อาหาร → แลกแต้ม/คูปอง (หักจากค่าอาหาร) → + ค่าห้อง VIP = ยอดชำระ → หักมัดจำ = ต้องจ่ายเพิ่ม
+  const roomFee = money(bills.reduce((a, b) => a + b.room_fee, 0));
+  const total = money(afterRewards - discountCoupon + roomFee);          // ยอดชำระ (อาหาร + ค่าห้อง)
   const depositAvailable = money(bills.reduce((a, b) => a + b.deposit, 0));
-  const depositDeducted = money(Math.min(depositAvailable, total));      // หักมัดจำห้อง VIP
+  const depositDeducted = money(Math.min(depositAvailable, total));      // มัดจำหักจากยอดรวมทั้งบิล
   const amountDue = money(total - depositDeducted);                     // ยอดที่ต้องจ่ายเพิ่ม
-  const pointsToEarn = member ? Math.floor(total / BAHT_PER_POINT) : 0;
+  const pointsToEarn = member ? Math.floor(total / BAHT_PER_POINT) : 0; // แต้มคิดจากยอดชำระทั้งหมด
 
   return {
-    bills, has_orders, now, member, wallet, usedRewards, allRewards, menus, coupon,
+    bills, has_orders, has_booking, now, member, wallet, usedRewards, allRewards, menus, coupon,
     summary: {
-      subtotal,
+      subtotal,                     // ค่าอาหาร
       discount_points: discountPoints,
       discount_coupon: discountCoupon,
+      room_fee: roomFee,
+      room_lines: bills.filter((b) => b.room_fee).map((b) => ({ bill_id: b.id, place: b.place, label: b.room_label, amount: b.room_fee })),
       total,
       deposit_available: depositAvailable,
       deposit_deducted: depositDeducted,
@@ -374,11 +396,13 @@ function allocate(bills, s) {
   let points = s.discount_points;
   let coupon = s.discount_coupon;
   return bills.map((b) => {
-    let left = b.subtotal;
-    const dp = money(Math.min(points, left)); points = money(points - dp); left = money(left - dp);
-    const dc = money(Math.min(coupon, left)); coupon = money(coupon - dc); left = money(left - dc);
+    let food = b.subtotal;                                  // ส่วนลดหักจากค่าอาหารเท่านั้น ไม่หักค่าห้อง
+    const dp = money(Math.min(points, food)); points = money(points - dp); food = money(food - dp);
+    const dc = money(Math.min(coupon, food)); coupon = money(coupon - dc); food = money(food - dc);
+    let left = money(food + b.room_fee);                    // + ค่าห้อง VIP
     const dep = money(Math.min(b.deposit, left)); left = money(left - dep);
-    return { ...b, discount_points: dp, discount_coupon: dc, deposit_deducted: dep, total_paid: left };
+    // bills.subtotal เก็บ อาหาร + ค่าห้อง → total_paid = subtotal − ส่วนลด − มัดจำ เสมอ
+    return { ...b, gross: money(b.subtotal + b.room_fee), discount_points: dp, discount_coupon: dc, deposit_deducted: dep, total_paid: left };
   });
 }
 
@@ -421,6 +445,7 @@ async function preview(req, res, b) {
   return ok(res, {
     bills: calc.bills,
     has_orders: calc.has_orders,
+    has_booking: calc.has_booking,   // บิลจากการจองห้อง VIP ไม่มีออเดอร์ก็ชำระได้
     ...summary,
     pending_items: calc.bills.reduce((a, x) => a + x.pending_items, 0),
     member: member && { ...member, points_after: member.points_balance - summary.points_redeemed + summary.points_to_earn },
@@ -449,7 +474,8 @@ async function pay(req, res, b) {
     const run = async (sql, params) => (await conn.execute(sql, params))[0];
     const calc = await calculate(run, billIds, { ...b, lock: true });
     const s = calc.summary;
-    if (!calc.has_orders) throw fail('บิลนี้ยังไม่มีออเดอร์ ถ้าลูกค้าไม่สั่งอาหาร ให้ผู้จัดการยกเลิกโต๊ะ', 409);
+    // ห้อง VIP ที่จองไว้จ่ายค่าห้องได้แม้ไม่สั่งอาหาร · โต๊ะปกติไม่มีออเดอร์ = ให้ผู้จัดการยกเลิกโต๊ะแทน
+    if (!calc.has_orders && !calc.has_booking) throw fail('บิลนี้ยังไม่มีออเดอร์ ถ้าลูกค้าไม่สั่งอาหาร ให้ผู้จัดการยกเลิกโต๊ะ', 409);
     if (calc.bills.some((x) => x.pending_items > 0)) throw fail(pendingMessage(calc.bills), 409);
     if (calc.rewardErrors.length) throw fail(calc.rewardErrors[0], 422);
     if (calc.couponError) throw fail(calc.couponError, 422);
@@ -472,7 +498,7 @@ async function pay(req, res, b) {
                 subtotal = ?, discount_points = ?, discount_coupon = ?, deposit_deducted = ?, total_paid = ?,
                 points_earned = ?
           WHERE id = ?`,
-        [user.id, method, member ? member.id : null, p.subtotal, p.discount_points, p.discount_coupon,
+        [user.id, method, member ? member.id : null, p.gross, p.discount_points, p.discount_coupon,
           p.deposit_deducted, p.total_paid, p.id === firstId ? s.points_to_earn : 0, p.id]);
       await conn.execute(
         `UPDATE dining_tables SET status = 'available'
@@ -522,6 +548,7 @@ async function pay(req, res, b) {
       coupon: calc.coupon && p.id === parts[0].id ? calc.coupon.code : undefined,
       rewards: calc.usedRewards.length && p.id === parts[0].id ? calc.usedRewards.map((r) => r.name) : undefined,
       deposit_deducted: p.deposit_deducted || undefined,
+      room_fee: p.room_fee || undefined,
     });
   }
 
@@ -551,7 +578,10 @@ async function pay(req, res, b) {
       closed_at: result.closedAt,
       cashier: user.full_name,
       lines: [...merged.values()],
-      subtotal: s.subtotal,
+      item_count: merged.size,           // จำนวนรายการ (ใบเสร็จแสดง "รวม x รายการ")
+      subtotal: s.subtotal,              // ค่าอาหาร
+      room_fee: s.room_fee,
+      room_lines: s.room_lines,
       rewards: calc.usedRewards,
       discount_points: s.discount_points,
       coupon: calc.coupon,

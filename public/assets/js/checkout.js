@@ -201,23 +201,34 @@
             <h3 style="margin:0">${b.vip_room_id ? 'ห้อง' : 'โต๊ะ'} ${fmt.esc(b.place)}</h3>
             <div class="caption muted">${fmt.esc(b.bill_no)} · ${fmt.esc(b.guests)} คน · เปิด ${fmt.time(b.opened_at)} น.</div>
           </div>
-          <span class="price" style="font-size:20px">${fmt.baht(b.subtotal)}</span>
+          <span class="price" style="font-size:20px">${fmt.baht(b.subtotal + (b.room_fee || 0))}</span>
         </div>
-        ${b.deposit ? `<div class="alert alert-ok" style="margin-bottom:12px"><i data-icon="crown"></i> ห้องนี้จองไว้ มัดจำ ${fmt.baht(b.deposit)} หักให้ตอนจ่าย</div>` : ''}
+        ${b.deposit ? `<div class="alert alert-ok" style="margin-bottom:12px"><i data-icon="crown"></i> ห้องนี้จองไว้ มัดจำ ${fmt.baht(b.deposit)} หักจากยอดรวมตอนจ่าย</div>` : ''}
+        ${b.is_evening_bill ? `<div class="alert alert-ok" style="margin-bottom:12px"><i data-icon="crown"></i> จองห้องทั้ง 2 รอบ · บิลรอบเย็น ค่าห้องจ่ายไปแล้วในบิลรอบเช้า</div>` : ''}
         ${b.pending_items ? `<div class="alert alert-wait" style="margin-bottom:12px"><i data-icon="clock"></i> ยังไม่เสิร์ฟ ${b.pending_items} รายการ</div>` : ''}
-        ${b.lines.length ? `
+        ${b.lines.length || b.room_fee ? `
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>รายการ</th><th class="num">ราคา</th><th class="num">รวม</th></tr></thead>
-              <tbody>${b.lines.map((l) => `
+              <thead><tr><th class="num" style="width:40px">#</th><th>รายการ</th><th class="num">ราคา</th><th class="num">รวม</th></tr></thead>
+              <tbody>${b.lines.map((l, i) => `
                 <tr>
+                  <td class="num muted">${i + 1}</td>
                   <td>${fmt.esc(l.name)} × ${fmt.num(l.qty)} ${fmt.esc(l.unit)}</td>
                   <td class="num">${fmt.baht(l.unit_price)}</td>
                   <td class="num">${fmt.baht(l.amount)}</td>
                 </tr>`).join('')}
+                ${b.room_fee ? `
+                <tr>
+                  <td class="num muted"><i data-icon="crown"></i></td>
+                  <td class="bold">${fmt.esc(b.room_label)}</td>
+                  <td class="num"></td>
+                  <td class="num bold">${fmt.baht(b.room_fee)}</td>
+                </tr>` : ''}
               </tbody>
             </table>
-          </div>` : '<div class="muted">ยังไม่มีรายการที่ต้องชำระ</div>'}
+          </div>
+          <div class="caption muted" style="margin-top:6px">รวม ${fmt.num(b.lines.length)} รายการอาหาร${b.room_fee ? ' + ค่าห้อง VIP' : ''}</div>`
+          : '<div class="muted">ยังไม่มีรายการที่ต้องชำระ</div>'}
       </div>`).join('');
   }
 
@@ -225,13 +236,14 @@
   function renderSummary() {
     const s = state.sum;
     const row = (label, value, cls = '') => `<div class="row-between ${cls}"><span class="muted">${label}</span><span>${value}</span></div>`;
-    const warn = !s.has_orders ? 'บิลนี้ยังไม่มีออเดอร์ ถ้าลูกค้าไม่สั่งอาหาร ให้ผู้จัดการยกเลิกโต๊ะที่ผังโต๊ะ'
+    const warn = !s.has_orders && !s.has_booking ? 'บิลนี้ยังไม่มีออเดอร์ ถ้าลูกค้าไม่สั่งอาหาร ให้ผู้จัดการยกเลิกโต๊ะที่ผังโต๊ะ'
       : s.pending_items > 0 ? 'ยังมีอาหารที่ยังไม่เสิร์ฟ ให้ครัวเสิร์ฟหรือยกเลิกรายการก่อน' : '';
     $('summary').innerHTML = `
       <h3>สรุปยอด</h3>
-      ${row(s.bills.length > 1 ? `ยอดอาหาร (${s.bills.length} บิล)` : 'ยอดอาหาร', fmt.baht(s.subtotal))}
+      ${row(s.bills.length > 1 ? `ค่าอาหาร (${s.bills.length} บิล)` : 'ค่าอาหาร', fmt.baht(s.subtotal))}
       ${s.used_rewards.map((r) => row(`<i data-icon="gift"></i> ${fmt.esc(r.name)} (${fmt.num(r.points_cost)} แต้ม)`, `<span class="text-red">−${fmt.baht(r.discount)}</span>`)).join('')}
       ${s.coupon ? row(`<i data-icon="ticket"></i> คูปอง ${fmt.esc(s.coupon.code)}`, `<span class="text-red">−${fmt.baht(s.discount_coupon)}</span>`) : ''}
+      ${(s.room_lines || []).map((r) => row(`<i data-icon="crown"></i> ${fmt.esc(r.label)}`, fmt.baht(r.amount))).join('')}
       ${s.deposit_deducted ? row('<b>ยอดชำระ</b>', `<b>${fmt.baht(s.total)}</b>`) : ''}
       ${s.deposit_deducted ? row('<i data-icon="crown"></i> หักมัดจำห้อง VIP', `<span class="text-red">−${fmt.baht(s.deposit_deducted)}</span>`) : ''}
       <div class="row-between">
@@ -262,7 +274,7 @@
     const due = s.amount_due;
     const box = $('methodBody');
     const payBtn = $('payBtn');
-    const blocked = s.pending_items > 0 || !s.has_orders || !!s.coupon_error || s.reward_errors.length > 0;
+    const blocked = s.pending_items > 0 || (!s.has_orders && !s.has_booking) || !!s.coupon_error || s.reward_errors.length > 0;
 
     if (state.method === 'cash') {
       const quick = [...new Set([due, Math.ceil(due / 100) * 100, 500, 1000].filter((n) => n >= due))].slice(0, 4);
@@ -353,49 +365,59 @@
     const line = (left, right, bold) =>
       `<div class="row-between ${bold ? 'bold' : ''}" style="gap:8px"><span>${left}</span><span>${right}</span></div>`;
     const hr = '<hr style="border:0;border-top:1px dashed var(--brown-500);width:100%;margin:4px 0">';
+    const discounts = r.rewards.length || r.coupon;
+    // ยอดที่ลูกค้าจ่ายที่เคาน์เตอร์ (มีมัดจำ = จ่ายเพิ่ม) แสดงในกรอบเด่นที่สุด
+    const bigLabel = r.deposit_deducted ? 'จ่ายเพิ่ม' : 'ยอดชำระ';
     const m = openModal({
       title: 'ชำระเงินเรียบร้อย',
       body: `
         <div class="print-area">
-          <div class="slip stack" style="gap:6px">
+          <div class="slip stack" id="receiptSlip" style="gap:5px">
             <div style="text-align:center">
-              <div class="bold" style="font-size:18px"><i data-icon="dumpling"></i> ${fmt.esc(r.shop_name || 'นึ่งสุข')}</div>
+              <div class="bold" style="font-size:18px">${fmt.esc(r.shop_name || 'นึ่งสุข')}</div>
               ${r.address ? `<div class="caption">${fmt.esc(r.address)}</div>` : ''}
               ${r.phone ? `<div class="caption">โทร ${fmt.esc(r.phone)}</div>` : ''}
-              <div class="bold">ใบเสร็จรับเงิน</div>
+              <div class="bold" style="margin-top:4px">ใบเสร็จรับเงิน</div>
             </div>
-            ${line('บิล', fmt.esc(r.bill_nos.join(', ')))}
-            ${line('โต๊ะ', fmt.esc(r.places.join(', ')) + ' · ' + fmt.esc(r.guests) + ' คน')}
-            ${line('วันที่', fmt.datetime(r.closed_at))}
-            ${line('แคชเชียร์', fmt.esc(r.cashier))}
+            <div class="small">
+              ${line('บิล', fmt.esc(r.bill_nos.join(', ')))}
+              ${line('โต๊ะ', fmt.esc(r.places.join(', ')) + ' · ' + fmt.esc(r.guests) + ' คน')}
+              ${line('วันที่', fmt.datetime(r.closed_at))}
+              ${line('แคชเชียร์', fmt.esc(r.cashier))}
+            </div>
             ${hr}
-            ${r.lines.map((l) => `
+            ${r.lines.map((l, i) => `
               <div>
-                <div>${fmt.esc(l.name)}</div>
-                ${line(`<span class="small">${fmt.num(l.qty)} ${fmt.esc(l.unit)} × ${fmt.baht(l.unit_price)}</span>`, fmt.baht(l.amount))}
+                <div>${i + 1}. ${fmt.esc(l.name)}</div>
+                ${line(`<span class="small" style="padding-left:14px">${fmt.num(l.qty)} ${fmt.esc(l.unit)} × ${fmt.baht(l.unit_price)}</span>`, fmt.baht(l.amount))}
               </div>`).join('')}
+            ${r.lines.length ? `<div class="small bold">รวม ${fmt.num(r.item_count || r.lines.length)} รายการ</div>` : ''}
             ${hr}
-            ${line('รวม', fmt.baht(r.subtotal))}
-            ${r.rewards.map((x) => line(`แลกแต้ม: ${fmt.esc(x.name)}`, '−' + fmt.baht(x.discount))).join('')}
+            ${line('ค่าอาหาร', fmt.baht(r.subtotal))}
+            ${r.rewards.map((x) => line(`แลกแต้ม ${fmt.esc(x.name)}`, '−' + fmt.baht(x.discount))).join('')}
             ${r.coupon ? line(`คูปอง ${fmt.esc(r.coupon.code)}`, '−' + fmt.baht(r.discount_coupon)) : ''}
-            ${line('<span style="font-size:18px">ยอดชำระ</span>', `<span style="font-size:18px">${fmt.baht(r.total)}</span>`, true)}
-            ${r.deposit_deducted ? line('หักมัดจำห้อง VIP', '−' + fmt.baht(r.deposit_deducted)) + line('จ่ายเพิ่ม', fmt.baht(r.amount_due), true) : ''}
+            ${(r.room_lines || []).map((x) => line(fmt.esc(x.label), fmt.baht(x.amount))).join('')}
+            ${r.deposit_deducted || discounts || r.room_fee ? line('ยอดชำระ', fmt.baht(r.total), true) : ''}
+            ${r.deposit_deducted ? line('หักมัดจำห้อง VIP', '−' + fmt.baht(r.deposit_deducted)) : ''}
+            <div style="border:2px solid currentColor;border-radius:6px;padding:6px 8px;margin:4px 0">
+              ${line(`<span style="font-size:17px">${bigLabel}</span>`, `<span style="font-size:22px">${fmt.baht(r.amount_due)}</span>`, true)}
+            </div>
             ${line('ชำระด้วย', fmt.esc(r.payment_label))}
             ${r.cash_received !== null ? line('รับเงิน', fmt.baht(r.cash_received)) + line('เงินทอน', fmt.baht(r.change), true) : ''}
             ${r.member ? `${hr}
-              ${line('สมาชิก', fmt.esc(r.member.name))}
-              ${r.points_redeemed ? line('ใช้แต้ม', fmt.num(r.points_redeemed) + ' แต้ม') : ''}
-              ${line('ได้รับแต้ม', '+' + fmt.num(r.points_earned) + ' แต้ม')}
-              ${line('แต้มคงเหลือ', fmt.num(r.points_balance) + ' แต้ม', true)}` : ''}
+              ${line('สมาชิก ' + fmt.esc(r.member.name), '+' + fmt.num(r.points_earned) + ' แต้ม')}
+              <div class="caption">${r.points_redeemed ? `ใช้ ${fmt.num(r.points_redeemed)} แต้ม · ` : ''}คงเหลือ ${fmt.num(r.points_balance)} แต้ม</div>` : ''}
+            ${hr}
             <div class="caption" style="text-align:center">ราคารวม VAT 7% (${fmt.baht(r.vat)}) แล้ว</div>
             <div class="small" style="text-align:center">ขอบคุณที่ใช้บริการ</div>
           </div>
         </div>`,
       footer: `
         <a class="btn btn-secondary" href="/admin/tables.html">กลับผังโต๊ะ</a>
-        <button class="btn" data-print><i data-icon="printer"></i> พิมพ์ใบเสร็จ</button>`,
+        <button class="btn" data-print><i data-icon="printer"></i> บันทึก PDF / พิมพ์</button>`,
     });
-    m.el.querySelector('[data-print]').onclick = () => window.print();
+    // พิมพ์ / บันทึก PDF ขนาดสลิป 80 มม. (printSlip อยู่ใน bill-panel.js ใช้ร่วมกับสลิป QR)
+    m.el.querySelector('[data-print]').onclick = () => printSlip(m.el.querySelector('#receiptSlip'));
   }
 
   /* ---------- QR พร้อมเพย์ (มาตรฐาน EMVCo ของธนาคารแห่งประเทศไทย) ---------- */

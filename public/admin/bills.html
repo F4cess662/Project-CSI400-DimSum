@@ -20,6 +20,7 @@
       <input class="input" style="max-width:320px" id="search" placeholder="ค้นหาเลขบิลหรือโต๊ะ">
       <span class="small muted" id="count"></span>
     </div>
+    <div id="closingAlert"></div>
     <div class="bills-split">
       <div class="table-wrap">
         <table class="table">
@@ -54,6 +55,9 @@
           || b.bill_no.toLowerCase().includes(q)
           || String(b.place).toLowerCase().includes(q));
         document.getElementById('count').textContent = `ทั้งหมด ${bills.length} บิล`;
+        // หลังปิดรับออเดอร์ ยังมีบิลค้าง → เตือนเก็บเงินก่อนปิดกะ
+        document.getElementById('closingAlert').innerHTML = bills.length && closingSoon()
+          ? `<div style="margin-bottom:16px">${CLOSING_ALERT}</div>` : '';
         document.getElementById('rows').innerHTML = list.length
           ? list.map((b) => `
               <tr data-id="${b.id}" style="cursor:pointer">
