@@ -252,14 +252,25 @@
       svgOpen(W, H, `บิลที่เปิดวันนี้รายชั่วโมง รวม ${total} บิล`) + grid + extras + bars + '</svg>';
   }
 
-  /* ---------- ห้อง VIP วันนี้ (เฟส 3): ไทม์ไลน์ + โดนัทสถานะ + รายการต้องติดตาม ---------- */
-  const VIP_STATUS = ['pending_deposit', 'confirmed', 'arrived', 'no_show', 'cancelled'];
+  /* ---------- ห้อง VIP วันนี้ (เฟส 3 + Feedback เฟส 3): ไทม์ไลน์ + โดนัทสถานะ + รายการต้องติดตาม ---------- */
+  const VIP_STATUS = ['pending_deposit', 'confirmed', 'arrived', 'released', 'no_show', 'cancelled'];
   const VIP_INACTIVE = ['no_show', 'cancelled'];             // ไม่ได้ใช้ห้องแล้ว → วาดเป็นกรอบเส้นประ
   // สีตามป้ายสถานะมาตรฐานใน api.js (STATUS) จะได้ตรงกับ badge() ทั้งหน้า
-  const statusColor = (st) => css((STATUS[st] || ['', 'off'])[1]);
-  const statusName = (st) => (STATUS[st] || [st])[0];
-  const hourOf = (t) => Number(t.slice(0, 2)) + Number(t.slice(3, 5)) / 60;
+  // released ยังไม่มีใน STATUS ของ api.js → ใช้ค่านี้ไปก่อน (ขอคนที่ 1 เพิ่ม released: ['ปล่อยห้องแล้ว', 'off'])
+  const VIP_EXTRA = { released: ['ปล่อยห้องแล้ว', 'off'] };
+  const statusOf = (st) => STATUS[st] || VIP_EXTRA[st] || [st, 'off'];
+  const statusColor = (st) => css(statusOf(st)[1]);
+  const statusName = (st) => statusOf(st)[0];
   const hm = (t) => t.slice(0, 5);
+  const hourOf = (t) => Number(t.slice(0, 2)) + Number(t.slice(3, 5)) / 60;
+  /** ชั่วโมงทศนิยม → 'HH:MM' เช่น 11.8333 → '11:50' */
+  const hmOf = (h) => {
+    const m = Math.round(h * 60);
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  };
+  /** ชื่อแพ็กเกจ · ข้อมูลเก่าที่ไม่มีแพ็กเกจแสดงจำนวนชั่วโมงแทน */
+  const packageLabel = (k) => k.package_name || (k.hours ? `${k.hours} ชม.` : 'เหมาวัน');
+  const rangeText = (k) => k.segments.map((g) => `${hmOf(g.from)}–${hmOf(g.to)}`).join(', ') || hm(k.start_time);
 
   // การ์ดนี้สร้างด้วย JS (เฟส 3 แก้ได้เฉพาะไฟล์ JS) วางต่อจากแถวกราฟโต๊ะ
   const vipCard = document.createElement('div');
@@ -276,7 +287,11 @@
     </div>`;
   $('chartZones').closest('.grid').after(vipCard);
 
-  /** ไทม์ไลน์ห้อง × ชั่วโมงเปิดร้าน: แท่งกว้างตามชั่วโมงที่จอง สีตามสถานะ · เส้นแดง = ตอนนี้ */
+  /**
+   * ไทม์ไลน์ห้อง × ชั่วโมงเปิดร้าน: แท่งตามช่วงใช้ห้องของแพ็กเกจ (จบ :50) สีตามสถานะ · เส้นแดง = ตอนนี้
+   * เหมาวัน = 2 แท่ง (กะเช้า + กะเย็น) · released = แท่งถึงเวลาปล่อยห้อง ช่วงที่เหลือว่าง
+   * ป้ายบนแท่ง: ชื่อแพ็กเกจ · ชื่อลูกค้า (ตัดตามความกว้างแท่ง)
+   */
   function vipGantt(v, W, nowAt) {
     if (!v.rooms.length) return `<div class="empty">ยังไม่มีห้อง VIP ในระบบ</div>`;
     const labelW = 64, top = 22, rowH = 40, barH = 28;
@@ -303,18 +318,26 @@
     const bar = (k) => {
       const i = rowOf.get(k.vip_room_id);
       if (i === undefined) return '';
-      const x = xOf(hourOf(k.start_time)), w = Math.max(xOf(hourOf(k.start_time) + k.hours) - x - 2, 4);
       const y = top + i * rowH + (rowH - barH) / 2, color = statusColor(k.status);
       const inactive = VIP_INACTIVE.includes(k.status);
-      const tip = `${k.room_name} · ${hm(k.start_time)}–${hm(k.end_time)} · ${k.customer_name} ${k.guests} คน · ${statusName(k.status)}`
-        + (k.status === 'pending_deposit' ? ` · มัดจำ ${fmt.baht(k.deposit_amount)} ยังไม่รับ` : '');
-      const chars = Math.floor((w - 12) / 9);
-      const label = chars < 3 ? '' : (k.customer_name.length > chars ? k.customer_name.slice(0, chars - 1) + '…' : k.customer_name);
-      return `<g><title>${esc(tip)}</title>
-        <rect x="${x + 1}" y="${y}" width="${w}" height="${barH}" rx="6"
-          fill="${inactive ? 'none' : color}" stroke="${color}" stroke-width="${inactive ? 1.5 : 0}" ${inactive ? 'stroke-dasharray="4 3"' : ''}/>
-        ${label ? `<text x="${x + 8}" y="${y + barH / 2 + 5}" fill="${inactive ? color : COLOR.white}" font-size="13">${esc(label)}</text>` : ''}
-      </g>`;
+      const tip = `${k.room_name} · ${packageLabel(k)} · ${rangeText(k)} · ${k.customer_name} ${k.guests} คน · ${statusName(k.status)}`
+        + (k.status === 'pending_deposit' ? ` · มัดจำ ${fmt.baht(k.deposit_amount)} ยังไม่รับ` : '')
+        + (k.status === 'released' && k.released_at ? ` · ปล่อยห้อง ${fmt.time(k.released_at)}` : '');
+      const full = `${packageLabel(k)} · ${k.customer_name}`;
+      // ตัดให้อยู่ในช่วงเวลาเปิดร้านของกราฟ (ข้อมูลเก่าอาจจองเลยเวลาปิด)
+      const segs = k.segments
+        .map((g) => ({ from: Math.max(g.from, v.open_hour), to: Math.min(g.to, v.close_hour) }))
+        .filter((g) => g.to > g.from);
+      return segs.map((g) => {
+        const x = xOf(g.from), w = Math.max(xOf(g.to) - x - 1, 4);
+        const chars = Math.floor((w - 12) / 9);
+        const label = chars < 3 ? '' : (full.length > chars ? full.slice(0, chars - 1) + '…' : full);
+        return `<g><title>${esc(tip)}</title>
+          <rect x="${x + 1}" y="${y}" width="${w}" height="${barH}" rx="6"
+            fill="${inactive ? 'none' : color}" stroke="${color}" stroke-width="${inactive ? 1.5 : 0}" ${inactive ? 'stroke-dasharray="4 3"' : ''}/>
+          ${label ? `<text x="${x + 8}" y="${y + barH / 2 + 5}" fill="${inactive ? color : COLOR.white}" font-size="13">${esc(label)}</text>` : ''}
+        </g>`;
+      }).join('');
     };
     // การจองที่ไม่ใช้ห้องแล้ววาดก่อน (อยู่ด้านหลัง) เผื่อมีการจองใหม่ทับช่วงเวลาเดิม
     const bars = [...v.bookings.filter((k) => VIP_INACTIVE.includes(k.status)), ...v.bookings.filter((k) => !VIP_INACTIVE.includes(k.status))]
@@ -330,7 +353,7 @@
 
   /** โดนัทจำนวนการจองแยกสถานะ + คำอธิบายพร้อมตัวเลข (ไม่ต้องอาศัยสีอย่างเดียว) */
   function vipDonut(byStatus) {
-    const total = VIP_STATUS.reduce((s, st) => s + byStatus[st], 0);
+    const total = VIP_STATUS.reduce((s, st) => s + (byStatus[st] || 0), 0);
     if (!total) return `<div class="empty" style="padding:16px">ยังไม่มีการจองวันนี้</div>`;
     const size = 150, c = size / 2, r = 54, sw = 18, C = 2 * Math.PI * r;
     const parts = VIP_STATUS.filter((st) => byStatus[st] > 0);
@@ -347,7 +370,7 @@
     const legendRows = VIP_STATUS.map((st) => `
       <div class="row-between small"><span class="row" style="gap:6px">
         <svg width="12" height="12" aria-hidden="true"><rect width="12" height="12" rx="3" fill="${statusColor(st)}"/></svg>${statusName(st)}</span>
-        <span class="bold">${byStatus[st]}</span></div>`).join('');
+        <span class="bold">${byStatus[st] || 0}</span></div>`).join('');
     return `<div class="row" style="gap:16px">
       <div style="width:${size}px">${svgOpen(size, size, `การจองวันนี้ ${total} รายการ`)}
         <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${COLOR.track}" stroke-width="${sw}"/>${segs}
@@ -359,17 +382,21 @@
   /** นาที → "25 นาที" / "2 ชม. 5 นาที" */
   const duration = (m) => (m < 60 ? `${m} นาที` : `${Math.floor(m / 60)} ชม.${m % 60 ? ` ${m % 60} นาที` : ''}`);
 
-  /** รายการต้องติดตาม: เลยเวลานัดแล้วยังไม่มา (ขึ้นก่อน) · ยังไม่รับมัดจำ · 1 การจอง = 1 แถว */
-  function vipFollowUp(list) {
+  /**
+   * รายการต้องติดตาม (Feedback เฟส 3) · 1 การจอง = 1 แถว
+   *   "โทรตาม" (ขึ้นก่อน) = ยืนยันแล้วแต่เลยเวลาเริ่ม ≥ call_after_min นาทียังไม่มา → แสดงเบอร์ให้กดโทรได้
+   *   "ยังไม่รับมัดจำ" = การจองที่ยังรอมัดจำ
+   */
+  function vipFollowUp(list, callAfter) {
     if (!list.length) return `<div class="small bold" style="color:var(--ok)">✓ ไม่มีรายการต้องติดตาม</div>`;
-    return `<div class="stack" style="gap:8px">${list.slice(0, MAX_ROWS).map((f) => `
+    return `<div class="caption muted" style="margin-bottom:8px">โทรตาม = ยืนยันแล้ว เลยเวลาเริ่ม ${callAfter} นาทียังไม่มา</div>
+      <div class="stack" style="gap:8px">${list.slice(0, MAX_ROWS).map((f) => `
       <div>
-        <div class="small"><span class="bold">${esc(f.room_name)}</span> · ${hm(f.start_time)} · ${esc(f.customer_name)} (${f.guests} คน)
-          <span class="caption muted">· ${esc(f.customer_phone)}</span></div>
+        <div class="small"><span class="bold">${esc(f.room_name)}</span> · ${esc(packageLabel(f))} · ${hm(f.start_time)} · ${esc(f.customer_name)} (${f.guests} คน)</div>
         <div class="row" style="gap:4px;margin-top:4px">
-          ${f.late ? `<span class="badge badge-bad">เลยนัด ${duration(f.minutes_late)}</span>` : ''}
+          ${f.call ? `<span class="badge badge-bad">โทรตาม · เลยมา ${duration(f.minutes_late)}</span>` : ''}
           ${f.no_deposit ? `<span class="badge badge-wait">ยังไม่รับมัดจำ ${fmt.baht(f.deposit_amount)}</span>` : ''}
-          ${f.can_no_show ? `<span class="caption muted">กด "ไม่มา" ได้ที่หน้าจองห้อง VIP</span>` : ''}
+          <a class="small bold" href="tel:${esc(f.customer_phone)}">☎ ${esc(f.customer_phone)}</a>
         </div>
       </div>`).join('')}${more(list.length)}</div>`;
   }
@@ -378,7 +405,18 @@
     if (!d.vip_today) return;
     $('vipGantt').innerHTML = vipGantt(d.vip_today, widthOf('vipGantt'), d.generated_at);
     $('vipDonut').innerHTML = vipDonut(d.vip_today.by_status);
-    $('vipFollow').innerHTML = vipFollowUp(d.vip_today.follow_up);
+    $('vipFollow').innerHTML = vipFollowUp(d.vip_today.follow_up, d.vip_today.call_after_min);
+  }
+
+  /* ---------- ยอดขายวันนี้ (Feedback เฟส 3): บิลที่ชำระ + ค่าห้อง VIP + มัดจำที่ยึด · มัดจำที่คืนไม่นับ ---------- */
+  function renderSales(s) {
+    if (!s) return;
+    $('salesTotal').textContent = fmt.baht(s.total);
+    $('salesSub').textContent = `ชำระแล้ว ${fmt.num(s.bills)} บิล`;
+    $('salesFood').textContent = fmt.baht(s.food);
+    $('salesRoom').textContent = fmt.baht(s.room_fee);
+    $('salesDeposit').textContent = fmt.baht(s.deposit_forfeited);
+    $('salesDepositSub').textContent = `มัดจำที่ยึด (ไม่มา/ยกเลิก ${fmt.num(s.forfeited_count)} การจอง)`;
   }
 
   /* ---------- รายการย่อ ---------- */
@@ -419,6 +457,7 @@
     $('statMenus').textContent = fmt.num(d.unavailable_menus.length);
     $('staffSummary').textContent = `เข้าระบบวันนี้ ${loggedIn} จาก ${d.active_staff.length} คน`;
 
+    renderSales(d.sales_today);
     renderCharts(d);
     renderMenuStatus(d.menus_by_category);
     renderMenuList(d.unavailable_menus);

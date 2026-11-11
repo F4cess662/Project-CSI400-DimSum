@@ -1,8 +1,9 @@
 /**
  * /api/dashboard — ภาพรวมร้านสำหรับผู้จัดการ/เจ้าของร้าน (FR-47, FR-57)
  * GET → { shop, tables, vip_rooms, open_bills, unavailable_menus, active_staff,
- *         tables_by_zone, menus_by_category, bills_by_hour, vip_today, generated_at }
+ *         tables_by_zone, menus_by_category, bills_by_hour, sales_today, vip_today, generated_at }
  * tables_by_zone / menus_by_category / bills_by_hour = ข้อมูลกราฟ (Feedback เฟส 1) · vip_today = เฟส 3
+ * sales_today + แพ็กเกจ/โทรตามใน vip_today = Feedback เฟส 3
  *
  * ออกแบบให้ขยายตามเฟส: เฟสถัดไปเพิ่ม key ใหม่ในก้อนเดียวกันโดยไม่แก้ key เดิม
  *   P2+: sales_today, low_menus · P3+: vip_today · P4: low_ingredients
@@ -165,49 +166,101 @@ async function loadBillsByHour() {
   ];
 }
 
-/** no_show กดได้หลังเลยเวลาเริ่ม 30 นาที (ค่าเดียวกับ NO_SHOW_AFTER_MIN ใน routes/vip_bookings.js ของคนที่ 4) */
-const NO_SHOW_AFTER_MIN = 30;
+/**
+ * "โทรตาม": การจองที่ยืนยันแล้ว (confirmed) เลยเวลาเริ่มมาแล้วกี่นาทียังไม่มา (Feedback เฟส 3)
+ * ยังไม่มีคอลัมน์ใน shop_settings จึงตั้งไว้ที่นี่ก่อน (ขอคนที่ 1 เพิ่ม shop_settings.vip_call_after_min)
+ */
+const CALL_AFTER_MIN = 10;
+/** ใช้ห้องได้ถึงนาทีที่ :50 ของชั่วโมงสุดท้าย (10 นาทีสุดท้ายเป็นเวลาจัดห้อง) */
+const ROOM_SETUP_MIN = 10;
+
+const hourOf = (t) => Number(t.slice(0, 2)) + Number(t.slice(3, 5)) / 60;
+/** ชั่วโมงทศนิยม → 'HH:MM:SS' เช่น 11.8333 → '11:50:00' */
+const timeOf = (h) => {
+  const m = Math.round(h * 60);
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:00`;
+};
+
+/**
+ * ช่วงเวลาใช้ห้องของการจอง 1 รายการ (ชั่วโมงทศนิยม) จบที่ :50 ตามแพ็กเกจ
+ *   แพ็กเกจรายชั่วโมง (S/M/L หรือข้อมูลเก่าที่มีแค่ hours) → 1 ช่วง เช่น S 10:00 → 10:00–11:50
+ *   เหมาวัน (hours = NULL) → กะเช้าถึงก่อนปิด 10 นาที + กะเย็นถึงก่อนปิด 10 นาที (ช่วงพักร้านไม่นับ)
+ *   released (ปล่อยห้องคืน) → ตัดทุกช่วงที่เวลาปล่อยห้อง ช่วงที่เหลือจึงแสดงเป็นว่าง
+ */
+function bookingSegments(k, s) {
+  const setup = ROOM_SETUP_MIN / 60;
+  const start = hourOf(k.start_time);
+  let segs;
+  if (k.hours !== null) {
+    segs = [{ from: start, to: start + k.hours - setup }];
+  } else {
+    segs = [];
+    if (start < hourOf(s.morning_close)) segs.push({ from: start, to: hourOf(s.morning_close) - setup });
+    segs.push({ from: Math.max(start, hourOf(s.evening_open)), to: hourOf(s.evening_close) - setup });
+  }
+  if (k.status === 'released' && k.released_at && k.released_at.slice(0, 10) === k.booking_date) {
+    const cut = hourOf(k.released_at.slice(11, 16));
+    segs = segs.filter((g) => g.from < cut).map((g) => ({ from: g.from, to: Math.min(g.to, cut) }));
+  }
+  return segs.filter((g) => g.to > g.from);
+}
 
 /**
  * P3: การจองห้อง VIP วันนี้ (ทุกสถานะ) สำหรับไทม์ไลน์ + โดนัท + รายการต้องติดตาม
- * → { date, open_hour, close_hour, closed_ranges: [{ from, to }], rooms: [{ id, name }],
- *     bookings: [{ id, vip_room_id, room_name, start_time, end_time, hours, customer_name, customer_phone, guests,
- *                  preorder_total, deposit_amount, deposit_received_at, status, minutes_late }],
- *     by_status: { pending_deposit, confirmed, arrived, no_show, cancelled },
- *     follow_up: [{ booking_id, room_name, start_time, customer_name, customer_phone, guests, status, deposit_amount,
- *                   no_deposit, late, minutes_late, can_no_show }] }   เลยนัดขึ้นก่อน แล้วเรียงตามเวลาเริ่ม
+ * อ่านจาก vip_bookings + vip_packages (ข้อมูลเก่าไม่มีแพ็กเกจ → package_name = NULL หน้าเว็บแสดงจำนวนชั่วโมงแทน)
+ * → { date, open_hour, close_hour, closed_ranges: [{ from, to }], rooms: [{ id, name }], call_after_min,
+ *     bookings: [{ id, vip_room_id, room_name, package_code, package_name, start_time, end_time, hours,
+ *                  segments: [{ from, to }], customer_name, customer_phone, guests, preorder_total, room_fee,
+ *                  deposit_amount, deposit_received_at, status, released_at, minutes_late }],
+ *     by_status: { pending_deposit, confirmed, arrived, released, no_show, cancelled },
+ *     follow_up: [{ booking_id, room_name, package_name, hours, start_time, customer_name, customer_phone, guests,
+ *                   status, deposit_amount, no_deposit, call, minutes_late }] }   โทรตามขึ้นก่อน แล้วเรียงตามเวลาเริ่ม
+ * segments = ช่วงที่ใช้ห้องจริง (ชั่วโมงทศนิยม) · end_time = เวลาจบของช่วงสุดท้าย
  * minutes_late = เลยเวลาเริ่มมาแล้วกี่นาที (ติดลบ = ยังไม่ถึงเวลา)
  */
 async function loadVipToday(vipRooms) {
   const [s, bookings, today] = await Promise.all([
     shopSettings(),
     query(
-      `SELECT k.id, k.vip_room_id, v.name AS room_name, k.start_time,
-              ADDTIME(k.start_time, SEC_TO_TIME(k.hours * 3600)) AS end_time, k.hours,
-              k.customer_name, k.customer_phone, k.guests, k.preorder_total, k.deposit_amount,
+      `SELECT k.id, k.vip_room_id, v.name AS room_name, p.code AS package_code, p.name AS package_name,
+              DATE_FORMAT(k.booking_date, '%Y-%m-%d') AS booking_date, k.start_time, k.hours,
+              k.customer_name, k.customer_phone, k.guests, k.preorder_total, k.room_fee, k.deposit_amount,
               k.deposit_received_at, k.status, k.bill_id,
+              DATE_FORMAT(k.released_at, '%Y-%m-%d %H:%i:%s') AS released_at,
               TIMESTAMPDIFF(MINUTE, TIMESTAMP(k.booking_date, k.start_time), NOW()) AS minutes_late
-       FROM vip_bookings k JOIN vip_rooms v ON v.id = k.vip_room_id
+       FROM vip_bookings k
+       JOIN vip_rooms v ON v.id = k.vip_room_id
+       LEFT JOIN vip_packages p ON p.id = k.package_id
        WHERE k.booking_date = CURDATE()
        ORDER BY k.start_time, v.name`),
     queryOne('SELECT CURDATE() AS d'),
   ]);
-  const hourOf = (t) => Number(t.slice(0, 2)) + Number(t.slice(3, 5)) / 60;
-  const byStatus = { pending_deposit: 0, confirmed: 0, arrived: 0, no_show: 0, cancelled: 0 };
-  for (const k of bookings) byStatus[k.status]++;
+  const byStatus = { pending_deposit: 0, confirmed: 0, arrived: 0, released: 0, no_show: 0, cancelled: 0 };
+  for (const k of bookings) byStatus[k.status] = (byStatus[k.status] || 0) + 1;
 
-  // 1 การจอง = 1 แถว · late = ถึงเวลาแล้วแต่ยังไม่ได้กด "มาถึง" · no_deposit = ยังไม่รับมัดจำ
-  const followUp = bookings
-    .map((k) => ({
-      booking_id: k.id, room_name: k.room_name, start_time: k.start_time, customer_name: k.customer_name,
-      customer_phone: k.customer_phone, guests: k.guests, status: k.status, deposit_amount: k.deposit_amount,
-      no_deposit: k.status === 'pending_deposit',
-      late: ['pending_deposit', 'confirmed'].includes(k.status) && k.minutes_late > 0,
+  const items = bookings.map((k) => {
+    const segments = bookingSegments(k, s);
+    const { booking_date: _date, ...rest } = k;
+    return {
+      ...rest,
+      end_time: segments.length ? timeOf(segments[segments.length - 1].to) : k.start_time,
+      segments,
       minutes_late: Number(k.minutes_late),
-      can_no_show: ['pending_deposit', 'confirmed'].includes(k.status) && k.minutes_late >= NO_SHOW_AFTER_MIN,
+    };
+  });
+
+  // 1 การจอง = 1 แถว · no_deposit = ยังไม่รับมัดจำ · call = ยืนยันแล้วแต่เลยเวลาเริ่ม ≥ CALL_AFTER_MIN นาทียังไม่มา
+  const followUp = items
+    .map((k) => ({
+      booking_id: k.id, room_name: k.room_name, package_name: k.package_name, hours: k.hours,
+      start_time: k.start_time, customer_name: k.customer_name, customer_phone: k.customer_phone, guests: k.guests,
+      status: k.status, deposit_amount: k.deposit_amount,
+      no_deposit: k.status === 'pending_deposit',
+      call: k.status === 'confirmed' && k.minutes_late >= CALL_AFTER_MIN,
+      minutes_late: k.minutes_late,
     }))
-    .filter((f) => f.late || f.no_deposit)
-    .sort((a, b) => (a.late === b.late ? a.start_time.localeCompare(b.start_time) : a.late ? -1 : 1));
+    .filter((f) => f.call || f.no_deposit)
+    .sort((a, b) => (a.call === b.call ? a.start_time.localeCompare(b.start_time) : a.call ? -1 : 1));
 
   return {
     date: today.d,
@@ -215,9 +268,53 @@ async function loadVipToday(vipRooms) {
     close_hour: Math.ceil(hourOf(s.evening_close > s.morning_close ? s.evening_close : s.morning_close)),
     closed_ranges: s.evening_open > s.morning_close ? [{ from: hourOf(s.morning_close), to: hourOf(s.evening_open) }] : [],
     rooms: vipRooms.items.map((r) => ({ id: r.id, name: r.name })),
-    bookings: bookings.map((k) => ({ ...k, minutes_late: Number(k.minutes_late) })),
+    call_after_min: CALL_AFTER_MIN,
+    bookings: items,
     by_status: byStatus,
     follow_up: followUp,
+  };
+}
+
+/**
+ * P2/P3: ยอดขายวันนี้ (Feedback เฟส 3: รวมค่าห้อง VIP + มัดจำที่ยึดวันนี้ · มัดจำที่คืนไม่นับ)
+ *   บิลที่ชำระวันนี้ (status = 'paid', closed_at วันนี้): ยอด = total_paid + deposit_deducted
+ *     (total_paid = เงินที่รับตอนปิดบิล · deposit_deducted = มัดจำที่รับไว้ก่อนแล้วหักในบิล) = อาหาร + ค่าห้อง − ส่วนลด
+ *     ค่าห้อง = room_fee ของการจองที่ bill_id ชี้มาที่บิลนั้น (เงื่อนไขเดียวกับ routes/checkout.js)
+ *   มัดจำที่ยึด: การจองที่รับมัดจำแล้วแต่ "ไม่มา"/"ยกเลิก" และไม่ได้คืนมัดจำ (deposit_refunded_at IS NULL)
+ *     นับวันที่กดไม่มา/ยกเลิก (activity_logs action vip_booking.no_show / vip_booking.cancel)
+ * → { total, bills, food, room_fee, deposit_forfeited, forfeited_count }
+ */
+async function loadSalesToday() {
+  const [paid, room, forfeited] = await Promise.all([
+    queryOne(
+      `SELECT COUNT(*) AS bills, COALESCE(SUM(total_paid + deposit_deducted), 0) AS amount
+       FROM bills
+       WHERE status = 'paid' AND closed_at >= CURDATE() AND closed_at < CURDATE() + INTERVAL 1 DAY`),
+    queryOne(
+      `SELECT COALESCE(SUM(k.room_fee), 0) AS amount
+       FROM vip_bookings k JOIN bills b ON b.id = k.bill_id
+       WHERE b.status = 'paid' AND b.closed_at >= CURDATE() AND b.closed_at < CURDATE() + INTERVAL 1 DAY
+         AND k.status NOT IN ('cancelled', 'no_show', 'released')`),
+    queryOne(
+      `SELECT COUNT(*) AS n, COALESCE(SUM(k.deposit_amount), 0) AS amount
+       FROM vip_bookings k
+       WHERE k.status IN ('no_show', 'cancelled')
+         AND k.deposit_received_at IS NOT NULL AND k.deposit_refunded_at IS NULL
+         AND EXISTS (SELECT 1 FROM activity_logs l
+                     WHERE l.target_type = 'vip_bookings' AND l.target_id = k.id
+                       AND l.action IN ('vip_booking.no_show', 'vip_booking.cancel')
+                       AND l.created_at >= CURDATE() AND l.created_at < CURDATE() + INTERVAL 1 DAY)`),
+  ]);
+  const billsAmount = Number(paid.amount);
+  const roomFee = Math.min(Number(room.amount), billsAmount);
+  const depositForfeited = Number(forfeited.amount);
+  return {
+    total: billsAmount + depositForfeited,
+    bills: Number(paid.bills),
+    food: billsAmount - roomFee,                 // ค่าอาหารหลังหักส่วนลด
+    room_fee: roomFee,
+    deposit_forfeited: depositForfeited,
+    forfeited_count: Number(forfeited.n),
   };
 }
 
@@ -235,10 +332,10 @@ async function loadActiveStaff() {
 // GET /api/dashboard
 router.get('/', requireRole(['manager', 'owner']), handle(async (req, res) => {
   const [shift, orderOpen, tables, vipRooms, openBills, unavailableMenus, activeStaff,
-    menusByCategory, billsByHour] = await Promise.all([
+    menusByCategory, billsByHour, salesToday] = await Promise.all([
     currentShift(), isOrderOpenNow(), loadTables(), loadVipRooms(),
     loadOpenBills(), loadUnavailableMenus(), loadActiveStaff(),
-    loadMenusByCategory(), loadBillsByHour(),
+    loadMenusByCategory(), loadBillsByHour(), loadSalesToday(),
   ]);
   const vipToday = await loadVipToday(vipRooms);
   return ok(res, {
@@ -251,6 +348,7 @@ router.get('/', requireRole(['manager', 'owner']), handle(async (req, res) => {
     tables_by_zone: tablesByZone(tables, vipRooms),
     menus_by_category: menusByCategory,
     bills_by_hour: billsByHour,
+    sales_today: salesToday,
     vip_today: vipToday,
     generated_at: nowDateTime(),
   });

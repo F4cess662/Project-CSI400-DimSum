@@ -37,6 +37,20 @@
       </div>
     </div>
 
+    <!-- ยอดขายวันนี้ (Feedback เฟส 3): บิลที่ชำระวันนี้ (รวมค่าห้อง VIP) + มัดจำที่ยึด · มัดจำที่คืนไม่นับ -->
+    <div class="card section">
+      <div class="row-between">
+        <h3 class="card-title">ยอดขายวันนี้</h3>
+        <span class="small muted" id="salesSub"></span>
+      </div>
+      <div class="grid grid-4">
+        <div><div class="stat-value" id="salesTotal">-</div><div class="stat-label">รวมทั้งหมด</div></div>
+        <div><div class="stat-value" id="salesFood">-</div><div class="stat-label">ค่าอาหาร (หลังหักส่วนลด)</div></div>
+        <div><div class="stat-value" id="salesRoom">-</div><div class="stat-label">ค่าห้อง VIP</div></div>
+        <div><div class="stat-value" id="salesDeposit">-</div><div class="stat-label" id="salesDepositSub">มัดจำที่ยึด</div></div>
+      </div>
+    </div>
+
     <!-- กราฟโต๊ะ -->
     <div class="grid grid-2 section">
       <div class="card">
@@ -93,7 +107,7 @@
         <h3 class="card-title">เร็วๆ นี้</h3>
         <div class="empty" style="padding:16px">
           <div class="empty-icon"><i data-icon="dumpling"></i></div>
-          <div class="small">ยอดขายวันนี้ · เมนูใกล้หมด · ห้อง VIP วันนี้ · วัตถุดิบ</div>
+          <div class="small">วัตถุดิบใกล้หมด (เฟส 4)</div>
         </div>
       </div>
     </div>
