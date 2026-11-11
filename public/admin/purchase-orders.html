@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- ใบสั่งซื้อวัตถุดิบ PO (คนที่ 5 · เฟส 4) · manager, owner -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ใบสั่งซื้อ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div id="needOrder"></div>
+    <div class="toolbar">
+      <div class="tabs" id="statusTabs"></div>
+      <div class="row" style="gap:8px;flex-wrap:nowrap">
+        <input class="input" style="max-width:240px" id="search" placeholder="ค้นหาเลข PO หรือร้าน">
+        <button class="btn" id="addBtn"><i data-icon="file"></i> สร้างใบสั่งซื้อ</button>
+      </div>
+    </div>
+    <div class="split">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>เลข PO</th><th>ซัพพลายเออร์</th><th>วันที่สั่ง</th><th>ต้องการรับ</th><th class="num">รายการ</th><th class="num">ยอดรวม</th><th>สถานะ</th></tr>
+          </thead>
+          <tbody id="rows"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="side-panel" id="detail">
+        <div class="empty"><div class="empty-icon"><i data-icon="file"></i></div>กดที่ใบสั่งซื้อเพื่อดูรายละเอียด</div>
+      </div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/purchase-orders.js"></script>
+</body>
+</html>
