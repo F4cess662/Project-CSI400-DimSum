@@ -46,10 +46,16 @@
 
       <div class="card">
         <h3 class="card-title"><i data-icon="crown"></i> ห้อง VIP</h3>
-        <div class="grid grid-3">
-          <div class="field"><label for="vip_min_spend">ยอดสั่งขั้นต่ำ (บาท)</label><input class="input" id="vip_min_spend" type="number" min="0" step="1" required></div>
-          <div class="field"><label for="vip_deposit_percent">มัดจำ (%)</label><input class="input" id="vip_deposit_percent" type="number" min="0" max="100" required></div>
-          <div class="field"><label for="vip_max_hours">ใช้ห้องได้สูงสุด (ชั่วโมง)</label><input class="input" id="vip_max_hours" type="number" min="1" max="24" required></div>
+        <!-- Feedback เฟส 3: ขายค่าห้องเป็นแพ็กเกจ · ไม่มียอดสั่งขั้นต่ำ · ชั่วโมงตามแพ็กเกจ (ซ่อนช่อง vip_min_spend / vip_max_hours) -->
+        <div class="field" style="max-width:320px"><label for="vip_deposit_percent">มัดจำ (% ของค่าห้อง + ค่าอาหารสั่งล่วงหน้า)</label>
+          <input class="input" id="vip_deposit_percent" type="number" min="0" max="100" required></div>
+        <div class="bold" style="margin:8px 0">ราคาแพ็กเกจ</div>
+        <p class="caption muted">ใช้ห้องได้ถึงนาทีที่ :50 ของชั่วโมงสุดท้าย (รวมเวลาจัดห้อง 10 นาที) · เหมาวัน = กะเช้า + กะเย็น · แก้แล้วกด "บันทึก" ของแถวนั้น</p>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>รหัส</th><th>ชื่อแพ็กเกจ</th><th>ระยะเวลา</th><th class="num">ราคา (บาท)</th><th>เปิดใช้</th><th></th></tr></thead>
+            <tbody id="pkgBody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -69,7 +75,7 @@
 
       const TEXT = ['phone', 'email', 'address']; // ส่งตอนบันทึก (ชื่อร้านดูได้อย่างเดียว)
       const TIME = ['morning_open', 'morning_last_order', 'morning_close', 'evening_open', 'evening_last_order', 'evening_close'];
-      const NUM = ['max_qty_per_item', 'vip_min_spend', 'vip_deposit_percent', 'vip_max_hours'];
+      const NUM = ['max_qty_per_item', 'vip_deposit_percent'];
       const $ = (id) => document.getElementById(id);
 
       function fill(s) {
@@ -84,7 +90,34 @@
         if (s) fill(s);
       }
 
-      $('resetBtn').onclick = load;
+      /* ---------- แพ็กเกจห้อง VIP (GET ?all=1 / POST update) ---------- */
+      async function loadPackages() {
+        let rows;
+        try { rows = await api.get('vip_packages', { all: 1 }); } catch (e) {
+          $('pkgBody').innerHTML = `<tr><td colspan="6"><div class="alert alert-bad small">โหลดแพ็กเกจไม่สำเร็จ: ${fmt.esc(e.message)}</div></td></tr>`;
+          return;
+        }
+        $('pkgBody').innerHTML = rows.length ? rows.map((p) => `<tr data-pkg="${p.id}">
+            <td class="bold">${fmt.esc(p.code)}</td>
+            <td><input class="input" data-name maxlength="100" value="${fmt.esc(p.name)}"></td>
+            <td>${p.hours === null ? 'เหมาวัน (2 กะ)' : p.hours + ' ชม.'}</td>
+            <td class="num"><input class="input" data-price type="number" min="0" step="1" value="${p.price}" style="max-width:140px"></td>
+            <td><label class="switch"><input type="checkbox" data-active ${p.is_active ? 'checked' : ''}><span></span></label></td>
+            <td><button type="button" class="btn btn-sm" data-save>บันทึก</button></td>
+          </tr>`).join('') : '<tr><td colspan="6"><div class="empty">ยังไม่มีแพ็กเกจ</div></td></tr>';
+        $('pkgBody').querySelectorAll('[data-pkg]').forEach((tr) => {
+          tr.querySelector('[data-save]').onclick = async () => {
+            const price = tr.querySelector('[data-price]').value;
+            const body = {
+              action: 'update', id: Number(tr.dataset.pkg), name: tr.querySelector('[data-name]').value.trim(),
+              price: price === '' ? '' : Number(price), is_active: tr.querySelector('[data-active]').checked ? 1 : 0,
+            };
+            if (await run(() => api.post('vip_packages', body))) loadPackages();
+          };
+        });
+      }
+
+      $('resetBtn').onclick = () => { load(); loadPackages(); };
       $('form').onsubmit = async (e) => {
         e.preventDefault();
         const body = { action: 'update' };
@@ -97,6 +130,7 @@
         if (saved) { fill(saved); window.SHOP = saved; }
       };
       load();
+      loadPackages();
     })();
   </script>
 </body>

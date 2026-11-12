@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- จองห้อง VIP (คนที่ 4 · เฟส 3) — staff ที่มีช่องติ๊ก [จอง VIP] / ผู้จัดการ / เจ้าของร้าน -->
+<!-- จองห้อง VIP แบบแพ็กเกจ (คนที่ 4 · เฟส 3 + แก้ตาม Feedback เฟส 3) — staff ที่มีช่องติ๊ก [จอง VIP] / ผู้จัดการ / เจ้าของร้าน -->
 <html lang="th">
 <head>
   <meta charset="utf-8">
@@ -18,8 +18,13 @@
         <button class="btn btn-secondary btn-sm" id="nextDay"><i data-icon="chevron-right"></i></button>
         <button class="btn btn-ghost btn-sm" id="todayBtn">วันนี้</button>
       </div>
-      <button class="btn" id="newBtn">+ จองห้อง VIP</button>
+      <div class="row">
+        <button class="btn btn-secondary hidden" id="forceBtn"><i data-icon="alert"></i> เหตุสุดวิสัย</button>
+        <button class="btn" id="newBtn">+ จองห้อง VIP</button>
+      </div>
     </div>
+
+    <div id="followBox"></div>
 
     <div class="split">
       <div class="stack">
@@ -40,8 +45,8 @@
           <h3 class="card-title"><i data-icon="clipboard"></i> การจองของวัน</h3>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>เวลา</th><th>ห้อง</th><th>ลูกค้า</th><th class="num">คน</th><th class="num">pre-order</th><th class="num">มัดจำ</th><th>สถานะ</th></tr></thead>
-              <tbody id="listBody"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody>
+              <thead><tr><th>เวลาใช้ห้อง</th><th>ห้อง</th><th>แพ็กเกจ</th><th>ลูกค้า</th><th class="num">คน</th><th class="num">ค่าห้อง + อาหาร</th><th class="num">มัดจำ</th><th>สถานะ</th></tr></thead>
+              <tbody id="listBody"><tr><td colspan="8" class="loading">กำลังโหลด...</td></tr></tbody>
             </table>
           </div>
         </div>
