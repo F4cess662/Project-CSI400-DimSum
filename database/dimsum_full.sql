@@ -431,6 +431,8 @@ CREATE TABLE goods_receipts (
   invoice_image   VARCHAR(255),
   is_paid         TINYINT(1) NOT NULL DEFAULT 0,
   paid_at         DATE NULL,
+  payment_slip    VARCHAR(255) NULL,   -- รูปสลิปโอนเงินให้ร้านค้า (หลักฐานการจ่าย · ไม่บังคับ)
+  payment_ref     VARCHAR(50)  NULL,   -- เลขอ้างอิงการโอน / เลขเช็ค (ไม่บังคับ)
   FOREIGN KEY (po_id)       REFERENCES purchase_orders(id),
   FOREIGN KEY (received_by) REFERENCES users(id)
 ) ENGINE=InnoDB;

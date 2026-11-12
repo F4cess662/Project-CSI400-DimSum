@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- รับของเข้า + ใบแจ้งหนี้ + บันทึกจ่ายเงิน (คนที่ 6 · เฟส 4) · manager, owner · API: /api/goods_receipts (inventory-service) -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รับของ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="receive">รับของเข้า</button>
+        <button class="tab" data-tab="unpaid">รอจ่ายเงิน <span id="unpaidCount"></span></button>
+        <button class="tab" data-tab="paid">จ่ายแล้ว</button>
+      </div>
+    </div>
+
+    <!-- แท็บ 1: รับของเข้า -->
+    <section id="tab-receive">
+      <div class="card" style="margin-bottom:16px">
+        <div class="field" style="margin:0">
+          <label for="poSelect">ใบสั่งซื้อที่ส่งแล้ว รอรับของ</label>
+          <select class="select" id="poSelect"><option value="">กำลังโหลด...</option></select>
+        </div>
+      </div>
+      <div id="receiveForm">
+        <div class="empty"><div class="empty-icon"><i data-icon="inbox"></i></div>เลือกใบสั่งซื้อเพื่อบันทึกรับของ</div>
+      </div>
+    </section>
+
+    <!-- แท็บ 2: รอจ่ายเงิน -->
+    <section id="tab-unpaid" hidden>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>เลข PO</th><th>ร้านค้า</th><th>วันรับของ</th><th>เลขที่ใบแจ้งหนี้</th><th class="num">ยอดใบแจ้งหนี้</th><th>รูป</th><th></th></tr>
+          </thead>
+          <tbody id="unpaidRows"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- แท็บ 3: จ่ายแล้ว (ดูหลักฐานการจ่ายย้อนหลัง) -->
+    <section id="tab-paid" hidden>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>เลข PO</th><th>ร้านค้า</th><th>วันที่จ่าย</th><th>เลขที่ใบแจ้งหนี้</th><th class="num">ยอดใบแจ้งหนี้</th><th>เลขอ้างอิงการโอน</th><th>หลักฐาน</th></tr>
+          </thead>
+          <tbody id="paidRows"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/goods-receipts.js"></script>
+</body>
+</html>
