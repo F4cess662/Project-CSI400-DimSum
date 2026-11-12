@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รายงานยอดขาย · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <section class="section">
+      <div class="toolbar">
+        <div>
+          <h2>รายงานยอดขาย</h2>
+          <p class="muted small">สรุปยอดขายและผลประกอบการร้านนึ่งสุข</p>
+        </div>
+        <button class="btn btn-secondary" id="printBtn">พิมพ์รายงาน</button>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div class="field">
+            <label for="fromDate">ตั้งแต่วันที่</label>
+            <input class="input" type="date" id="fromDate">
+          </div>
+          <div class="field">
+            <label for="toDate">ถึงวันที่</label>
+            <input class="input" type="date" id="toDate">
+          </div>
+          <button class="btn" id="applyBtn">ดูรายงาน</button>
+        </div>
+        <div class="row">
+          <button class="btn btn-secondary btn-sm" data-range="today">วันนี้</button>
+          <button class="btn btn-secondary btn-sm" data-range="7days">7 วัน</button>
+          <button class="btn btn-secondary btn-sm" data-range="month">เดือนนี้</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="grid grid-4">
+        <div class="card">
+          <div class="stat">
+            <div>
+              <div class="stat-label">รายได้รวม</div>
+              <div class="stat-value" id="totalSales">0 บาท</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div>
+              <div class="stat-label">ค่าอาหาร</div>
+              <div class="stat-value" id="foodSales">0 บาท</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div>
+              <div class="stat-label">ค่าห้อง VIP</div>
+              <div class="stat-value" id="roomSales">0 บาท</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div>
+              <div class="stat-label">จำนวนบิลที่ชำระแล้ว</div>
+              <div class="stat-value" id="billCount">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="alert-info" style="margin-top:12px">
+        รายได้รวมรวมมัดจำที่ยึดแล้ว <strong id="depositSales">0 บาท</strong>
+        โดยไม่รวมมัดจำที่คืนให้ลูกค้า
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="card">
+        <h3 class="card-title">ยอดขายรายวัน</h3>
+        <p class="muted small">ค่าอาหาร + ค่าห้อง VIP + มัดจำที่ยึด</p>
+        <div id="dailyChart" aria-label="กราฟยอดขายรายวัน"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 class="card-title">สัดส่วนวิธีชำระเงิน</h3>
+          <div id="paymentChart"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">10 เมนูขายดี</h3>
+          <div id="topMenuChart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <details class="card">
+        <summary class="bold">ดูรายละเอียดรายวัน</summary>
+        <div class="table-wrap" style="margin-top:16px">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>วันที่</th>
+                <th>ค่าอาหาร</th>
+                <th>ค่าห้อง VIP</th>
+                <th>มัดจำที่ยึด</th>
+                <th>รายได้รวม</th>
+                <th>จำนวนบิล</th>
+              </tr>
+            </thead>
+            <tbody id="detailRows">
+              <tr><td colspan="6">กำลังโหลด...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({
+        title: 'รายงานยอดขาย',
+        roles: ['manager', 'owner']
+      });
+      if (!me) return;
+
+      const $ = (id) => document.getElementById(id);
+      const today = new Date();
+      const dateText = (d) => [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getDate()).padStart(2, '0')
+      ].join('-');
+
+      $('fromDate').value = dateText(today);
+      $('toDate').value = dateText(today);
+
+      let report = null;
+
+      function money(value) {
+        return fmt.baht(value);
+      }
+
+      function svgEmpty(message) {
+        return `<div class="empty">${fmt.esc(message)}</div>`;
+      }
+
+      function drawDaily(rows) {
+        const el = $('dailyChart');
+        if (!rows.length) {
+          el.innerHTML = svgEmpty('ไม่มีข้อมูลยอดขาย');
+          return;
+        }
+
+        const max = Math.max(1, ...rows.map(r => Number(r.total_sales)));
+        const width = Math.max(600, rows.length * 65);
+        const height = 260;
+        const chartHeight = 190;
+        const barWidth = Math.max(12, Math.min(32, 42 - rows.length));
+        const bars = rows.map((r, i) => {
+          const value = Number(r.total_sales);
+          const h = value / max * chartHeight;
+          const x = 45 + i * (width - 70) / rows.length;
+          const y = chartHeight - h + 15;
+          const label = r.report_date.slice(8, 10) + '/' + r.report_date.slice(5, 7);
+          return `
+            <rect x="${x}" y="${y}" width="${barWidth}" height="${h}"
+              rx="4" fill="#C8322F">
+              <title>${label}: ${money(value)}</title>
+            </rect>
+            <text x="${x + barWidth / 2}" y="232"
+              font-size="11" text-anchor="middle" fill="#8A6E5E">${label}</text>`;
+        }).join('');
+
+        el.innerHTML = `
+          <div style="overflow-x:auto">
+            <svg viewBox="0 0 ${width} ${height}" width="100%"
+              role="img" aria-label="กราฟแท่งยอดขายรายวัน">
+              <line x1="35" y1="205" x2="${width - 10}" y2="205"
+                stroke="#EBD3A8"/>
+              ${bars}
+            </svg>
+          </div>`;
+      }
+
+      function drawPayment(rows) {
+        const el = $('paymentChart');
+        if (!rows.length) {
+          el.innerHTML = svgEmpty('ไม่มีข้อมูลการชำระเงิน');
+          return;
+        }
+
+        const labels = {
+          cash: 'เงินสด',
+          promptpay: 'พร้อมเพย์',
+          card: 'บัตร'
+        };
+        const colors = ['#C8322F', '#D9A961', '#5B9A8B'];
+        const total = rows.reduce((s, r) => s + Number(r.total), 0);
+
+        if (!total) {
+          el.innerHTML = svgEmpty('ไม่มีข้อมูลการชำระเงิน');
+          return;
+        }
+
+        let offset = 0;
+        const circumference = 2 * Math.PI * 65;
+        const circles = rows.map((r, i) => {
+          const value = Number(r.total);
+          const length = value / total * circumference;
+          const circle = `
+            <circle cx="100" cy="100" r="65" fill="none"
+              stroke="${colors[i % colors.length]}" stroke-width="22"
+              stroke-dasharray="${length} ${circumference - length}"
+              stroke-dashoffset="${-offset}"
+              transform="rotate(-90 100 100)">
+              <title>${labels[r.payment_method] || r.payment_method}: ${money(value)}</title>
+            </circle>`;
+          offset += length;
+          return circle;
+        }).join('');
+
+        const legend = rows.map((r, i) => {
+          const percent = Number(r.total) / total * 100;
+          return `<div class="row-between">
+            <span>${labels[r.payment_method] || fmt.esc(r.payment_method)}</span>
+            <strong>${percent.toFixed(1)}% · ${money(r.total)}</strong>
+          </div>`;
+        }).join('');
+
+        el.innerHTML = `
+          <div class="row" style="justify-content:center">
+            <svg viewBox="0 0 200 200" width="190" role="img"
+              aria-label="กราฟโดนัทวิธีชำระเงิน">
+              ${circles}
+              <text x="100" y="96" text-anchor="middle" font-size="13"
+                fill="#8A6E5E">ยอดชำระ</text>
+              <text x="100" y="116" text-anchor="middle" font-size="13"
+                font-weight="bold" fill="#4A2C22">${money(total)}</text>
+            </svg>
+          </div>
+          <div class="stack">${legend}</div>`;
+      }
+
+      function drawTopMenus(rows) {
+        const el = $('topMenuChart');
+        if (!rows.length) {
+          el.innerHTML = svgEmpty('ไม่มีข้อมูลเมนู');
+          return;
+        }
+
+        const max = Math.max(1, ...rows.map(r => Number(r.qty_sold)));
+        const width = 520;
+        const rowHeight = 34;
+        const height = rows.length * rowHeight + 10;
+
+        const bars = rows.map((r, i) => {
+          const y = i * rowHeight + 5;
+          const barWidth = Number(r.qty_sold) / max * 220;
+          return `
+            <text x="0" y="${y + 16}" font-size="12" fill="#4A2C22">
+              ${fmt.esc(r.menu_name).slice(0, 18)}
+            </text>
+            <rect x="190" y="${y}" width="${barWidth}" height="21"
+              rx="4" fill="#D9A961">
+              <title>${fmt.esc(r.menu_name)}: ${fmt.num(r.qty_sold)} รายการ</title>
+            </rect>
+            <text x="${Math.min(450, 198 + barWidth)}" y="${y + 16}"
+              font-size="11" fill="#4A2C22">${fmt.num(r.qty_sold)}</text>`;
+        }).join('');
+
+        el.innerHTML = `
+          <div style="overflow-x:auto">
+            <svg viewBox="0 0 ${width} ${height}" width="100%"
+              role="img" aria-label="กราฟเมนูขายดี">
+              ${bars}
+            </svg>
+          </div>`;
+      }
+
+      function render(data) {
+        report = data;
+        const s = data.summary || {};
+
+        $('totalSales').textContent = money(s.total_sales);
+        $('foodSales').textContent = money(s.food_sales);
+        $('roomSales').textContent = money(s.room_sales);
+        $('billCount').textContent = fmt.num(s.bill_count);
+        $('depositSales').textContent = money(s.forfeited_deposits);
+
+        drawDaily(data.daily || []);
+        drawPayment(data.payment_methods || []);
+        drawTopMenus(data.top_menus || []);
+
+        $('detailRows').innerHTML = (data.daily || []).map(r => `
+          <tr>
+            <td>${fmt.date(r.report_date)}</td>
+            <td>${money(r.food_sales)}</td>
+            <td>${money(r.room_sales)}</td>
+            <td>${money(r.forfeited_deposits)}</td>
+            <td><strong>${money(r.total_sales)}</strong></td>
+            <td>${fmt.num(r.bill_count)}</td>
+          </tr>`).join('') ||
+          '<tr><td colspan="6">ไม่มีข้อมูล</td></tr>';
+      }
+
+      async function load() {
+        const from = $('fromDate').value;
+        const to = $('toDate').value;
+
+        if (!from || !to || from > to) {
+          toast('กรุณาตรวจสอบช่วงวันที่', 'error');
+          return;
+        }
+
+        const data = await run(() => api.get('reports', { from, to }));
+        if (data) render(data);
+      }
+
+      function setRange(type) {
+        const now = new Date();
+        let from = new Date(now);
+
+        if (type === '7days') from.setDate(now.getDate() - 6);
+        if (type === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        $('fromDate').value = dateText(from);
+        $('toDate').value = dateText(now);
+        load();
+      }
+
+      $('applyBtn').onclick = load;
+      document.querySelectorAll('[data-range]').forEach(btn => {
+        btn.onclick = () => setRange(btn.dataset.range);
+      });
+
+      $('printBtn').onclick = () => window.print();
+
+      await load();
+    })();
+  </script>
+</body>
+</html>
