@@ -1,0 +1,102 @@
+<!doctype html>
+<!-- หน้าแผนเตรียมของประจำวัน (คนที่ 3 · เฟส 4 · FR-45, 46 · BR-24 · UC-40)
+     ใช้ Sidebar และ Topbar กลางจาก /assets/js/layout.js (initStaffPage) -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>แผนเตรียมของ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <!-- การ์ดสรุป 3 ใบ -->
+    <div class="grid grid-3 section">
+      <div class="card stat">
+        <div class="stat-icon"><i data-icon="clipboard"></i></div>
+        <div>
+          <div class="stat-value" id="statMenuCount">0</div>
+          <div class="stat-label">เมนูในแผนทั้งหมด (รายการ)</div>
+        </div>
+      </div>
+      <div class="card stat">
+        <div class="stat-icon" style="background:var(--wait-bg); color:var(--wait)"><i data-icon="trend"></i></div>
+        <div>
+          <div class="stat-value" id="statSuggestedTotal">0</div>
+          <div class="stat-label">ยอดแนะนำรวม +10% (หน่วย)</div>
+        </div>
+      </div>
+      <div class="card stat">
+        <div class="stat-icon" style="background:var(--ok-bg); color:var(--ok)"><i data-icon="check"></i></div>
+        <div>
+          <div class="stat-value" id="statConfirmedStatus">ยังไม่ยืนยัน</div>
+          <div class="stat-label" id="statConfirmedSub">กดยืนยันเพื่อตั้งเป็นจำนวนพร้อมขายเริ่มต้น</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- แถบเลือกวันที่ + กรองโซนครัว + ปุ่มใช้ค่าแนะนำทั้งหมด & ยืนยันแผน -->
+    <div class="card section">
+      <div class="toolbar">
+        <div class="row">
+          <label for="planDateInput" class="bold small">วันที่แผนเตรียมของ</label>
+          <input type="date" class="input" id="planDateInput" style="width:170px">
+          <span class="caption muted" id="historyRangeHint"></span>
+        </div>
+
+        <div class="row">
+          <button type="button" class="btn btn-secondary" id="applySuggestedBtn">
+            <i data-icon="sparkle"></i> ใช้ค่าแนะนำทั้งหมด
+          </button>
+          <button type="button" class="btn" id="confirmPlanBtn">
+            <i data-icon="check"></i> ยืนยันแผนเตรียมของ
+          </button>
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-bottom:16px">
+        <div class="tabs" id="zoneTabs">
+          <button type="button" class="tab active" data-zone="all">ทุกโซน</button>
+          <button type="button" class="tab zone-steam" data-zone="steam"><span class="zone-dot"></span>นึ่ง</button>
+          <button type="button" class="tab zone-fry" data-zone="fry"><span class="zone-dot"></span>ทอด</button>
+          <button type="button" class="tab zone-congee_noodle" data-zone="congee_noodle"><span class="zone-dot"></span>จานหลัก</button>
+          <button type="button" class="tab zone-drink_dessert" data-zone="drink_dessert"><span class="zone-dot"></span>เครื่องดื่ม-ของหวาน</button>
+        </div>
+
+        <div class="row">
+          <select class="select" id="catSelect" style="width:180px">
+            <option value="all">ทุกหมวดอาหาร</option>
+          </select>
+          <input type="search" class="input" id="searchInput" style="width:220px" placeholder="ค้นหาชื่อเมนู...">
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>เมนูอาหาร</th>
+              <th>หมวด / โซนครัว</th>
+              <th class="num">ขายได้วันนี้</th>
+              <th class="num">เฉลี่ย 4 สัปดาห์ก่อน</th>
+              <th class="num">แนะนำ (+10%)</th>
+              <th class="num">พร้อมขายปัจจุบัน</th>
+              <th style="width:220px">จำนวนที่ยืนยันเตรียม</th>
+              <th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody id="prepRows">
+            <tr><td colspan="8" class="loading">กำลังโหลดแผนเตรียมของ...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/prep-plans.js"></script>
+</body>
+</html>

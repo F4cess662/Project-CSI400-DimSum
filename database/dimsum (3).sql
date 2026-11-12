@@ -426,7 +426,7 @@ CREATE TABLE `menu_items` (
   `description` varchar(255) DEFAULT NULL,
   `price` decimal(10,2) NOT NULL,
   `unit` varchar(20) NOT NULL DEFAULT 'เข่ง',
-  `kitchen_zone` enum('steam','fry','congee_noodle','drink_dessert') NOT NULL DEFAULT 'steam',
+  `kitchen_zone` enum('steam','fry','congee_noodle','drink_dessert') NOT NULL DEFAULT 'steam' COMMENT 'โซนครัว: steam=นึ่ง, fry=ทอด, congee_noodle=จานหลัก (เดิม โจ๊ก-เส้น), drink_dessert=เครื่องดื่ม-ของหวาน',
   `image_path` varchar(255) DEFAULT NULL,
   `lot_size` int(11) NOT NULL DEFAULT 1,
   `available_qty` int(11) DEFAULT NULL,

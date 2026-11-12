@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- หน้าเมนูและหมวด (คนที่ 3 · เฟส 1 + Feedback เฟส 1 + เฟส 2)
+<!-- หน้าเมนูและหมวด (คนที่ 3 · เฟส 1 + Feedback เฟส 1 + เฟส 2 + Feedback เฟส 3)
      ใช้ Sidebar และ Topbar กลางจาก /assets/js/layout.js (initStaffPage) -->
 <html lang="th">
 <head>
@@ -71,13 +71,13 @@
           <button type="button" class="btn" id="addMenuBtn">+ เพิ่มเมนู</button>
         </div>
 
-        <!-- แถวชิปกรองโซนครัว -->
+        <!-- แถวชิปกรองโซนครัว (Feedback #4: โจ๊ก-เส้น → จานหลัก) -->
         <div class="row" id="zoneFilterBar" style="gap:8px; margin-bottom:16px">
           <button type="button" class="chip active" data-zone="all">ทุกโซน</button>
           <button type="button" class="chip zone-steam" data-zone="steam"><span class="zone-dot"></span>นึ่ง</button>
           <button type="button" class="chip zone-fry" data-zone="fry"><span class="zone-dot"></span>ทอด</button>
-          <button type="button" class="chip zone-congee_noodle" data-zone="congee_noodle"><span class="zone-dot"></span>โจ๊ก-เส้น</button>
-          <button type="button" class="chip zone-drink_dessert" data-zone="drink_dessert"><span class="zone-dot"></span>เครื่องดื่ม-ของหวาน</button>
+          <button type="button" class="chip zone-congee_noodle" data-zone="congee_noodle"><span class="zone-dot"></span>จานหลัก</button>
+          <button type="button" class="chip zone-drink_dessert" data-zone="drink_dessert"><span class="zone-dot"></span>เครื่องดื่ม</button>
         </div>
 
         <!-- Grid การ์ดเมนู -->
@@ -99,11 +99,11 @@
       if (!me) return;
 
       const isOwner = me.role_code === 'owner';
-      const UNITS = ['เข่ง', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา'];
+      const UNITS = ['เข่ง', 'ลูก', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา'];
       const ZONE_LIST = [
         { code: 'steam', label: 'นึ่ง' },
         { code: 'fry', label: 'ทอด' },
-        { code: 'congee_noodle', label: 'โจ๊ก-เส้น' },
+        { code: 'congee_noodle', label: 'จานหลัก' },
         { code: 'drink_dessert', label: 'เครื่องดื่ม-ของหวาน' },
       ];
 
@@ -322,11 +322,11 @@
                 <!-- คำอธิบาย -->
                 <div class="menu-desc" style="margin-bottom:10px">${fmt.esc(m.description || m.category_name || 'เมนูติ่มซำทำสดใหม่ทุกวัน')}</div>
 
-                <!-- แถวราคา/หน่วย และขนาดล็อต -->
+                <!-- แถวราคา/หน่วย และขนาดล็อต (Feedback #7: ใช้ fmt.baht แทน ฿) -->
                 <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding-bottom:10px; border-bottom:1.5px solid var(--cream-300)">
                   <div>
-                    <span class="price">฿${fmt.num(m.price)}</span>
-                    <span class="small muted"> /${unitText}</span>
+                    <span class="price">${fmt.baht(m.price)}</span>
+                    <span class="small muted"> / ${unitText}</span>
                   </div>
                   <span class="caption muted">1 ล็อต = ${fmt.num(lotSize)} ${unitText}</span>
                 </div>
@@ -425,7 +425,7 @@
         };
       }
 
-      /* ---------- Modal เพิ่ม/แก้ไขเมนู (640px modal-lg) ---------- */
+      /* ---------- Modal เพิ่ม/แก้ไขเมนู (640px modal-lg + กันชื่อซ้ำ/คล้าย Feedback #3) ---------- */
       function openMenuModal(item = null) {
         const isEdit = Boolean(item);
         const defaultCatId = item
@@ -555,15 +555,42 @@
 
         m.el.querySelector('#menuForm').onsubmit = async (e) => {
           e.preventDefault();
-          const fd = new FormData(e.target);
-          fd.append('action', isEdit ? 'update' : 'create');
-          if (isEdit) fd.append('id', String(item.id));
+          const formEl = e.target;
+          const makeFormData = (confirmSimilar = false) => {
+            const fd = new FormData(formEl);
+            fd.append('action', isEdit ? 'update' : 'create');
+            if (isEdit) fd.append('id', String(item.id));
+            if (confirmSimilar) fd.append('confirm_similar', '1');
+            return fd;
+          };
 
-          const res = await run(() => api.upload('menus', fd));
-          if (res) {
-            m.close();
-            await loadCategories();
-            await loadMenus();
+          try {
+            const res = await api.upload('menus', makeFormData(false));
+            if (api.lastMessage) toast(api.lastMessage);
+            if (res) {
+              m.close();
+              await loadCategories();
+              await loadMenus();
+            }
+          } catch (err) {
+            if (err && err.data && err.data.need_confirm) {
+              const simName = fmt.esc(err.data.similar || '');
+              const yes = await confirmModal(
+                `มีเมนูชื่อคล้าย: <b>${simName}</b> ยืนยันว่าเป็นคนละเมนู?`,
+                'ยืนยันบันทึก',
+                false
+              );
+              if (yes) {
+                const res2 = await run(() => api.upload('menus', makeFormData(true)));
+                if (res2) {
+                  m.close();
+                  await loadCategories();
+                  await loadMenus();
+                }
+              }
+              return;
+            }
+            toast((err && err.message) || 'เกิดข้อผิดพลาด', 'error');
           }
         };
       }
@@ -580,7 +607,7 @@
                 <label for="stockQtyInput">จำนวนคงเหลือจริง (${unit})</label>
                 <input class="input" type="number" id="stockQtyInput" min="0" step="1" required value="${currentQty}">
                 <div class="caption muted">
-                  1 ล็อต = ${fmt.num(item.lot_size)} ${unit} · หากกรอก <strong>0</strong> ระบบจะปิดขายเมนูนี้อัตโนมัติทันที
+                  1 ล็อต = ${fmt.num(item.lot_size)} ${unit} · ใส่ <strong>0</strong> = หมดชั่วคราว (ลูกค้ายังสั่งได้ รอนานขึ้น) · ถ้าจะหยุดขายให้กดสวิตช์ปิดขาย
                 </div>
               </div>
             </form>`,
@@ -716,7 +743,6 @@
         if (!toggle) return;
         const id = Number(toggle.dataset.toggleAvail);
         const isAvailable = toggle.checked ? 1 : 0;
-        // ถามยืนยันก่อน กันนิ้วไปโดนสวิตช์ · กดยกเลิก = สวิตช์กลับที่เดิม
         const menu = menus.find((x) => Number(x.id) === id);
         const name = menu ? fmt.esc(menu.name) : 'เมนูนี้';
         const yes = await confirmModal(isAvailable

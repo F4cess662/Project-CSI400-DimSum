@@ -7,17 +7,18 @@
  *        ไม่ว่าคำนั้นจะอยู่ส่วนไหนของชื่อเมนูหรือคำอธิบาย
  *
  * POST /api/menus
- *   - action: 'create'        (owner, form-data หรือ JSON) เพิ่มเมนูใหม่ + อัปโหลดรูป
- *   - action: 'update'        (owner, form-data หรือ JSON) แก้ไขเมนู (ถ้าแก้ราคา บันทึก log ระดับ system)
+ *   - action: 'create'        (owner, form-data หรือ JSON) เพิ่มเมนูใหม่ + อัปโหลดรูป + กันชื่อซ้ำ/คล้าย (#3)
+ *   - action: 'update'        (owner, form-data หรือ JSON) แก้ไขเมนู + กันชื่อซ้ำ/คล้าย (#3) + แก้ราคา log ระดับ system
  *   - action: 'delete'        (owner) ซ่อนเมนู (is_deleted = 1)
  *   - action: 'set_available' (head_chef, manager, owner) เปิด/ปิดขาย
  *   - action: 'add_stock'     (head_chef, manager, owner) บวกจำนวนพร้อมขายตามล็อต (lots * lot_size) หรือ qty
- *   - action: 'set_stock'     (head_chef, manager, owner) กำหนดจำนวนพร้อมขายตรงๆ
+ *   - action: 'set_stock'     (head_chef, manager, owner) กำหนดจำนวนพร้อมขายตรงๆ (ตั้ง 0 = หมดชั่วคราว ไม่ปิดขาย)
+ *   - action: 'reset_stock'   (head_chef, manager, owner) ล้างจำนวนพร้อมขายทุกเมนูเป็น 0 (หมดชั่วคราว ไม่แตะ is_available) (#5)
  *
- * สถานะขาย (เหมือนกันทุกหน้า):
- *   จำนวน > 0 + เปิดขาย = พร้อมขาย
- *   จำนวน 0  + เปิดขาย = "หมดชั่วคราว" ลูกค้ายังสั่งได้ แค่รอนานขึ้น 5–10 นาที (เติมของแล้วกลับเป็นพร้อมขายเอง)
- *   ปิดขาย (is_available = 0) = "หมด" สั่งไม่ได้ · ปิด/เปิดขายได้เฉพาะคนกดสวิตช์ (เชฟ ผู้จัดการ เจ้าของ)
+ * สถานะขาย sale_status (เหมือนกันทุกหน้า):
+ *   - 'available': จำนวน > 0 หรือไม่จำกัด + เปิดขาย = พร้อมขาย
+ *   - 'slow':      จำนวน 0 + เปิดขาย = "หมดชั่วคราว" ลูกค้ายังสั่งได้ แค่รอนานขึ้น 5–10 นาที
+ *   - 'closed':    ปิดขาย (is_available = 0) = "หมด" สั่งไม่ได้
  *   ระบบไม่ปิดขายเองตอนจำนวนเหลือ 0 และเติมของไม่เปิดขายให้เอง
  */
 const router = require('express').Router();
@@ -31,6 +32,15 @@ const { requireLogin, mustBe } = require('../lib/auth');
 const { writeLog } = require('../lib/log');
 
 const VALID_ZONES = ['steam', 'fry', 'congee_noodle', 'drink_dessert'];
+
+// คำทั่วไปที่ตัดออกก่อนเทียบชื่อเมนูซ้ำ/คล้าย (Feedback #3 · เพิ่มคำใน array นี้ได้)
+const COMMON_MENU_WORDS = ['ไส้', 'สับ'];
+
+const SALE_STATUS_SQL = `CASE
+  WHEN m.is_available = 0 THEN 'closed'
+  WHEN m.available_qty IS NOT NULL AND m.available_qty <= 0 THEN 'slow'
+  ELSE 'available'
+END`;
 
 // ตั้งค่า multer สำหรับอัปโหลดรูปเมนูไปที่ public/assets/uploads (จำกัด 2MB เฉพาะไฟล์รูป)
 const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'assets', 'uploads');
@@ -87,11 +97,72 @@ function parseSearchTokens(rawQuery) {
     .replace(/เมนู/g, ' ')
     .trim();
   if (!cleaned) {
-    // กรณีพิมพ์คำว่า "ไส้" หรือ "เมนู" ล้วนๆ ให้ใช้คำเดิมค้นหา
     const fallback = String(rawQuery).trim();
     return fallback ? [fallback] : [];
   }
   return cleaned.split(/\s+/).filter(Boolean);
+}
+
+/**
+ * Normalize ชื่อเมนูเพื่อเทียบชื่อซ้ำ/คล้าย (Feedback #3):
+ * - แปลงตัวพิมพ์เล็ก ตัดช่องว่างและเครื่องหมายวรรคตอน
+ * - ตัดคำทั่วไปใน COMMON_MENU_WORDS เช่น 'ไส้', 'สับ'
+ *   ตัวอย่าง: "ซาลาเปาหมู" = "ซาลาเปาไส้หมู" = "ซาลาเปาหมูสับ"
+ */
+function normalizeMenuName(rawName) {
+  const stripPunct = (str) =>
+    String(str || '')
+      .toLowerCase()
+      .replace(/[\s\-_.,/\\()[\]{}'"!?+*&^%$#@~`:;<>|·•]+/g, '');
+
+  let s = stripPunct(rawName);
+  for (const word of COMMON_MENU_WORDS) {
+    s = s.split(word).join('');
+  }
+  return s || stripPunct(rawName);
+}
+
+/**
+ * ตรวจสอบชื่อเมนูซ้ำหรือคล้ายกับเมนูที่มีอยู่ (เฉพาะ is_deleted = 0 ยกเว้นตัวเอง)
+ * - หาก normalize แล้วตรงกันเป๊ะ -> throw 409 ทันที (ไม่อนุญาตให้บันทึกซ้ำ)
+ * - หากชื่อหนึ่งอยู่ในอีกชื่อ (substring) และยังไม่ได้ส่ง confirm_similar: 1 -> throw 409 พร้อม { similar, need_confirm: true }
+ */
+async function checkDuplicateOrSimilarName(name, excludeId = null, confirmSimilar = false) {
+  const normInput = normalizeMenuName(name);
+  if (!normInput) return;
+
+  const params = [];
+  let sql = 'SELECT id, name FROM menu_items WHERE is_deleted = 0';
+  if (excludeId !== null && excludeId !== undefined) {
+    sql += ' AND id <> ?';
+    params.push(excludeId);
+  }
+  const existingMenus = await query(sql, params);
+
+  // 1) เช็กชื่อซ้ำ/คำหลักตรงกันเป๊ะ (เช่น ซาลาเปาหมู = ซาลาเปาไส้หมู = ซาลาเปาหมูสับ)
+  for (const item of existingMenus) {
+    const normExisting = normalizeMenuName(item.name);
+    if (normExisting && normInput === normExisting) {
+      throw fail(`มีเมนูคล้ายกันอยู่แล้ว: ${item.name}`, 409);
+    }
+  }
+
+  // 2) เช็กชื่อหนึ่งอยู่ในอีกชื่อ (เช่น ซาลาเปาหมู กับ ซาลาเปาหมูแดง) ถ้ายังไม่ยืนยัน confirm_similar
+  if (!confirmSimilar && normInput.length >= 2) {
+    for (const item of existingMenus) {
+      const normExisting = normalizeMenuName(item.name);
+      if (
+        normExisting &&
+        normExisting.length >= 2 &&
+        (normInput.includes(normExisting) || normExisting.includes(normInput))
+      ) {
+        throw fail(`มีเมนูชื่อคล้าย: ${item.name}`, 409, {
+          similar: item.name,
+          need_confirm: true,
+        });
+      }
+    }
+  }
 }
 
 // GET /api/menus
@@ -101,7 +172,7 @@ router.get('/', requireLogin, handle(async (req, res) => {
     const id = Number(req.query.id);
     if (!Number.isInteger(id) || id < 1) throw fail('รหัสเมนูไม่ถูกต้อง', 422);
     const item = await queryOne(
-      `SELECT m.*, c.name AS category_name
+      `SELECT m.*, c.name AS category_name, ${SALE_STATUS_SQL} AS sale_status
          FROM menu_items m
          JOIN menu_categories c ON c.id = m.category_id
         WHERE m.id = ? AND m.is_deleted = 0`,
@@ -154,6 +225,7 @@ router.get('/', requireLogin, handle(async (req, res) => {
             m.name, m.description, m.price, m.unit,
             m.kitchen_zone, m.image_path, m.lot_size,
             m.available_qty, m.is_available, m.is_deleted,
+            ${SALE_STATUS_SQL} AS sale_status,
             m.created_at, m.updated_at
        FROM menu_items m
        JOIN menu_categories c ON c.id = m.category_id
@@ -183,6 +255,7 @@ router.post('/', maybeUpload, handle(async (req, res) => {
       const availableQty = b.available_qty !== undefined && b.available_qty !== ''
         ? Number(b.available_qty)
         : lotSize * 4;
+      const confirmSimilar = String(b.confirm_similar) === '1' || b.confirm_similar === true;
 
       if (!Number.isInteger(categoryId) || categoryId < 1) throw fail('กรุณาเลือกหมวดหมู่', 422);
       if (!name || name.length > 100) throw fail('ชื่อเมนูต้องมี 1–100 ตัวอักษร', 422);
@@ -195,8 +268,14 @@ router.post('/', maybeUpload, handle(async (req, res) => {
       const cat = await queryOne('SELECT id FROM menu_categories WHERE id = ? AND is_active = 1', [categoryId]);
       if (!cat) throw fail('ไม่พบหมวดหมู่ที่เลือก', 404);
 
+      // ตรวจชื่อเมนูซ้ำ/คล้าย (Feedback #3)
+      await checkDuplicateOrSimilarName(name, null, confirmSimilar);
+
       const imagePath = req.file ? `/assets/uploads/${req.file.filename}` : null;
-      const isAvailable = availableQty > 0 ? 1 : 0;
+      // ระบบไม่ปิดขายเองตอนจำนวนเป็น 0 (available_qty = 0 + is_available = 1 คือ หมดชั่วคราว)
+      const isAvailable = b.is_available !== undefined && b.is_available !== ''
+        ? (Number(b.is_available) ? 1 : 0)
+        : 1;
 
       const r = await query(
         `INSERT INTO menu_items
@@ -230,6 +309,7 @@ router.post('/', maybeUpload, handle(async (req, res) => {
       const unit = b.unit ? String(b.unit).trim() : 'เข่ง';
       const kitchenZone = b.kitchen_zone ? String(b.kitchen_zone).trim() : 'steam';
       const lotSize = b.lot_size !== undefined && b.lot_size !== '' ? Number(b.lot_size) : 1;
+      const confirmSimilar = String(b.confirm_similar) === '1' || b.confirm_similar === true;
 
       if (!Number.isInteger(id) || id < 1) throw fail('รหัสเมนูไม่ถูกต้อง', 422);
       if (!Number.isInteger(categoryId) || categoryId < 1) throw fail('กรุณาเลือกหมวดหมู่', 422);
@@ -241,6 +321,12 @@ router.post('/', maybeUpload, handle(async (req, res) => {
 
       const existing = await queryOne('SELECT * FROM menu_items WHERE id = ? AND is_deleted = 0', [id]);
       if (!existing) throw fail('ไม่พบเมนูที่ต้องการแก้ไข', 404);
+
+      const cat = await queryOne('SELECT id FROM menu_categories WHERE id = ? AND is_active = 1', [categoryId]);
+      if (!cat) throw fail('ไม่พบหมวดหมู่ที่เลือก', 404);
+
+      // ตรวจชื่อเมนูซ้ำ/คล้าย ยกเว้นตัวเอง (Feedback #3)
+      await checkDuplicateOrSimilarName(name, id, confirmSimilar);
 
       const imagePath = req.file ? `/assets/uploads/${req.file.filename}` : existing.image_path;
 
@@ -393,6 +479,20 @@ router.post('/', maybeUpload, handle(async (req, res) => {
         newQty === 0
           ? `อัปเดต "${existing.name}" เป็น 0 ${existing.unit} (หมดชั่วคราว ลูกค้ายังสั่งได้)`
           : `อัปเดตคงเหลือ "${existing.name}" เป็น ${newQty} ${existing.unit} แล้ว`
+      );
+    }
+
+    case 'reset_stock': {
+      await mustBe(req, ['head_chef', 'manager', 'owner']);
+      const r = await query(
+        'UPDATE menu_items SET available_qty = 0 WHERE is_deleted = 0 AND available_qty IS NOT NULL'
+      );
+      const count = Number((r && r.affectedRows) || 0);
+      await writeLog(req, 'menu.reset_stock', 'menu_items', null, { count });
+      return ok(
+        res,
+        { count },
+        `ล้างจำนวนพร้อมขายทุกเมนูเป็น 0 แล้ว (${count} รายการ · หมดชั่วคราว)`
       );
     }
 

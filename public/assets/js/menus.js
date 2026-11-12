@@ -10,11 +10,11 @@
   if (!me) return;
 
   const isOwner = me.role_code === 'owner';
-  const UNITS = ['เข่ง', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา'];
+  const UNITS = ['เข่ง', 'ลูก', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา'];
   const ZONE_LIST = [
     { code: 'steam', label: 'นึ่ง' },
     { code: 'fry', label: 'ทอด' },
-    { code: 'congee_noodle', label: 'โจ๊ก-เส้น' },
+    { code: 'congee_noodle', label: 'จานหลัก' },
     { code: 'drink_dessert', label: 'เครื่องดื่ม-ของหวาน' },
   ];
 
@@ -209,7 +209,7 @@
     };
   }
 
-  /* ---------- Modal เพิ่ม/แก้ไขเมนู (640px modal-lg) ---------- */
+  /* ---------- Modal เพิ่ม/แก้ไขเมนู (640px modal-lg + กันชื่อซ้ำ/คล้าย Feedback #3) ---------- */
   function openMenuModal(item = null) {
     const isEdit = Boolean(item);
     const defaultCatId = item
@@ -339,15 +339,42 @@
 
     m.el.querySelector('#menuForm').onsubmit = async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
-      fd.append('action', isEdit ? 'update' : 'create');
-      if (isEdit) fd.append('id', String(item.id));
+      const formEl = e.target;
+      const makeFormData = (confirmSimilar = false) => {
+        const fd = new FormData(formEl);
+        fd.append('action', isEdit ? 'update' : 'create');
+        if (isEdit) fd.append('id', String(item.id));
+        if (confirmSimilar) fd.append('confirm_similar', '1');
+        return fd;
+      };
 
-      const res = await run(() => api.upload('menus', fd));
-      if (res) {
-        m.close();
-        await loadCategories();
-        await loadMenus();
+      try {
+        const res = await api.upload('menus', makeFormData(false));
+        if (api.lastMessage) toast(api.lastMessage);
+        if (res) {
+          m.close();
+          await loadCategories();
+          await loadMenus();
+        }
+      } catch (err) {
+        if (err && err.data && err.data.need_confirm) {
+          const simName = fmt.esc(err.data.similar || '');
+          const yes = await confirmModal(
+            `มีเมนูชื่อคล้าย: <b>${simName}</b> ยืนยันว่าเป็นคนละเมนู?`,
+            'ยืนยันบันทึก',
+            false
+          );
+          if (yes) {
+            const res2 = await run(() => api.upload('menus', makeFormData(true)));
+            if (res2) {
+              m.close();
+              await loadCategories();
+              await loadMenus();
+            }
+          }
+          return;
+        }
+        toast((err && err.message) || 'เกิดข้อผิดพลาด', 'error');
       }
     };
   }
@@ -364,7 +391,7 @@
             <label for="stockQtyInput">จำนวนคงเหลือจริง (${unit})</label>
             <input class="input" type="number" id="stockQtyInput" min="0" step="1" required value="${currentQty}">
             <div class="caption muted">
-              1 ล็อต = ${fmt.num(item.lot_size)} ${unit} · หากกรอก <strong>0</strong> ระบบจะปิดขายเมนูนี้อัตโนมัติทันที
+              1 ล็อต = ${fmt.num(item.lot_size)} ${unit} · ใส่ <strong>0</strong> = หมดชั่วคราว (ลูกค้ายังสั่งได้ รอนานขึ้น) · ถ้าจะหยุดขายให้กดสวิตช์ปิดขาย
             </div>
           </div>
         </form>`,
@@ -528,7 +555,6 @@
     if (!toggle) return;
     const id = Number(toggle.dataset.toggleAvail);
     const isAvailable = toggle.checked ? 1 : 0;
-    // ถามยืนยันก่อน กันนิ้วไปโดนสวิตช์ · กดยกเลิก = สวิตช์กลับที่เดิม
     const menu = menus.find((x) => Number(x.id) === id);
     const name = menu ? fmt.esc(menu.name) : 'เมนูนี้';
     const yes = await confirmModal(isAvailable

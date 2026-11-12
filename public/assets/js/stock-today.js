@@ -1,5 +1,5 @@
 /* =========================================================
-   public/assets/js/stock-today.js — หน้าจำนวนพร้อมขาย + เติมล็อตตามหน่วยเมนู
+   public/assets/js/stock-today.js — หน้าจำนวนพร้อมขาย + เติมล็อตตามหน่วยเมนู + ปุ่มล้างสต็อก (#5)
    คงเหลือ 0 = "หมดชั่วคราว" ลูกค้ายังสั่งได้ (รอนานขึ้น) · ปิดขาย = "หมด" ต้องกดสวิตช์เอง
    ========================================================= */
 (async () => {
@@ -20,6 +20,7 @@
   const zoneTabsEl = document.getElementById('zoneTabs');
   const catSelectEl = document.getElementById('catSelect');
   const searchInputEl = document.getElementById('searchInput');
+  const resetStockBtn = document.getElementById('resetStockBtn');
   const stockRowsEl = document.getElementById('stockRows');
 
   async function loadCategories() {
@@ -50,8 +51,8 @@
     menus.forEach((m) => {
       const qty = Number(m.available_qty || 0);
       const lotSize = Number(m.lot_size || 1);
-      if (!m.is_available) outCount += 1; // หมดชั่วคราวนับเป็นใกล้หมด
-      else if (qty <= lotSize) lowCount += 1;
+      if (!m.is_available) outCount += 1; // ปิดขาย = หมด
+      else if (qty <= lotSize) lowCount += 1; // ใกล้หมด หรือ หมดชั่วคราว (0)
       else okCount += 1;
     });
 
@@ -67,7 +68,17 @@
       return;
     }
 
-    stockRowsEl.innerHTML = menus.map((m) => {
+    // เรียง: หมด (ปิดขาย) → หมดชั่วคราว (เหลือ 0) → ใกล้หมด (≤ 1 ล็อต) → ปกติ · กลุ่มเดียวกันคงลำดับเดิม
+    const rank = (m) => {
+      const qty = Number(m.available_qty || 0);
+      if (!m.is_available) return 0;
+      if (m.available_qty != null && qty <= 0) return 1;
+      if (m.available_qty != null && qty <= Number(m.lot_size || 1)) return 2;
+      return 3;
+    };
+    const sorted = [...menus].sort((a, b) => rank(a) - rank(b));
+
+    stockRowsEl.innerHTML = sorted.map((m) => {
       const qty = Number(m.available_qty || 0);
       const lotSize = Number(m.lot_size || 1);
       const unit = fmt.esc(m.unit || 'เข่ง');
@@ -151,6 +162,19 @@
     };
   }
 
+  if (resetStockBtn) {
+    resetStockBtn.onclick = async () => {
+      const yes = await confirmModal(
+        'ทุกเมนูจะเป็น 0 (หมดชั่วคราว) ใช้ตอนเริ่มหลังหยุดยาว · เชฟต้องเติมล็อตก่อนเปิดร้าน',
+        'ล้างจำนวนพร้อมขายทั้งหมด',
+        true
+      );
+      if (!yes) return;
+      const res = await run(() => api.post('menus', { action: 'reset_stock' }));
+      if (res) await loadStock();
+    };
+  }
+
   zoneTabsEl.onclick = (e) => {
     const tab = e.target.closest('[data-zone]');
     if (!tab) return;
@@ -192,6 +216,19 @@
     if (!toggle) return;
     const id = Number(toggle.dataset.toggleAvail);
     const isAvailable = toggle.checked ? 1 : 0;
+    const menu = menus.find((x) => Number(x.id) === id);
+    const name = menu ? fmt.esc(menu.name) : 'เมนูนี้';
+    const yes = await confirmModal(
+      isAvailable
+        ? `เปิดขาย <b>${name}</b>?<br><span class="small muted">ลูกค้าจะเห็นและสั่งเมนูนี้ได้</span>`
+        : `ปิดขาย <b>${name}</b>?<br><span class="small muted">ลูกค้าจะเห็นเมนูนี้เป็น "หมด" และสั่งไม่ได้</span>`,
+      isAvailable ? 'เปิดขาย' : 'ปิดขาย',
+      !isAvailable
+    );
+    if (!yes) {
+      toggle.checked = !toggle.checked;
+      return;
+    }
     const res = await run(() => api.post('menus', { action: 'set_available', id, is_available: isAvailable }));
     await loadStock();
     if (!res) toggle.checked = !toggle.checked;
