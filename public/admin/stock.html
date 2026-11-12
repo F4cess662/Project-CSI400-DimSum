@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- ปรับสต็อกวัตถุดิบ (คนที่ 4 · เฟส 4 · inventory-service) — ผู้จัดการ / เจ้าของร้าน · FR-61 -->
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ปรับสต็อก · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="count"><i data-icon="scale"></i> นับปลายวัน</button>
+        <button class="tab" data-tab="waste"><i data-icon="ban"></i> บันทึกของเสีย</button>
+        <button class="tab" data-tab="history"><i data-icon="clipboard"></i> ประวัติ</button>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="refreshBtn"><i data-icon="refresh"></i> รีเฟรช</button>
+    </div>
+
+    <!-- แท็บ 1: นับปลายวัน -->
+    <section data-pane="count" class="stack">
+      <div class="card">
+        <div class="row-between">
+          <h3 class="card-title"><i data-icon="scale"></i> นับปลายวัน</h3>
+          <span class="small muted">กรอกจำนวนที่นับได้จริง · ช่องว่าง = ไม่ได้นับ · ส่วนต่างติดลบบันทึกเป็น "ใช้ไป"</span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>วัตถุดิบ</th><th class="num">คงเหลือในระบบ</th><th class="num">นับได้</th><th class="num">ส่วนต่าง</th><th>หมายเหตุ</th></tr></thead>
+            <tbody id="countBody"><tr><td colspan="5" class="loading">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="row-between" style="margin-top:12px">
+          <span class="small" id="countSummary"></span>
+          <button class="btn" id="countSave">บันทึกการนับ</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- แท็บ 2: บันทึกของเสีย + กราฟรายสัปดาห์ -->
+    <section data-pane="waste" class="stack hidden">
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 class="card-title"><i data-icon="ban"></i> บันทึกของเสีย</h3>
+          <form id="wasteForm" class="stack" autocomplete="off">
+            <div class="field"><label for="wIng">วัตถุดิบ</label><select class="select" id="wIng" required></select></div>
+            <div class="field"><label for="wQty">จำนวนที่เสีย <span id="wUnit" class="muted"></span></label>
+              <input class="input" id="wQty" type="number" min="0.01" step="0.01" required>
+              <div class="caption muted" id="wLeft"></div></div>
+            <div class="field"><label for="wNote">สาเหตุ</label>
+              <input class="input" id="wNote" maxlength="255" list="wReasons" placeholder="เช่น หมดอายุ, เน่าเสีย, ตกหล่น" required>
+              <datalist id="wReasons"><option value="หมดอายุ"><option value="เน่าเสีย"><option value="ตกหล่น / เสียหาย"><option value="ทำผิดสูตร"></datalist></div>
+            <button class="btn btn-danger" type="submit" id="wSave">บันทึกของเสีย</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="row-between">
+            <h3 class="card-title"><i data-icon="chart"></i> ของเสียรายสัปดาห์</h3>
+            <select class="select" id="wWeeks" style="width:140px">
+              <option value="4">4 สัปดาห์</option><option value="8" selected>8 สัปดาห์</option><option value="12">12 สัปดาห์</option>
+            </select>
+          </div>
+          <p class="caption muted">มูลค่าประมาณจากราคาต่ำสุดที่ซัพพลายเออร์เสนอ · แตะแท่งเพื่อดูรายละเอียด</p>
+          <div id="wasteChart"><div class="loading">กำลังโหลด...</div></div>
+          <div id="wasteDetail" class="small"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- แท็บ 3: ประวัติ -->
+    <section data-pane="history" class="stack hidden">
+      <div class="card">
+        <div class="row" style="flex-wrap:wrap">
+          <select class="select" id="hIng" style="max-width:220px"><option value="">ทุกวัตถุดิบ</option></select>
+          <select class="select" id="hType" style="max-width:180px">
+            <option value="">ทุกประเภท</option><option value="receive">รับของ</option><option value="use">ใช้ไป</option>
+            <option value="waste">ของเสีย</option><option value="adjust">ปรับยอด</option>
+          </select>
+          <input class="input" id="hFrom" type="date" style="max-width:170px">
+          <span class="muted">ถึง</span>
+          <input class="input" id="hTo" type="date" style="max-width:170px">
+          <button class="btn btn-secondary btn-sm" id="hSearch"><i data-icon="search"></i> ค้นหา</button>
+        </div>
+        <div class="table-wrap" style="margin-top:12px">
+          <table class="table">
+            <thead><tr><th>เวลา</th><th>วัตถุดิบ</th><th>ประเภท</th><th class="num">จำนวน</th><th>หมายเหตุ</th><th>ผู้บันทึก</th></tr></thead>
+            <tbody id="histBody"><tr><td colspan="6" class="loading">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script src="/assets/js/stock.js"></script>
+</body>
+</html>
