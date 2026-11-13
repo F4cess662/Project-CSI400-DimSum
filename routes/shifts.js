@@ -1,6 +1,6 @@
 /**
  * /api/shifts — ปิดยอดกะ (FR-31) · สิทธิ์: staff+ ที่ติ๊ก [รับเงิน]
- *   GET  ?date=YYYY-MM-DD&shift=morning|evening → ยอดเงินสดในระบบของกะ + ประวัติปิดยอด
+ *   GET  ?date=YYYY-MM-DD&shift=morning|evening → ยอดเงินสดในระบบของกะ + ประวัติปิดยอด + open_bills (บิลที่ยังเปิดอยู่)
  *   POST {"action":"close","shift":"morning","counted_cash":1250} → บันทึกปิดยอด + ส่วนต่าง
  */
 const router = require('express').Router();
@@ -69,7 +69,19 @@ router.get('/', requirePerm('payment'), handle(async (req, res) => {
        FROM shift_closings sc JOIN users u ON u.id = sc.user_id
       ORDER BY sc.id DESC LIMIT 30`);
 
-  return ok(res, { date, today: today(), shift, ...sys, closed, history });
+  // Feedback #1: บิลที่ยังเปิดอยู่ (ใช้เตือนก่อนปิดกะ)
+  const open_bills = await query(
+    `SELECT b.id, b.bill_no,
+            COALESCE(vr.name, GROUP_CONCAT(dt.code ORDER BY dt.code SEPARATOR ', ')) AS place
+       FROM bills b
+       LEFT JOIN bill_tables bt ON bt.bill_id = b.id
+       LEFT JOIN dining_tables dt ON dt.id = bt.table_id
+       LEFT JOIN vip_rooms vr ON vr.id = b.vip_room_id
+      WHERE b.status = 'open'
+      GROUP BY b.id, b.bill_no, vr.name
+      ORDER BY b.opened_at`);
+
+  return ok(res, { date, today: today(), shift, ...sys, closed, history, open_bills });
 }));
 
 router.post('/', handle(async (req, res) => {
@@ -93,20 +105,26 @@ router.post('/', handle(async (req, res) => {
         throw fail(`${SHIFT_TH[b.shift]}วันนี้ปิดยอดไปแล้ว`, 409);
       }
       // คำนวณยอดในระบบใหม่ที่ server เสมอ ไม่เชื่อค่าที่หน้าเว็บส่งมา
-      const { system_cash } = await systemCash(date, b.shift);
-      const difference = round2(counted - system_cash);   // + เกิน / - ขาด / 0 ตรง
+      const cash = (await systemCash(date, b.shift)).system_cash;   // เฉพาะบิลเงินสด
+      const openingFloat = b.opening_float === undefined ? 0 : Number(b.opening_float);
+      if (!Number.isFinite(openingFloat) || openingFloat < 0) throw fail('เงินทอนตั้งต้นต้องเป็นตัวเลข 0 ขึ้นไป', 422);
+      // ตรวจ: เงินที่นับได้ เทียบกับ (เงินสดในระบบ + เงินทอนตั้งต้น)
+      // เก็บลง DB ไม่รวมเงินทอน: system_cash = เงินสดล้วน · counted_cash = นับได้ − เงินทอน
+      const system_cash = cash;
+      const counted_cash = round2(counted - openingFloat);
+      const difference = round2(counted_cash - system_cash);   // + เกิน / - ขาด / 0 ตรง
 
       const r = await query(
         `INSERT INTO shift_closings (user_id, shift_date, shift, counted_cash, system_cash, difference)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [user.id, date, b.shift, counted, system_cash, difference]);
+        [user.id, date, b.shift, counted_cash, system_cash, difference]);
       await writeLog(req, 'shift.close', 'shift_closings', r.insertId,
-        { date, shift: b.shift, counted_cash: counted, system_cash, difference });
+        { date, shift: b.shift, counted_cash, counted_raw: counted, system_cash, opening_float: openingFloat, difference });
 
       const msg = difference === 0 ? 'ปิดยอดกะแล้ว เงินตรง'
         : difference < 0 ? `ปิดยอดกะแล้ว เงินขาด ${-difference} บาท`
         : `ปิดยอดกะแล้ว เงินเกิน ${difference} บาท`;
-      return ok(res, { id: r.insertId, system_cash, counted_cash: counted, difference }, msg);
+      return ok(res, { id: r.insertId, system_cash, counted_cash, difference }, msg);
     }
     default:
       throw fail('ไม่รู้จัก action นี้', 400);
