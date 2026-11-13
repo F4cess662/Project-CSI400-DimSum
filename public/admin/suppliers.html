@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ซัพพลายเออร์ · นึ่งสุข</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <template id="page">
+    <div class="toolbar">
+      <div class="tabs" id="mainTabs">
+        <button class="tab active" data-tab="list">รายชื่อ</button>
+        <button class="tab" data-tab="compare">เทียบราคา</button>
+      </div>
+    </div>
+
+    <!-- แท็บรายชื่อ -->
+    <div id="tabList">
+      <div class="toolbar">
+        <input class="input" style="max-width:320px" id="search" placeholder="ค้นหาชื่อร้าน...">
+        <button class="btn" id="addBtn">+ เพิ่มซัพพลายเออร์</button>
+      </div>
+      <div class="split-60">
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>ชื่อร้าน</th><th>ผู้ติดต่อ</th><th>เบอร์</th><th>LINE ID</th><th>ส่งของ (วัน)</th><th>สถานะ</th><th></th></tr></thead>
+            <tbody id="rows"><tr><td colspan="7" class="loading">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="card" id="panel">
+          <div class="empty"><div class="empty-icon"><i data-icon="truck"></i></div>กดเลือกร้านเพื่อดูราคาวัตถุดิบ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- แท็บเทียบราคา -->
+    <div id="tabCompare" class="hidden">
+      <div class="toolbar">
+        <div class="field" style="margin:0">
+          <label for="ingSelect">วัตถุดิบ</label>
+          <select class="select" id="ingSelect" style="min-width:240px"></select>
+        </div>
+      </div>
+      <div id="compareBox"></div>
+    </div>
+  </template>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/layout.js"></script>
+  <script>
+    (async () => {
+      const me = await initStaffPage({ title: 'ซัพพลายเออร์', roles: ['manager', 'owner'] });
+      if (!me) return;
+
+      const $ = (id) => document.getElementById(id);
+      const todayStr = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+      let suppliers = [];
+      let selectedId = null;
+      let ingredients = null;   // โหลดครั้งแรกที่เปิดแท็บเทียบราคา
+
+      /* ---------- แท็บ ---------- */
+      document.querySelectorAll('#mainTabs .tab').forEach((t) => {
+        t.onclick = () => {
+          document.querySelectorAll('#mainTabs .tab').forEach((x) => x.classList.toggle('active', x === t));
+          $('tabList').classList.toggle('hidden', t.dataset.tab !== 'list');
+          $('tabCompare').classList.toggle('hidden', t.dataset.tab !== 'compare');
+          if (t.dataset.tab === 'compare') initCompare(); else loadList();
+        };
+      });
+
+      /* ---------- รายชื่อ ---------- */
+      async function loadList() {
+        const rows = await run(() => api.get('suppliers', { q: $('search').value }));
+        if (!rows) return;
+        suppliers = rows;
+        $('rows').innerHTML = rows.length
+          ? rows.map((s) => `<tr class="clickable" data-id="${s.id}">
+              <td class="bold">${fmt.esc(s.name)}</td>
+              <td>${fmt.esc(s.contact_name || '-')}</td>
+              <td>${fmt.esc(s.phone || '-')}</td>
+              <td>${fmt.esc(s.line_id || '-')}</td>
+              <td>${fmt.num(s.lead_time_days)}</td>
+              <td>${badge(s.is_active ? 'active' : 'inactive')}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" data-edit="${s.id}">แก้ไข</button>
+                <button class="btn btn-sm ${s.is_active ? 'btn-danger' : ''}" data-toggle="${s.id}">${s.is_active ? 'ปิดใช้' : 'เปิดใช้'}</button>
+              </td></tr>`).join('')
+          : `<tr><td colspan="7"><div class="empty"><div class="empty-icon"><i data-icon="truck"></i></div>ยังไม่มีซัพพลายเออร์</div></td></tr>`;
+        if (selectedId && rows.some((s) => s.id === selectedId)) loadPanel(selectedId);
+      }
+      $('search').oninput = loadList;
+
+      $('rows').onclick = async (e) => {
+        const edit = e.target.closest('[data-edit]');
+        const tog = e.target.closest('[data-toggle]');
+        const row = e.target.closest('tr[data-id]');
+        if (edit) return supplierForm(suppliers.find((s) => s.id === Number(edit.dataset.edit)));
+        if (tog) {
+          const s = suppliers.find((x) => x.id === Number(tog.dataset.toggle));
+          const off = !!s.is_active;
+          if (!(await confirmModal(`${off ? 'ปิดใช้' : 'เปิดใช้'} "${fmt.esc(s.name)}" ?`, 'ยืนยัน', off))) return;
+          if (await run(() => api.post('suppliers', { action: off ? 'deactivate' : 'activate', id: s.id }))) loadList();
+          return;
+        }
+        if (row) { selectedId = Number(row.dataset.id); loadPanel(selectedId); }
+      };
+
+      /* ---------- ฟอร์มเพิ่ม / แก้ ---------- */
+      $('addBtn').onclick = () => supplierForm(null);
+      function supplierForm(s) {
+        const m = openModal({
+          title: s ? 'แก้ไขซัพพลายเออร์' : 'เพิ่มซัพพลายเออร์',
+          body: `
+            <div class="field"><label for="fName">ชื่อร้าน *</label><input class="input" id="fName" value="${fmt.esc(s ? s.name : '')}"></div>
+            <div class="field"><label for="fContact">คนติดต่อ</label><input class="input" id="fContact" value="${fmt.esc(s ? s.contact_name : '')}"></div>
+            <div class="field"><label for="fPhone">เบอร์โทร</label><input class="input" id="fPhone" value="${fmt.esc(s ? s.phone : '')}"></div>
+            <div class="field"><label for="fLine">LINE ID</label><input class="input" id="fLine" value="${fmt.esc(s ? s.line_id : '')}"></div>
+            <div class="field"><label for="fLead">ระยะเวลาส่งของ (วัน)</label><input class="input" type="number" min="0" step="1" id="fLead" value="${s ? s.lead_time_days : 1}"></div>`,
+          footer: `<button class="btn btn-secondary" data-close>ยกเลิก</button><button class="btn" id="fSave">บันทึก</button>`,
+        });
+        m.el.querySelector('#fSave').onclick = async () => {
+          const g = (id) => m.el.querySelector('#' + id).value;
+          const body = { action: s ? 'update' : 'create', name: g('fName'), contact_name: g('fContact'),
+            phone: g('fPhone'), line_id: g('fLine'), lead_time_days: g('fLead') };
+          if (s) body.id = s.id;
+          if (await run(() => api.post('suppliers', body))) { m.close(); loadList(); }
+        };
+      }
+
+      /* ---------- แผงขวา: ราคาวัตถุดิบของร้านที่เลือก ---------- */
+      async function loadPanel(id) {
+        const d = await run(() => api.get('suppliers', { id }));
+        if (!d) return;
+        $('panel').innerHTML = `
+          <h3 class="card-title">${fmt.esc(d.name)}</h3>
+          <p class="muted small">ส่งของใน ${fmt.num(d.lead_time_days)} วัน${d.is_active ? '' : ' · ปิดใช้งานอยู่ (บันทึกราคาไม่ได้)'}</p>
+          <div class="table-wrap"><table class="table">
+            <thead><tr><th>วัตถุดิบ</th><th>ราคา</th><th>วันที่เสนอราคา</th><th></th></tr></thead>
+            <tbody>${d.prices.length ? d.prices.map((p) => `<tr>
+              <td>${fmt.esc(p.name)}</td>
+              <td>${p.price === null ? '<span class="muted">ยังไม่มีราคา</span>' : `${fmt.baht(p.price)} / ${fmt.esc(p.unit)}`}</td>
+              <td>${p.quoted_at ? fmt.date(p.quoted_at) : '-'}</td>
+              <td><button class="btn btn-sm" data-price="${p.ingredient_id}" ${d.is_active ? '' : 'disabled'}>บันทึกราคา</button></td></tr>`).join('')
+              : '<tr><td colspan="4"><div class="empty">ยังไม่มีวัตถุดิบ</div></td></tr>'}</tbody>
+          </table></div>`;
+        $('panel').querySelectorAll('[data-price]').forEach((b) => {
+          b.onclick = () => priceForm(d, d.prices.find((p) => p.ingredient_id === Number(b.dataset.price)));
+        });
+      }
+
+      function priceForm(sup, p) {
+        const m = openModal({
+          title: `บันทึกราคา: ${fmt.esc(p.name)}`,
+          body: `
+            <p class="muted small">${fmt.esc(sup.name)} · จากใบเสนอราคา ราคาใหม่จะบันทึกทับราคาเดิม</p>
+            <div class="field"><label for="pPrice">ราคาต่อ ${fmt.esc(p.unit)} (บาท) *</label>
+              <input class="input" type="number" min="0.01" step="0.01" id="pPrice" value="${p.price === null ? '' : p.price}"></div>
+            <div class="field"><label for="pDate">วันที่ในใบเสนอราคา</label>
+              <input class="input" type="date" id="pDate" value="${todayStr()}"></div>`,
+          footer: `<button class="btn btn-secondary" data-close>ยกเลิก</button><button class="btn" id="pSave">บันทึกราคา</button>`,
+        });
+        m.el.querySelector('#pSave').onclick = async () => {
+          const price = m.el.querySelector('#pPrice').value;
+          if (price === '' || Number(price) <= 0) return toast('กรุณากรอกราคามากกว่า 0', 'warn');
+          const r = await run(() => api.post('suppliers', { action: 'set_price', supplier_id: sup.id, ingredient_id: p.ingredient_id,
+            price: Number(price), quoted_at: m.el.querySelector('#pDate').value }));
+          if (r) { m.close(); loadList(); loadPanel(sup.id); if (!$('tabCompare').classList.contains('hidden')) loadCompare(); }
+        };
+      }
+
+      /* ---------- เทียบราคา ---------- */
+      async function initCompare() {
+        if (!ingredients) {
+          ingredients = await run(() => api.get('suppliers', { action: 'ingredients' }));
+          if (!ingredients) return;
+          $('ingSelect').innerHTML = ingredients.map((i) => `<option value="${i.id}">${fmt.esc(i.name)} (${fmt.esc(i.unit)})</option>`).join('');
+          $('ingSelect').onchange = loadCompare;
+        }
+        loadCompare();
+      }
+
+      async function loadCompare() {
+        if (!$('ingSelect').value) { $('compareBox').innerHTML = '<div class="empty">ยังไม่มีวัตถุดิบ</div>'; return; }
+        const d = await run(() => api.get('suppliers', { ingredient_id: $('ingSelect').value }));
+        if (!d) return;
+        const unit = fmt.esc(d.ingredient.unit);
+        if (!d.prices.length) {
+          $('compareBox').innerHTML = '<div class="empty"><div class="empty-icon"><i data-icon="truck"></i></div>ยังไม่มีร้านไหนบันทึกราคาวัตถุดิบนี้</div>';
+          return;
+        }
+        const max = Math.max(...d.prices.map((p) => p.price));
+        $('compareBox').innerHTML = `
+          <div class="grid grid-3">${d.prices.map((p) => `
+            <div class="card">
+              <div class="row-between">
+                <h3 class="card-title">${fmt.esc(p.name)}</h3>
+                ${p.is_cheapest ? '<span class="badge badge-ok">ถูกที่สุด</span>' : ''}
+              </div>
+              <div class="stat-value">${fmt.baht(p.price)} <span class="small muted">/ ${unit}</span></div>
+              <p class="muted small">ส่งของใน ${fmt.num(p.lead_time_days)} วัน · เสนอราคา ${fmt.date(p.quoted_at)}</p>
+            </div>`).join('')}</div>
+          <h3 class="card-title" style="margin-top:24px">กราฟเทียบราคา (บาท / ${unit})</h3>
+          <div class="card">${d.prices.map((p) => `
+            <div class="row" style="margin-bottom:12px">
+              <span style="width:160px">${fmt.esc(p.name)}</span>
+              <div style="flex:1;background:var(--cream-200);border-radius:8px;min-width:120px">
+                <div style="width:${Math.max(4, (p.price / max) * 100)}%;height:24px;border-radius:8px;background:${p.is_cheapest ? 'var(--ok)' : 'var(--bamboo)'}"></div>
+              </div>
+              <span class="bold" style="width:90px;text-align:right">${fmt.baht(p.price)}</span>
+            </div>`).join('')}</div>`;
+      }
+
+      loadList();
+    })();
+  </script>
+</body>
+</html>
