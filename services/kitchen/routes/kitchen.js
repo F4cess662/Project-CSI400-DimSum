@@ -6,6 +6,8 @@
  * GET  ?action=prep_today                → ยอดที่ต้องเตรียมวันนี้ (prep_plans) + ทำไปแล้วเท่าไหร่
  * POST {"action":"update_status","item_id":1,"status":"cooking"}
  * POST {"action":"cancel_item","item_id":1,"cancel_qty":2,"reason":"out_of_stock","note":"..."}
+ * POST {"action":"prep_made","menu_item_id":3,"qty":10}  → ครัวบันทึกว่านึ่ง/เตรียมเสร็จเพิ่ม 10 (ติดลบ = แก้ที่กรอกผิด)
+ *      จำนวนพร้อมขายของเมนูเพิ่มตาม (เมนูไม่จำกัดจำนวนไม่เปลี่ยน) · เก็บเป็น log 'prep.made' { qty }
  *
  * ใช้ตาราง orders, order_items, menu_items, bills, bill_tables, dining_tables, vip_rooms (+ อ่าน prep_plans สำหรับ prep_today)
  */
@@ -46,20 +48,33 @@ async function loadQueue() {
      ORDER BY o.created_at, oi.id`);
 }
 
-/** ยอดเตรียมวันนี้: เป้าหมาย = ยอดที่ยืนยัน (ถ้ายังไม่ยืนยันใช้ยอดแนะนำ) · ทำแล้ว = จำนวนที่พร้อมเสิร์ฟ/เสิร์ฟแล้ววันนี้ */
+/** จำนวนที่ครัวกรอกเอง ("ทำแล้ว +N") ของเมนูหนึ่งวันนี้ · รวมจาก log 'prep.made' (ยังไม่มีคอลัมน์ในตาราง prep_plans) */
+const MANUAL_MADE_SQL = (menuCol) => `COALESCE((SELECT SUM(CAST(JSON_VALUE(l.detail, '$.qty') AS SIGNED))
+       FROM activity_logs l
+       WHERE l.action = 'prep.made' AND l.target_type = 'menu_items' AND l.target_id = ${menuCol}
+         AND l.created_at >= CURDATE() AND l.created_at < CURDATE() + INTERVAL 1 DAY), 0)`;
+
+/**
+ * ยอดเตรียมวันนี้: เป้าหมาย = ยอดที่ยืนยัน (ถ้ายังไม่ยืนยันใช้ยอดแนะนำ)
+ * ทำแล้ว (made_qty) = กรอกเอง (manual_qty) + ครัวทำตามออเดอร์วันนี้ที่พร้อมเสิร์ฟ/เสิร์ฟแล้ว (order_qty)
+ */
 async function loadPrepToday() {
   const rows = await query(
     `SELECT p.menu_item_id, m.name AS menu_name, m.unit, m.kitchen_zone, m.lot_size, m.available_qty, m.is_available,
             p.suggested_qty, p.confirmed_qty, COALESCE(p.confirmed_qty, p.suggested_qty) AS target_qty,
+            ${MANUAL_MADE_SQL('p.menu_item_id')} AS manual_qty,
             COALESCE((SELECT SUM(oi.qty - oi.cancelled_qty)
                       FROM order_items oi JOIN orders o ON o.id = oi.order_id
                       WHERE oi.menu_item_id = p.menu_item_id AND oi.status IN ('ready', 'done')
                         AND o.cancelled_at IS NULL
-                        AND o.created_at >= CURDATE() AND o.created_at < CURDATE() + INTERVAL 1 DAY), 0) AS made_qty
+                        AND o.created_at >= CURDATE() AND o.created_at < CURDATE() + INTERVAL 1 DAY), 0) AS order_qty
      FROM prep_plans p JOIN menu_items m ON m.id = p.menu_item_id
      WHERE p.plan_date = CURDATE() AND m.is_deleted = 0
      ORDER BY FIELD(m.kitchen_zone, 'steam', 'fry', 'congee_noodle', 'drink_dessert'), m.name`);
-  return rows.map((r) => ({ ...r, made_qty: Number(r.made_qty) }));
+  return rows.map((r) => {
+    const manual = Number(r.manual_qty), byOrder = Number(r.order_qty);
+    return { ...r, manual_qty: manual, order_qty: byOrder, made_qty: manual + byOrder };
+  });
 }
 
 // GET /api/kitchen
@@ -121,6 +136,39 @@ router.post('/', handle(async (req, res) => {
       await writeLog(req, 'order_item.update_status', 'order_items', result.id,
         { menu: result.menu_name, from: result.from, to: result.status });
       return ok(res, result, 'อัปเดตสถานะแล้ว');
+    }
+
+    case 'prep_made': {
+      await mustBe(req, KITCHEN_ROLES);
+      requireFields(b, ['menu_item_id', 'qty']);
+      const qty = Number(b.qty);
+      if (!Number.isInteger(qty) || qty === 0 || Math.abs(qty) > 999) throw fail('จำนวนต้องเป็นจำนวนเต็ม ไม่เป็น 0 และไม่เกิน 999', 422);
+      const result = await transaction(async (conn) => {
+        const [[m]] = await conn.execute(
+          `SELECT m.id, m.name, m.unit, m.available_qty, ${MANUAL_MADE_SQL('m.id')} AS manual_qty,
+                  (SELECT COALESCE(p.confirmed_qty, p.suggested_qty) FROM prep_plans p
+                   WHERE p.plan_date = CURDATE() AND p.menu_item_id = m.id) AS target_qty
+           FROM menu_items m WHERE m.id = ? AND m.is_deleted = 0 FOR UPDATE`, [b.menu_item_id]);
+        if (!m) throw fail('ไม่พบเมนูนี้', 404);
+        // บันทึกเพิ่มได้เฉพาะเมนูที่มีเป้าวันนี้ (> 0) · การแก้ลด (ติดลบ) ทำได้เสมอ ไว้แก้ที่กรอกผิด
+        if (qty > 0 && !(Number(m.target_qty) > 0)) {
+          throw fail(`${m.name} ยังไม่มีเป้าวันนี้ ตั้งเป้าที่หน้า "แผนเตรียมของ" ก่อน`, 409);
+        }
+        const manual = Number(m.manual_qty);
+        if (manual + qty < 0) throw fail(`ลดได้ไม่เกินจำนวนที่กรอกไว้วันนี้ (${manual} ${m.unit})`, 409);
+        // ของที่นึ่ง/เตรียมเสร็จ = พร้อมขายเพิ่ม · ตอนแก้ลดไม่ให้ต่ำกว่า 0 · เมนูไม่จำกัดจำนวน (NULL) ไม่เปลี่ยน
+        let available = m.available_qty;
+        if (available !== null) {
+          available = Math.max(available + qty, 0);
+          await conn.execute('UPDATE menu_items SET available_qty = ? WHERE id = ?', [available, m.id]);
+        }
+        return { menu_item_id: m.id, menu_name: m.name, unit: m.unit, qty, manual_qty: manual + qty, available_qty: available };
+      });
+      await writeLog(req, 'prep.made', 'menu_items', result.menu_item_id,
+        { menu: result.menu_name, qty: result.qty, available_qty: result.available_qty });
+      return ok(res, result, qty > 0
+        ? `บันทึกทำแล้ว ${result.menu_name} +${qty} ${result.unit}`
+        : `แก้ยอดทำแล้ว ${result.menu_name} ${qty} ${result.unit}`);
     }
 
     case 'cancel_item': {
