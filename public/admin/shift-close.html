@@ -22,6 +22,7 @@
     </div>
 
     <div id="closedNote"></div>
+    <div id="openBillsNote"></div>
 
     <div class="grid grid-2">
       <div class="card">
@@ -33,14 +34,28 @@
             <div class="stat-label" id="sysInfo"></div>
           </div>
         </div>
+        <div class="stat" style="margin-top:16px">
+          <div class="stat-icon"><i data-icon="cash"></i></div>
+          <div>
+            <div class="stat-value" id="floatCash">-</div>
+            <div class="stat-label">เงินทอนตั้งต้น</div>
+          </div>
+        </div>
+        <div class="stat" style="margin-top:16px">
+          <div class="stat-icon"><i data-icon="cash"></i></div>
+          <div>
+            <div class="stat-value" id="expectedCash">-</div>
+            <div class="stat-label">เงินที่ควรมีในลิ้นชัก (เงินสดในระบบ + เงินทอนตั้งต้น)</div>
+          </div>
+        </div>
         <h3 class="card-title" style="margin-top:24px">ตัวช่วยนับแบงก์</h3>
         <div id="bank"></div>
       </div>
 
       <div class="card">
-        <h3 class="card-title">เงินที่นับได้</h3>
+        <h3 class="card-title">เงินที่นับได้ (บาท)</h3>
         <div class="field">
-          <label for="counted">เงินสดที่นับได้ (บาท)</label>
+          <label for="counted">เงินสดที่นับได้ (ยอดเงินในระบบ + เงินทอนตั้งต้น)</label>
           <input class="input" type="number" min="0" step="0.01" id="counted" placeholder="0.00">
         </div>
         <div class="alert alert-wait" id="diffBox">กรอกเงินที่นับได้ เพื่อดูส่วนต่าง</div>
@@ -69,12 +84,13 @@
       const $ = (id) => document.getElementById(id);
       const SHIFT_NAME = { morning: 'กะเช้า', evening: 'กะเย็น' };
       const DENOMS = [1000, 500, 100, 50, 20, 10, 5, 2, 1];   // แบงก์/เหรียญที่ให้นับ
-      let state = { date: '', today: '', shift: 'morning', system_cash: 0 };
+      const OPENING_FLOAT = 3000;   // เงินทอนตั้งต้น (บาท) แก้ตัวเลขตรงนี้ที่เดียว
+      let state = { date: '', today: '', shift: 'morning', system_cash: 0, expected: OPENING_FLOAT };
 
       // ---- ตัวช่วยนับแบงก์: ช่องจำนวนต่อชนิด → รวมเป็นยอดแล้วใส่ช่อง counted ให้ ----
       $('bank').innerHTML = DENOMS.map((d) => `
         <div class="row-between" style="margin-bottom:8px">
-          <span>${d >= 20 ? 'แบงก์' : 'เหรียญ'} ${fmt.num(d)} ฿</span>
+          <span>${d >= 20 ? 'แบงก์' : 'เหรียญ'} ${fmt.num(d)} บาท</span>
           <input class="input bank-qty" type="number" min="0" step="1" data-d="${d}" placeholder="0" style="max-width:100px">
         </div>`).join('');
       document.querySelectorAll('.bank-qty').forEach((el) => {
@@ -94,7 +110,7 @@
           box.textContent = 'กรอกเงินที่นับได้ เพื่อดูส่วนต่าง';
           return;
         }
-        const diff = Math.round((Number($('counted').value) - state.system_cash) * 100) / 100;
+        const diff = Math.round((Number($('counted').value) - state.expected) * 100) / 100;
         if (diff === 0) { box.className = 'alert alert-ok'; box.textContent = 'เงินตรงกับในระบบ'; }
         else if (diff < 0) { box.className = 'alert alert-bad'; box.textContent = 'เงินขาด ' + fmt.baht(-diff); }
         else { box.className = 'alert alert-wait'; box.textContent = 'เงินเกิน ' + fmt.baht(diff); }
@@ -112,11 +128,19 @@
         state = d;
         $('fDate').value = d.date;
         document.querySelectorAll('#shiftTabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.shift === d.shift));
+        // system_cash = เงินสดในระบบล้วนๆ (DB ไม่รวมเงินทอน) · ตอนตรวจเงินค่อยบวกเงินทอนตั้งต้น
+        state.expected = d.system_cash + OPENING_FLOAT;
         $('sysCash').textContent = fmt.baht(d.system_cash);
+        $('floatCash').textContent = fmt.baht(OPENING_FLOAT);
+        $('expectedCash').textContent = fmt.baht(state.expected);
         $('sysInfo').textContent = d.closed ? `${SHIFT_NAME[d.shift]} · ยอดที่บันทึกตอนปิดยอด`
-          : `${SHIFT_NAME[d.shift]} · บิลเงินสด ${fmt.num(d.bill_count)} ใบ`;
+          : `${SHIFT_NAME[d.shift]} · เฉพาะบิลเงินสด ${fmt.num(d.bill_count)} ใบ`;
         $('closedNote').innerHTML = d.closed
           ? `<div class="alert alert-ok" style="margin-bottom:16px">กะนี้ปิดยอดแล้วเมื่อ ${fmt.datetime(d.closed.created_at)} โดย ${fmt.esc(d.closed.full_name)}</div>` : '';
+        // Feedback #1: เตือนบิลที่ยังเปิดอยู่
+        const ob = d.open_bills || [];
+        $('openBillsNote').innerHTML = ob.length
+          ? `<div class="alert alert-bad" style="margin-bottom:16px">ยังมีบิลเปิดอยู่ ${fmt.num(ob.length)} บิล (${ob.map((b) => fmt.esc(b.place || b.bill_no)).join(', ')}) กรุณาเก็บเงินก่อนปิดกะ · <a href="/admin/bills.html">ไปหน้าบิลที่เปิดอยู่</a></div>` : '';
         // บันทึกได้เฉพาะวันนี้ (server ปิดยอดของวันนี้เสมอ)
         const isToday = d.date === d.today;
         $('saveBtn').disabled = !isToday || !!d.closed;
@@ -139,8 +163,10 @@
       // ---- บันทึกปิดยอด ----
       $('saveBtn').onclick = async () => {
         if ($('counted').value === '') return toast('กรุณากรอกเงินที่นับได้', 'warn');
+        const nOpen = (state.open_bills || []).length;
+        if (nOpen && !(await confirmModal(`ยังมีบิลเปิดอยู่ ${nOpen} บิล ยังไม่ได้เก็บเงิน ต้องการปิดยอดกะต่อจริงหรือไม่?`))) return;
         if (!(await confirmModal(`ปิดยอด${SHIFT_NAME[state.shift]} ด้วยเงินที่นับได้ ${fmt.baht($('counted').value)} ?`))) return;
-        const r = await run(() => api.post('shifts', { action: 'close', shift: state.shift, counted_cash: Number($('counted').value) }));
+        const r = await run(() => api.post('shifts', { action: 'close', shift: state.shift, counted_cash: Number($('counted').value), opening_float: OPENING_FLOAT }));
         if (!r) return;
         $('counted').value = '';
         document.querySelectorAll('.bank-qty').forEach((i) => { i.value = ''; });
