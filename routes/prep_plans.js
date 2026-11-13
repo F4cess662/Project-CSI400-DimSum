@@ -219,11 +219,13 @@ router.post('/', handle(async (req, res) => {
             [planDate, it.menu_item_id, it.suggested_qty, it.confirmed_qty, user.id]
           );
 
-          // FR-46: ยอดที่ยืนยัน = จำนวนพร้อมขายเริ่มต้นของวันนั้น (ไม่แตะสถานะเปิด/ปิดขาย is_available)
-          await conn.execute(
-            'UPDATE menu_items SET available_qty = ? WHERE id = ? AND is_deleted = 0',
-            [it.confirmed_qty, it.menu_item_id]
-          );
+          // FR-46: ยอดที่ยืนยันของวันนี้ = จำนวนพร้อมขายเริ่มต้นของวันนี้ (ถ้าดู/ยืนยันวันอื่นในปฏิทิน ไม่ทับยอดพร้อมขายของวันนี้)
+          if (planDate === todayStr) {
+            await conn.execute(
+              'UPDATE menu_items SET available_qty = ? WHERE id = ? AND is_deleted = 0',
+              [it.confirmed_qty, it.menu_item_id]
+            );
+          }
         }
       });
 

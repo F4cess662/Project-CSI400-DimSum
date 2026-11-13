@@ -18,7 +18,7 @@ const STAFF_MENU = [
   { group: 'ครัว', items: [
     { file: 'kitchen.html',         icon: '<i data-icon="flame"></i>', label: 'จอครัว',            roles: ['head_chef', 'manager', 'owner'] },
     { file: 'stock-today.html',     icon: '<i data-icon="box"></i>', label: 'จำนวนพร้อมขาย',     roles: ['head_chef', 'manager', 'owner'] },
-    { file: 'prep-today.html',      icon: '<i data-icon="clipboard"></i>', label: 'ยอดเตรียมวันนี้',    roles: ['head_chef', 'manager', 'owner'] },
+    // { file: 'prep-today.html',      icon: '<i data-icon="clipboard"></i>', label: 'ยอดเตรียมวันนี้',    roles: ['head_chef', 'manager', 'owner'] },
   ]},
   { group: 'ผู้จัดการ', items: [
     { file: 'dashboard.html',       icon: '<i data-icon="chart"></i>', label: 'Dashboard',         roles: ['manager', 'owner'] },

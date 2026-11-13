@@ -165,8 +165,23 @@ async function checkDuplicateOrSimilarName(name, excludeId = null, confirmSimila
   }
 }
 
+
+/**
+ * ซิงก์ตาราง prep_plans ของวันนี้ให้มีครบทุกเมนูที่ไม่ได้ลบ (เพื่อให้หน้า prep-today และ stock-today มีรายการเมนูตรงกันเสมอ)
+ */
+async function ensureTodayPrepPlans() {
+  await query(
+    `INSERT IGNORE INTO prep_plans (plan_date, menu_item_id, suggested_qty, confirmed_qty)
+     SELECT CURDATE(), m.id, COALESCE(m.available_qty, m.lot_size * 4), m.available_qty
+       FROM menu_items m
+       JOIN menu_categories c ON c.id = m.category_id
+      WHERE m.is_deleted = 0 AND c.is_active = 1`
+  );
+}
+
 // GET /api/menus
 router.get('/', requireLogin, handle(async (req, res) => {
+  await ensureTodayPrepPlans();
   // กรณีขอเมนูเดียว ?id=
   if (req.query.id !== undefined && req.query.id !== '') {
     const id = Number(req.query.id);
@@ -283,6 +298,8 @@ router.post('/', maybeUpload, handle(async (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [categoryId, name, description, price, unit, kitchenZone, imagePath, lotSize, availableQty, isAvailable]
       );
+
+      await query('INSERT INTO prep_plans (plan_date, menu_item_id, suggested_qty, confirmed_qty) VALUES (CURDATE(), ?, ?, ?) ON DUPLICATE KEY UPDATE suggested_qty = VALUES(suggested_qty), confirmed_qty = VALUES(confirmed_qty)', [r.insertId, availableQty, availableQty]);
 
       await writeLog(req, 'menu.create', 'menu_items', r.insertId, {
         name,
@@ -487,12 +504,15 @@ router.post('/', maybeUpload, handle(async (req, res) => {
       const r = await query(
         'UPDATE menu_items SET available_qty = 0 WHERE is_deleted = 0 AND available_qty IS NOT NULL'
       );
+      await query(
+        'UPDATE prep_plans SET confirmed_qty = NULL, confirmed_by = NULL WHERE plan_date = CURDATE()'
+      );
       const count = Number((r && r.affectedRows) || 0);
       await writeLog(req, 'menu.reset_stock', 'menu_items', null, { count });
       return ok(
         res,
         { count },
-        `ล้างจำนวนพร้อมขายทุกเมนูเป็น 0 แล้ว (${count} รายการ · หมดชั่วคราว)`
+        `ล้างจำนวนพร้อมขายทุกเมนูเป็น 0 และรีเซ็ตแผนวันนี้แล้ว (${count} รายการ · หมดชั่วคราว)`
       );
     }
 
