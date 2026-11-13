@@ -44,6 +44,7 @@
       const $ = (id) => document.getElementById(id);
       const css = (n) => getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim();
       let zone = '', last = null;
+      const pending = new Map();                       // ตัวเลขที่พิมพ์ค้างไว้ในช่อง "ทำเพิ่ม" (คงไว้ข้ามรอบรีเฟรช)
 
       /** แถบความคืบหน้า: เขียว = ครบเป้า · เหลือง = ยังไม่ครบ (ความกว้างเป็น %) */
       function bar(made, target) {
@@ -62,7 +63,9 @@
         const sumTarget = items.reduce((s, r) => s + r.target_qty, 0);
         const sumMade = items.reduce((s, r) => s + Math.min(r.made_qty, r.target_qty), 0);
         $('sTotal').textContent = fmt.num(items.length);
-        $('sDone').textContent = `${items.filter((r) => r.made_qty >= r.target_qty).length}/${items.length}`;
+        // นับเฉพาะเมนูที่มีเป้า (> 0) · เป้า 0 = ยังไม่ได้ตั้ง ไม่นับว่า "ทำครบ"
+        const withTarget = items.filter((r) => r.target_qty > 0);
+        $('sDone').textContent = `${withTarget.filter((r) => r.made_qty >= r.target_qty).length}/${withTarget.length}`;
         $('sPct').textContent = (sumTarget ? Math.round((sumMade / sumTarget) * 100) : 0) + '%';
 
         $('zoneChips').innerHTML = [['', 'ทุกโซน'], ...Object.entries(ZONES)].map(([k, v]) =>
@@ -71,10 +74,17 @@
         $('rows').innerHTML = items.length ? items.map((r) => `<tr>
             <td class="bold">${fmt.esc(r.menu_name)}</td>
             <td>${zoneChip(r.kitchen_zone)}</td>
-            <td class="num">${fmt.num(r.target_qty)} ${fmt.esc(r.unit)}
+            <td class="num">${r.target_qty > 0 ? `${fmt.num(r.target_qty)} ${fmt.esc(r.unit)}` : '<span class="muted">ยังไม่ตั้งเป้า</span>'}
               <div>${r.confirmed_qty === null ? '<span class="badge badge-off">ยอดแนะนำ</span>' : '<span class="badge badge-ok">ยืนยันแล้ว</span>'}</div></td>
-            <td class="num">${fmt.num(r.made_qty)}</td>
-            <td>${bar(r.made_qty, r.target_qty)}</td>
+            <td class="num">
+              <div class="bold">${fmt.num(r.made_qty)}</div>
+              <div class="caption muted">กรอก ${fmt.num(r.manual_qty)} · ออเดอร์ ${fmt.num(r.order_qty)}</div>
+              ${r.target_qty > 0 ? `<div class="row" style="gap:4px;justify-content:flex-end;flex-wrap:nowrap;margin-top:4px">
+                <input class="input" type="number" step="1" data-made-input="${r.menu_item_id}" value="${pending.get(r.menu_item_id) ?? r.lot_size}"
+                  aria-label="จำนวนที่ทำเพิ่ม ${fmt.esc(r.menu_name)}" style="width:72px">
+                <button class="btn btn-sm" data-made="${r.menu_item_id}" title="บันทึกว่าทำเสร็จเพิ่ม (ใส่ติดลบเพื่อแก้ที่กรอกผิด)">+ บันทึก</button>
+              </div>` : `<div class="caption muted" style="margin-top:4px">ตั้งเป้าที่หน้าแผนเตรียมของก่อน</div>`}</td>
+            <td>${r.target_qty > 0 ? bar(r.made_qty, r.target_qty) : '<span class="small muted">—</span>'}</td>
             <td class="num">${r.is_available === 0 ? badge('soldout') : r.available_qty !== null && r.available_qty <= 0 ? badge('temp_out')
               : r.available_qty === null ? 'ไม่จำกัด' : `${fmt.num(r.available_qty)} ${fmt.esc(r.unit)}`}</td>
           </tr>`).join('')
@@ -86,9 +96,48 @@
         try {
           last = await api.get('kitchen', { action: 'prep_today' });
           $('svcAlert').classList.add('hidden');
+          // กำลังพิมพ์ในช่อง "ทำเพิ่ม" อยู่ → ยังไม่วาดใหม่ (กันตัวเลขที่พิมพ์หาย) รอบถัดไปค่อยวาด
+          if (document.activeElement && document.activeElement.matches('[data-made-input]')) return;
           render(last);
         } catch (e) {
-          $('svcAlert').classList.remove('hidden');      // kitchen-service ดับ: ข้อมูลเดิมยังอยู่บนจอ
+          // แสดงสาเหตุจริงจาก API · ข้อมูลเดิม (ถ้ามี) ยังอยู่บนจอ
+          // 503 = kitchen-service ดับ/ยังไม่ได้เปิด (ต้องรัน npm run dev:all หรือ npm run start:all)
+          $('svcAlert').textContent = e.message || 'โหลดข้อมูลไม่สำเร็จ';
+          $('svcAlert').classList.remove('hidden');
+          if (!last) {
+            // โหลดครั้งแรกไม่สำเร็จ: อย่าค้าง "กำลังโหลด..." ให้บอกว่ากำลังลองใหม่
+            $('rows').innerHTML = `<tr><td colspan="6"><div class="empty">โหลดข้อมูลไม่สำเร็จ
+              <div class="small">${fmt.esc(e.message || '')} · ระบบจะลองใหม่ทุก 10 วินาที</div></div></td></tr>`;
+          }
+        }
+      }
+
+      // ช่อง "ทำเพิ่ม": จำตัวเลขที่พิมพ์ · กด Enter = บันทึก
+      $('rows').addEventListener('input', (e) => {
+        const inp = e.target.closest('[data-made-input]');
+        if (inp) pending.set(Number(inp.dataset.madeInput), inp.value);
+      });
+      $('rows').addEventListener('keydown', (e) => {
+        const inp = e.target.closest('[data-made-input]');
+        if (inp && e.key === 'Enter') saveMade(Number(inp.dataset.madeInput));
+      });
+      $('rows').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-made]');
+        if (btn) saveMade(Number(btn.dataset.made), btn);
+      });
+
+      /** บันทึก "ทำแล้ว +N" → จำนวนพร้อมขายของเมนูเพิ่มตาม แล้วโหลดใหม่ทันที */
+      async function saveMade(menuId, btn) {
+        const inp = document.querySelector(`[data-made-input="${menuId}"]`);
+        const qty = Number(inp && inp.value);
+        if (!Number.isInteger(qty) || qty === 0) { toast('กรอกจำนวนเต็มที่ไม่ใช่ 0', 'error'); return; }
+        if (btn) btn.disabled = true;
+        const done = await run(() => api.post('kitchen', { action: 'prep_made', menu_item_id: menuId, qty }));
+        if (btn) btn.disabled = false;
+        if (done) {
+          pending.delete(menuId);
+          if (inp) inp.blur();
+          await load();
         }
       }
 
