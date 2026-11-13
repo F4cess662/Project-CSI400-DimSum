@@ -10,12 +10,12 @@
   if (!me) return;
 
   const isOwner = me.role_code === 'owner';
-  const UNITS = ['เข่ง', 'ลูก', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา'];
+  const UNITS = ['เข่ง', 'ลูก', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา', 'ขวด'];
   const ZONE_LIST = [
     { code: 'steam', label: 'นึ่ง' },
     { code: 'fry', label: 'ทอด' },
     { code: 'congee_noodle', label: 'จานหลัก' },
-    { code: 'drink_dessert', label: 'เครื่องดื่ม-ของหวาน' },
+    { code: 'drink_dessert', label: 'เครื่องดื่ม' },
   ];
 
   let categories = [];

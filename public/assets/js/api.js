@@ -202,7 +202,7 @@ if (typeof document !== 'undefined' && document.body) {
   new MutationObserver(() => hydrateIcons()).observe(document.body, { childList: true, subtree: true });
 }
 
-const ZONES = { steam: 'นึ่ง', fry: 'ทอด', congee_noodle: 'จานหลัก', drink_dessert: 'เครื่องดื่ม-ของหวาน' };
+const ZONES = { steam: 'นึ่ง', fry: 'ทอด', congee_noodle: 'จานหลัก', drink_dessert: 'เครื่องดื่ม' };
 const ZONE_ICON = { steam: 'dumpling', fry: 'flame', congee_noodle: 'bowl', drink_dessert: 'cup' };
 const ZONE_EMOJI = Object.fromEntries(Object.entries(ZONE_ICON).map(([z, n]) => [z, icon(n)])); // ชื่อเดิม เก็บไว้ให้โค้ดเก่าใช้ได้
 function zoneChip(zone) {

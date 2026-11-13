@@ -21,6 +21,7 @@
   const catSelectEl = document.getElementById('catSelect');
   const searchInputEl = document.getElementById('searchInput');
   const resetStockBtn = document.getElementById('resetStockBtn');
+  const clearBtn = document.getElementById('clearBtn') || document.getElementById('clearFilterBtn');
   const stockRowsEl = document.getElementById('stockRows');
 
   async function loadCategories() {
@@ -115,6 +116,9 @@
               <button type="button" class="btn btn-secondary btn-sm" data-set-stock="${m.id}">
                 กรอกเอง
               </button>
+              <button type="button" class="btn btn-danger btn-sm" data-clear-stock="${m.id}" ${qty <= 0 ? 'disabled' : ''}>
+                ล้าง
+              </button>
             </div>
           </td>
           <td>
@@ -162,17 +166,22 @@
     };
   }
 
+  async function handleResetAllStock() {
+    const yes = await confirmModal(
+      'ทุกเมนูจะเป็น 0 (หมดชั่วคราว) ใช้ตอนเริ่มหลังหยุดยาว · เชฟต้องเติมล็อตก่อนเปิดร้าน',
+      'ล้างจำนวนพร้อมขายทั้งหมด',
+      true
+    );
+    if (!yes) return;
+    const res = await run(() => api.post('menus', { action: 'reset_stock' }));
+    if (res) await loadStock();
+  }
+
   if (resetStockBtn) {
-    resetStockBtn.onclick = async () => {
-      const yes = await confirmModal(
-        'ทุกเมนูจะเป็น 0 (หมดชั่วคราว) ใช้ตอนเริ่มหลังหยุดยาว · เชฟต้องเติมล็อตก่อนเปิดร้าน',
-        'ล้างจำนวนพร้อมขายทั้งหมด',
-        true
-      );
-      if (!yes) return;
-      const res = await run(() => api.post('menus', { action: 'reset_stock' }));
-      if (res) await loadStock();
-    };
+    resetStockBtn.onclick = handleResetAllStock;
+  }
+  if (clearBtn) {
+    clearBtn.onclick = handleResetAllStock;
   }
 
   zoneTabsEl.onclick = (e) => {
@@ -208,6 +217,26 @@
     if (setBtn) {
       const item = menus.find((m) => Number(m.id) === Number(setBtn.dataset.setStock));
       if (item) openSetStockModal(item);
+      return;
+    }
+
+    const clearStockBtn = e.target.closest('[data-clear-stock]');
+    if (clearStockBtn) {
+      const item = menus.find((m) => Number(m.id) === Number(clearStockBtn.dataset.clearStock));
+      if (!item) return;
+      const unit = fmt.esc(item.unit || 'เข่ง');
+      const yes = await confirmModal(
+        `ล้างจำนวนพร้อมขายของ <b>${fmt.esc(item.name)}</b> เป็น 0 ${unit} (หมดชั่วคราว · ลูกค้ายังสั่งได้ รอนานขึ้น) หรือไม่?`,
+        'ล้างจำนวนพร้อมขาย',
+        true
+      );
+      if (!yes) return;
+      const res = await run(() => api.post('menus', {
+        action: 'set_stock',
+        id: item.id,
+        available_qty: 0,
+      }));
+      if (res) await loadStock();
     }
   };
 

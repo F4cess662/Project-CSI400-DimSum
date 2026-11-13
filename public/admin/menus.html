@@ -14,10 +14,10 @@
   <template id="page">
     <div id="roleNotice" class="alert alert-wait hidden" style="margin-bottom:16px"></div>
 
-    <div class="split" style="grid-template-columns: 300px 1fr; gap: 24px; align-items: start">
-      <!-- ด้านซ้าย: การ์ดหมวดหมู่ (ออกแบบตามภาพต้นแบบ ไม่ตัดคำเป็นแนวตั้ง) -->
-      <aside class="card" style="padding: 20px">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:16px">
+    <div class="split" style="grid-template-columns: 240px 1fr; gap: 18px; align-items: start">
+      <!-- ด้านซ้าย: การ์ดหมวดหมู่ -->
+      <aside class="card" style="padding: 16px">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px">
           <h3 class="h3" style="margin:0">หมวด</h3>
           <button type="button" class="btn btn-sm" id="addCategoryBtn">+ เพิ่มหมวด</button>
         </div>
@@ -26,16 +26,16 @@
           <div class="loading">กำลังโหลด...</div>
         </div>
 
-        <div class="caption muted" id="catHint" style="margin-top:16px; padding-top:12px; border-top:1px solid var(--cream-300)">
+        <div class="caption muted" id="catHint" style="margin-top:12px; padding-top:10px; border-top:1px solid var(--cream-300)">
           ลากที่ไอคอน ⋮⋮ เพื่อเรียงลำดับหมวด
         </div>
       </aside>
 
-      <!-- ด้านขวา: แถบค้นหา + กรองราคา + ชิปโซนครัว + การ์ดเมนู -->
-      <section style="min-width:0">
-        <!-- แถวบน: ช่องค้นหา + ช่วงราคา + ปุ่มเพิ่มเมนู (เรียงบรรทัดเดียวสวยงาม) -->
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px">
-          <div style="position:relative; flex:1; min-width:200px">
+      <!-- ด้านขวา: แถบค้นหา + กรองราคา + ชิปโซนครัว + การ์ดเมนู (แถวละ 4 การ์ด ขนาดพอดี รูปเห็นเต็มชัดเจน สมมาตรทุกใบ) -->
+      <section style="min-width:0; max-width:940px">
+        <!-- แถวบน: ช่องค้นหา + ช่วงราคา + ปุ่มล้างตัวกรอง + ปุ่มล้างจำนวนพร้อมขาย + ปุ่มเพิ่มเมนู -->
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px">
+          <div style="position:relative; flex:1; min-width:180px">
             <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--brown-500); display:flex; pointer-events:none">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </span>
@@ -54,7 +54,7 @@
             id="minPriceInput"
             min="0"
             step="1"
-            style="width:104px; padding:0 10px"
+            style="width:96px; padding:0 10px"
             placeholder="ราคาต่ำสุด"
           >
           <span class="muted">–</span>
@@ -64,15 +64,18 @@
             id="maxPriceInput"
             min="0"
             step="1"
-            style="width:104px; padding:0 10px"
+            style="width:96px; padding:0 10px"
             placeholder="ราคาสูงสุด"
           >
-          <button type="button" class="btn btn-secondary btn-sm" id="clearFilterBtn" style="height:44px; padding:0 12px">ล้าง</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="clearFilterBtn" style="height:44px; padding:0 12px">ล้างตัวกรอง</button>
+          <button type="button" class="btn btn-danger btn-sm" id="resetStockBtn" style="height:44px; padding:0 12px">
+            <i data-icon="refresh"></i> ล้างจำนวนพร้อมขาย
+          </button>
           <button type="button" class="btn" id="addMenuBtn">+ เพิ่มเมนู</button>
         </div>
 
         <!-- แถวชิปกรองโซนครัว (Feedback #4: โจ๊ก-เส้น → จานหลัก) -->
-        <div class="row" id="zoneFilterBar" style="gap:8px; margin-bottom:16px">
+        <div class="row" id="zoneFilterBar" style="gap:8px; margin-bottom:14px">
           <button type="button" class="chip active" data-zone="all">ทุกโซน</button>
           <button type="button" class="chip zone-steam" data-zone="steam"><span class="zone-dot"></span>นึ่ง</button>
           <button type="button" class="chip zone-fry" data-zone="fry"><span class="zone-dot"></span>ทอด</button>
@@ -80,8 +83,8 @@
           <button type="button" class="chip zone-drink_dessert" data-zone="drink_dessert"><span class="zone-dot"></span>เครื่องดื่ม</button>
         </div>
 
-        <!-- Grid การ์ดเมนู -->
-        <div id="menuGrid" class="grid grid-3" style="gap:16px">
+        <!-- Grid การ์ดเมนู: แถวละ 4 การ์ด ความกว้างการ์ดไม่ยืดเกินไป (max 220px ต่อใบ) รูปสูงขึ้นเห็นชัดเต็มรูป -->
+        <div id="menuGrid" class="grid grid-4" style="grid-template-columns: repeat(4, minmax(0, 220px)); gap:14px; align-items:stretch; justify-content:start">
           <div class="loading" style="grid-column: 1 / -1">กำลังโหลดรายการเมนู...</div>
         </div>
       </section>
@@ -99,20 +102,20 @@
       if (!me) return;
 
       const isOwner = me.role_code === 'owner';
-      const UNITS = ['เข่ง', 'ลูก', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา'];
+      const UNITS = ['เข่ง', 'ลูก', 'ชิ้น', 'ที่', 'จาน', 'ชาม', 'หม้อ', 'ชุด', 'แก้ว', 'ถ้วย', 'กา','ขวด'];
       const ZONE_LIST = [
         { code: 'steam', label: 'นึ่ง' },
         { code: 'fry', label: 'ทอด' },
         { code: 'congee_noodle', label: 'จานหลัก' },
-        { code: 'drink_dessert', label: 'เครื่องดื่ม-ของหวาน' },
+        { code: 'drink_dessert', label: 'เครื่องดื่ม' },
       ];
 
       // SVG ไอคอนเส้นสะอาดแบบ Lucide
       const SVG = {
         grip: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>',
-        edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>',
-        hide: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>',
-        trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
+        edit: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>',
+        hide: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>',
+        trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
       };
 
       function getCatEmoji(name = '') {
@@ -135,6 +138,7 @@
       const roleNoticeEl = document.getElementById('roleNotice');
       const addCategoryBtn = document.getElementById('addCategoryBtn');
       const addMenuBtn = document.getElementById('addMenuBtn');
+      const resetStockBtn = document.getElementById('resetStockBtn');
       const catHintEl = document.getElementById('catHint');
       const categoryListEl = document.getElementById('categoryList');
       const menuGridEl = document.getElementById('menuGrid');
@@ -180,10 +184,10 @@
           `<button
              type="button"
              data-cat="all"
-             style="width:100%; height:44px; padding:0 14px; border-radius:12px; border:0; display:flex; align-items:center; justify-content:space-between; cursor:pointer; font:600 16px 'Sarabun',sans-serif; background:${allActive ? 'var(--red-50)' : 'transparent'}; color:${allActive ? 'var(--red-600)' : 'var(--brown-900)'}; margin-bottom:4px"
+             style="width:100%; height:40px; padding:0 12px; border-radius:10px; border:0; display:flex; align-items:center; justify-content:space-between; cursor:pointer; font:600 15px 'Sarabun',sans-serif; background:${allActive ? 'var(--red-50)' : 'transparent'}; color:${allActive ? 'var(--red-600)' : 'var(--brown-900)'}; margin-bottom:2px"
            >
              <span>ทั้งหมด</span>
-             <span style="font-size:14px; font-weight:600; color:${allActive ? 'var(--red-600)' : 'var(--brown-500)'}">${fmt.num(allMenusCount)}</span>
+             <span style="font-size:13px; font-weight:600; color:${allActive ? 'var(--red-600)' : 'var(--brown-500)'}">${fmt.num(allMenusCount)}</span>
            </button>`,
           ...categories.map((cat, idx) => {
             const active = String(selectedCategoryId) === String(cat.id);
@@ -193,9 +197,9 @@
                 class="cat-item"
                 draggable="${isOwner ? 'true' : 'false'}"
                 data-cat-idx="${idx}"
-                style="height:42px; padding:0 8px; border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:nowrap; background:${active ? 'var(--red-50)' : 'transparent'}; transition:background .15s"
+                style="height:38px; padding:0 6px; border-radius:10px; display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:nowrap; background:${active ? 'var(--red-50)' : 'transparent'}; transition:background .15s"
               >
-                <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1">
+                <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1">
                   ${isOwner ? `
                     <span
                       style="color:var(--brown-500); cursor:grab; display:inline-flex; align-items:center; flex:none"
@@ -205,28 +209,28 @@
                   <button
                     type="button"
                     data-cat="${cat.id}"
-                    style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; border:0; background:transparent; padding:0; cursor:pointer; text-align:left; font:${active ? '600' : '400'} 16px 'Sarabun',sans-serif; color:${active ? 'var(--red-600)' : 'var(--brown-900)'}"
+                    style="display:flex; align-items:center; gap:6px; min-width:0; flex:1; border:0; background:transparent; padding:0; cursor:pointer; text-align:left; font:${active ? '600' : '400'} 15px 'Sarabun',sans-serif; color:${active ? 'var(--red-600)' : 'var(--brown-900)'}"
                   >
-                    <span style="font-size:18px; line-height:1; flex:none">${emoji}</span>
+                    <span style="font-size:16px; line-height:1; flex:none">${emoji}</span>
                     <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${fmt.esc(cat.name)}</span>
                   </button>
                 </div>
 
                 <div style="display:flex; align-items:center; gap:2px; flex:none">
-                  <span style="font-size:14px; font-weight:${active ? '600' : '400'}; color:${active ? 'var(--red-600)' : 'var(--brown-500)'}; min-width:22px; text-align:right; margin-right:4px">
+                  <span style="font-size:13px; font-weight:${active ? '600' : '400'}; color:${active ? 'var(--red-600)' : 'var(--brown-500)'}; min-width:20px; text-align:right; margin-right:2px">
                     ${fmt.num(cat.menu_count || 0)}
                   </span>
                   ${isOwner ? `
                     <button
                       type="button"
                       data-cat-edit="${cat.id}"
-                      style="width:28px; height:28px; border-radius:8px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
+                      style="width:26px; height:26px; border-radius:6px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
                       title="แก้ไขหมวด ${fmt.esc(cat.name)}"
                     >${SVG.edit}</button>
                     <button
                       type="button"
                       data-cat-del="${cat.id}"
-                      style="width:28px; height:28px; border-radius:8px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
+                      style="width:26px; height:26px; border-radius:6px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
                       title="ซ่อนหมวด ${fmt.esc(cat.name)}"
                     >${SVG.hide}</button>
                   ` : ''}
@@ -296,65 +300,68 @@
           const isLow = !isSoldOut && !isTempOut && qty <= lotSize;
           const unitText = fmt.esc(m.unit || 'เข่ง');
 
-          let stockBadge = `<span class="badge badge-ok">คงเหลือ ${fmt.num(qty)} ${unitText}</span>`;
+          let stockBadge = `<span class="badge badge-ok" style="font-size:11px; height:22px; padding:0 7px">คงเหลือ ${fmt.num(qty)} ${unitText}</span>`;
           if (isSoldOut || isTempOut) {
-            stockBadge = isSoldOut ? `<span class="badge badge-bad">หมด (ปิดขาย)</span>` : `<span class="badge badge-wait">หมดชั่วคราว (0 ${unitText})</span>`;
+            stockBadge = isSoldOut
+              ? `<span class="badge badge-bad" style="font-size:11px; height:22px; padding:0 7px">หมด (ปิดขาย)</span>`
+              : `<span class="badge badge-wait" style="font-size:11px; height:22px; padding:0 7px">หมดชั่วคราว (0 ${unitText})</span>`;
           } else if (isLow) {
-            stockBadge = `<span class="badge badge-wait">ใกล้หมด ${fmt.num(qty)} ${unitText}</span>`;
+            stockBadge = `<span class="badge badge-wait" style="font-size:11px; height:22px; padding:0 7px">ใกล้หมด ${fmt.num(qty)} ${unitText}</span>`;
           }
 
           return `
-            <article class="menu-card zone-${fmt.esc(m.kitchen_zone)} zone-border ${isSoldOut ? 'soldout' : ''}" style="padding:16px">
-              <div class="menu-img" style="margin:0 0 12px 0">
+            <article class="menu-card zone-${fmt.esc(m.kitchen_zone)} zone-border ${isSoldOut ? 'soldout' : ''}" style="padding:11px; height:100%; display:flex; flex-direction:column">
+              <!-- กรอบรูปสัดส่วนใกล้เคียงรูปต้นฉบับ (สูง 172px บนการ์ดกว้าง ~215px) เห็นอาหารเต็มเข่งชัดเจน และสมมาตรเท่ากันทุกใบ -->
+              <div class="menu-img" style="margin:0 0 8px 0; width:100%; height:172px; aspect-ratio:auto; flex:0 0 172px; overflow:hidden; border-radius:10px">
                 ${menuImage(m)}
                 ${isSoldOut ? badge('soldout', 'หมด') : isTempOut ? badge('temp_out') : ''}
               </div>
 
-              <div class="menu-body" style="padding:0">
+              <div class="menu-body" style="padding:0; display:flex; flex-direction:column; flex:1; gap:2px">
                 <!-- ชื่อเมนู + ชิปโซนครัว -->
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px">
-                  <div class="menu-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${fmt.esc(m.name)}</div>
-                  <span class="badge badge-off" style="color:var(--brown-900); font-weight:400; flex:none">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:4px">
+                  <div class="menu-name" style="font-size:14.5px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="${fmt.esc(m.name)}">${fmt.esc(m.name)}</div>
+                  <span class="badge badge-off" style="color:var(--brown-900); font-weight:400; font-size:10.5px; height:20px; padding:0 6px; flex:none">
                     ${zoneChip(m.kitchen_zone)}
                   </span>
                 </div>
 
                 <!-- คำอธิบาย -->
-                <div class="menu-desc" style="margin-bottom:10px">${fmt.esc(m.description || m.category_name || 'เมนูติ่มซำทำสดใหม่ทุกวัน')}</div>
+                <div class="menu-desc" style="font-size:12px; line-height:1.35; min-height:16px; margin-bottom:5px">${fmt.esc(m.description || m.category_name || 'เมนูติ่มซำทำสดใหม่ทุกวัน')}</div>
 
-                <!-- แถวราคา/หน่วย และขนาดล็อต (Feedback #7: ใช้ fmt.baht แทน ฿) -->
-                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding-bottom:10px; border-bottom:1.5px solid var(--cream-300)">
-                  <div>
+                <!-- แถวราคา/หน่วย และขนาดล็อต -->
+                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:4px; padding-bottom:6px; border-bottom:1.5px solid var(--cream-300)">
+                  <div style="font-size:13.5px">
                     <span class="price">${fmt.baht(m.price)}</span>
-                    <span class="small muted"> / ${unitText}</span>
+                    <span class="caption muted"> / ${unitText}</span>
                   </div>
-                  <span class="caption muted">1 ล็อต = ${fmt.num(lotSize)} ${unitText}</span>
+                  <span class="caption muted" style="font-size:11px">1 ล็อต = ${fmt.num(lotSize)} ${unitText}</span>
                 </div>
 
                 <!-- แถวจัดการจำนวนพร้อมขาย (+1 ล็อต / กรอกเอง) -->
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:10px 0; border-bottom:1.5px solid var(--cream-300)">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:4px; flex-wrap:nowrap; padding:6px 0; border-bottom:1.5px solid var(--cream-300)">
                   ${stockBadge}
-                  <div style="display:flex; align-items:center; gap:4px; flex:none">
+                  <div style="display:flex; align-items:center; gap:3px; flex:none">
                     <button
                       type="button"
                       class="btn btn-secondary btn-sm"
                       data-add-lot="${m.id}"
-                      style="height:28px; padding:0 8px; font-size:12px"
+                      style="height:24px; padding:0 6px; font-size:11px"
                       title="เติม +1 ล็อต (+${lotSize} ${unitText})"
                     >+1 ล็อต</button>
                     <button
                       type="button"
                       class="btn btn-secondary btn-sm"
                       data-set-stock="${m.id}"
-                      style="height:28px; padding:0 8px; font-size:12px"
+                      style="height:24px; padding:0 6px; font-size:11px"
                       title="กรอกจำนวนคงเหลือเอง (${unitText})"
                     >กรอกเอง</button>
                   </div>
                 </div>
 
                 <!-- แถวล่าง: สวิตช์เปิดขาย + ปุ่มแก้ไข/ลบไอคอนสะอาด -->
-                <div style="display:flex; align-items:center; justify-content:space-between; padding-top:10px">
-                  <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; font-weight:600">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding-top:6px; margin-top:auto">
+                  <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; font-weight:600">
                     <span class="switch">
                       <input type="checkbox" data-toggle-avail="${m.id}" ${m.is_available ? 'checked' : ''}>
                       <span></span>
@@ -363,17 +370,17 @@
                   </label>
 
                   ${isOwner ? `
-                    <div style="display:flex; align-items:center; gap:4px">
+                    <div style="display:flex; align-items:center; gap:2px">
                       <button
                         type="button"
                         data-edit-menu="${m.id}"
-                        style="width:32px; height:32px; border-radius:8px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
+                        style="width:26px; height:26px; border-radius:6px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
                         title="แก้ไขเมนู ${fmt.esc(m.name)}"
                       >${SVG.edit}</button>
                       <button
                         type="button"
                         data-del-menu="${m.id}"
-                        style="width:32px; height:32px; border-radius:8px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
+                        style="width:26px; height:26px; border-radius:6px; border:0; background:transparent; color:var(--brown-500); display:inline-flex; align-items:center; justify-content:center; cursor:pointer"
                         title="ลบเมนู ${fmt.esc(m.name)}"
                       >${SVG.trash}</button>
                     </div>
@@ -631,9 +638,22 @@
         };
       }
 
+      /* ---------- ฟังก์ชันล้างจำนวนพร้อมขายทั้งหมดเป็น 0 (หมดชั่วคราว) ---------- */
+      async function handleResetAllStock() {
+        const yes = await confirmModal(
+          'ทุกเมนูจะเป็น 0 (หมดชั่วคราว) ใช้ตอนเริ่มหลังหยุดยาว · เชฟต้องเติมล็อตก่อนเปิดร้าน',
+          'ล้างจำนวนพร้อมขายทั้งหมด',
+          true
+        );
+        if (!yes) return;
+        const res = await run(() => api.post('menus', { action: 'reset_stock' }));
+        if (res) await loadMenus();
+      }
+
       /* ---------- Event Listeners ---------- */
       addCategoryBtn.onclick = () => openCategoryModal();
       addMenuBtn.onclick = () => openMenuModal();
+      if (resetStockBtn) resetStockBtn.onclick = handleResetAllStock;
 
       const triggerFilter = () => {
         clearTimeout(searchTimer);

@@ -4,6 +4,109 @@
 
 // สไลด์แบนเนอร์อยู่ที่ /assets/js/banner-slider.js (ดึงจาก /api/banners)
 
+/* ---------- บังคับขนาดรูปภาพและ Layout การ์ดเมนูให้เท่ากันและตรงแนวเดียวกันทุกใบ ---------- */
+(function injectUniformMenuCardStyle() {
+    if (document.getElementById('mb-uniform-card-style')) return;
+    const style = document.createElement('style');
+    style.id = 'mb-uniform-card-style';
+    style.textContent = `
+        .mb-grid {
+            align-items: stretch !important;
+        }
+        .mb-item {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+            padding-bottom: 12px !important;
+        }
+        .mb-item .mb-photo {
+            position: relative !important;
+            width: 100% !important;
+            height: 170px !important;
+            aspect-ratio: auto !important;
+            flex: 0 0 170px !important;
+            overflow: hidden !important;
+            background: #f7ead0 !important;
+        }
+        .mb-item .mb-photo img {
+            position: absolute !important;
+            inset: 0 !important;
+            display: block !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            object-position: center !important;
+        }
+        .mb-item h3 {
+            margin: 10px 12px 2px !important;
+            color: #4a2a17 !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            line-height: 1.35 !important;
+            min-height: calc(1.35em * 2) !important;
+            display: -webkit-box !important;
+            -webkit-line-clamp: 2 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+        }
+        .mb-item .mb-desc {
+            margin: 0 12px 4px !important;
+            color: #9a7a58 !important;
+            font-size: 13px !important;
+            line-height: 1.4 !important;
+            min-height: 1.4em !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .mb-item .mb-price {
+            margin: auto 12px 0 !important;
+            padding-top: 6px !important;
+            color: #8f3528 !important;
+            font-size: 18px !important;
+            font-weight: 700 !important;
+            line-height: 1.2 !important;
+        }
+        .mb-set-grid {
+            align-items: stretch !important;
+        }
+        .mb-set {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+        }
+        .mb-set .mb-photo {
+            position: relative !important;
+            width: 100% !important;
+            height: 190px !important;
+            aspect-ratio: 4 / 3 !important;
+            flex: 0 0 190px !important;
+            overflow: hidden !important;
+            background: #f7ead0 !important;
+        }
+        .mb-set .mb-photo img {
+            position: absolute !important;
+            inset: 0 !important;
+            display: block !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            object-position: center !important;
+        }
+        .mb-set-body {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 !important;
+        }
+        .mb-set-price {
+            margin-top: auto !important;
+            padding-top: 12px !important;
+            align-self: flex-end !important;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
 /* ---------- เมนู ---------- */
 const SET_CATEGORY = 'ชุดเซ็ต';
 
@@ -27,12 +130,12 @@ function soldOutTag(m) {
     return Number(m.is_sold_out) === 1 ? '<span class="mb-tag">หมด</span>' : '';
 }
 
-/** การ์ดเมนูทั่วไป: รูป · ชื่อ · คำอธิบาย · "45 บาท / เข่ง" */
+/** การ์ดเมนูทั่วไป: รูปขนาดเท่ากันทุกใบ · ชื่อ · คำอธิบาย · "45 บาท / เข่ง" ตรงแนวเดียวกันเสมอ */
 function itemCard(m) {
     return `<article class="mb-item ${Number(m.is_sold_out) === 1 ? 'is-out' : ''}">
         <div class="mb-photo">${photo(m)}${soldOutTag(m)}</div>
-        <h3>${esc(m.name)}</h3>
-        ${m.description ? `<p class="mb-desc">${esc(m.description)}</p>` : ''}
+        <h3 title="${esc(m.name)}">${esc(m.name)}</h3>
+        <p class="mb-desc">${m.description ? esc(m.description) : '&nbsp;'}</p>
         <p class="mb-price">${baht(m.price)} <span>/ ${esc(m.unit || 'จาน')}</span></p>
     </article>`;
 }
