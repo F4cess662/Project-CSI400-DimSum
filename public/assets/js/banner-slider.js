@@ -10,6 +10,12 @@
     let current = 0;
     let timer = null;
 
+    // ย้ายปุ่มลูกศรออกมาไว้ที่กรอบ (.details) ไม่ให้ถูก overflow ของสไลด์ตัด → วางคร่อมขอบกรอบได้
+    const frame = slider.parentElement;
+    if (frame && frame.classList.contains('details')) {
+        slider.querySelectorAll('.slider-btn').forEach((b) => frame.appendChild(b));
+    }
+
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const slides = () => track.querySelectorAll('.slide');
 
@@ -31,7 +37,7 @@
         dotsBox.innerHTML = Array.from({ length: n }, (_, i) =>
             `<button type="button" class="dot ${i === 0 ? 'active' : ''}" data-i="${i}" aria-label="แสดงรูปที่ ${i + 1}"></button>`).join('');
         // รูปเดียวไม่ต้องมีปุ่มเลื่อน/จุด
-        slider.querySelectorAll('.slider-btn').forEach((b) => { b.hidden = n < 2; });
+        (frame || slider).querySelectorAll('.slider-btn').forEach((b) => { b.hidden = n < 2; });
         dotsBox.hidden = n < 2;
     }
 
