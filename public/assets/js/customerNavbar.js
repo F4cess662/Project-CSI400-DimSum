@@ -105,13 +105,29 @@ const FOOTER_ICONS = {
 };
 const footerIcon = (name) => `<svg class="footer-icon" viewBox="0 0 24 24" aria-hidden="true">${FOOTER_ICONS[name]}</svg>`;
 
+/** เบอร์ในฐานข้อมูลเก็บเป็นตัวเลขล้วน (เช่น 0993211234 · ใช้สร้าง QR พร้อมเพย์) → แสดงแบบมีขีด 099-321-1234 */
+function formatPhone(phone) {
+    const d = String(phone || "").replace(/\D/g, "");
+    if (/^0[689]\d{8}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;   // มือถือ 10 หลัก
+    if (/^02\d{7}$/.test(d)) return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`;         // กรุงเทพฯ 9 หลัก
+    if (/^0\d{8}$/.test(d)) return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;          // ต่างจังหวัด 9 หลัก
+    return String(phone || "");
+}
+
+/** ส่วนอื่นของหน้าที่แสดงเบอร์ร้าน: ใส่ class js-shop-phone (ข้อความ) / js-shop-tel (ลิงก์โทร) แล้วไฟล์นี้เติมให้ */
+function fillShopPhone(phone) {
+    if (!phone) return;
+    document.querySelectorAll(".js-shop-phone").forEach((el) => { el.textContent = formatPhone(phone); });
+    document.querySelectorAll("a.js-shop-tel").forEach((a) => { a.href = "tel:" + String(phone).replace(/[^\d+]/g, ""); });
+}
+
 function footerHtml(s) {
     const tel = String(s.phone || "").replace(/[^\d+]/g, "");
     const lineUrl = "https://line.me/R/ti/p/" + encodeURIComponent(SHOP_LINE_ID);
     const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((s.shop_name || "") + " " + (s.address || ""));
     const year = new Date().getFullYear() + 543;
     const contact = [
-        s.phone && `<li><a href="tel:${footerEsc(tel)}">${footerIcon("phone")}<span><small>โทร</small>${footerEsc(s.phone)}</span></a></li>`,
+        s.phone && `<li><a href="tel:${footerEsc(tel)}">${footerIcon("phone")}<span><small>โทร</small>${footerEsc(formatPhone(s.phone))}</span></a></li>`,
         `<li><a href="${lineUrl}" target="_blank" rel="noopener">${footerIcon("line")}<span><small>LINE</small>${footerEsc(SHOP_LINE_ID)}</span></a></li>`,
         s.email && `<li><a href="mailto:${footerEsc(s.email)}">${footerIcon("mail")}<span><small>อีเมล</small>${footerEsc(s.email)}</span></a></li>`,
         s.address && `<li><a href="${mapUrl}" target="_blank" rel="noopener">${footerIcon("pin")}<span><small>ที่อยู่ (ดูแผนที่)</small>${footerEsc(s.address)}</span></a></li>`,
@@ -122,7 +138,7 @@ function footerHtml(s) {
         <section class="footer-col footer-about">
             <a href="/" class="footer-logo-row" aria-label="หน้าแรก">
                 <span class="logo footer-logo"></span>
-                <span><b>${footerEsc(s.shop_name || "นึ่งสุข")}</b><small>NUENG SUK DIM SUM</small></span>
+                <span><b>${footerEsc(s.shop_name || "นึ่งสุข")}</b><small>NUENG SUK DIMSUM</small></span>
             </a>
             <h2>เกี่ยวกับเรา</h2>
             <p>ร้านติ่มซำนึ่งสดใหม่ทุกวัน ซาลาเปา ขนมจีบ ฮะเก๋า และเมนูจานหลักสไตล์จีน
@@ -162,17 +178,20 @@ function footerHtml(s) {
 }
 
 async function renderSiteFooter() {
-    let footer = document.querySelector("footer.footer");
+    // ใช้ footer เดิมของหน้า (มี class หรือไม่มีก็ได้) · ไม่มีเลยค่อยสร้างใหม่ → ไม่เกิด footer ซ้อนสองอัน
+    let footer = document.querySelector("footer.footer") || document.querySelector("body > footer");
     if (!footer) {
         footer = document.createElement("footer");
-        footer.className = "footer";
         document.body.appendChild(footer);
     }
-    footer.classList.add("site-footer");
+    footer.classList.add("footer", "site-footer");
     footer.innerHTML = footerHtml(FOOTER_DEFAULTS);   // แสดงทันที แล้วค่อยแทนด้วยข้อมูลจริงของร้าน
     try {
         const res = await fetch("/api/settings").then((r) => r.json());
-        if (res.success && res.data) footer.innerHTML = footerHtml({ ...FOOTER_DEFAULTS, ...res.data });
+        if (res.success && res.data) {
+            footer.innerHTML = footerHtml({ ...FOOTER_DEFAULTS, ...res.data });
+            fillShopPhone(res.data.phone);
+        }
     } catch (e) {
         console.warn("โหลดข้อมูลร้านสำหรับ footer ไม่สำเร็จ ใช้ค่ามาตรฐาน", e);
     }
