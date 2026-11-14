@@ -61,43 +61,93 @@
 
   /* ---------- ข้อความแสดงผล ---------- */
   const placeOf = (it) => it.vip_room_name || it.table_codes || it.bill_no;
-  const STEP = {
-    waiting: { to: 'cooking', label: '<i data-icon="flame"></i> เริ่มทำ' },
-    cooking: { to: 'ready', label: '<i data-icon="check"></i> พร้อมเสิร์ฟ' },
-    ready:   { to: 'done', label: '<i data-icon="serve"></i> เสิร์ฟแล้ว' },
-  };
 
-  function card(it) {
-    const late = it.wait_minutes >= LATE_MINUTES;
+  /**
+   * ปุ่มเปลี่ยนสถานะ สีต่างกันตามขั้น (สีแดงเก็บไว้ให้ "ยกเลิก" อย่างเดียว)
+   *   รอ → เริ่มทำ = สีไม้ไผ่ · กำลังทำ → พร้อมเสิร์ฟ = ส้มอำพัน · พร้อม → เสิร์ฟแล้ว = เขียว
+   * style.css ยังไม่มี class สีเหล่านี้ จึงใส่สีแบบ inline ไปก่อน
+   * (ขอคนที่ 1 เพิ่ม .btn-step-start / .btn-step-ready / .btn-step-serve แล้วเปลี่ยนมาใช้ class)
+   */
+  const STEP = {
+    waiting: { to: 'cooking', label: '<i data-icon="flame"></i> เริ่มทำ', all: 'เริ่มทำทั้งหมด',
+      style: 'background:var(--bamboo);color:var(--brown-900);box-shadow:0 4px 0 var(--cream-300)' },
+    cooking: { to: 'ready', label: '<i data-icon="check"></i> พร้อมเสิร์ฟ', all: 'พร้อมเสิร์ฟทั้งหมด',
+      style: 'background:var(--wait);color:var(--white);box-shadow:0 4px 0 var(--brown-900)' },
+    ready:   { to: 'done', label: '<i data-icon="serve"></i> เสิร์ฟแล้ว', all: 'เสิร์ฟทั้งหมด',
+      style: 'background:var(--ok);color:var(--white);box-shadow:0 4px 0 var(--brown-900)' },
+  };
+  const ORDER = ['waiting', 'cooking', 'ready'];
+
+  /* ---------- จัดกลุ่มการ์ด: ตามรอบที่สั่ง (โต๊ะ + รอบ) หรือตามโต๊ะ (ทุกรอบของบิลเดียวกัน) ---------- */
+  const GROUP_KEY = 'kitchenGroup';
+  let groupBy = 'round';
+  try { if (localStorage.getItem(GROUP_KEY) === 'table') groupBy = 'table'; } catch { /* ไม่มี storage ก็ใช้ค่าเริ่มต้น */ }
+
+  /** items เรียงตามเวลาสั่งอยู่แล้ว → กลุ่มเรียงตามรายการที่รอนานสุดของกลุ่ม */
+  function groupItems(items) {
+    const groups = new Map();
+    for (const it of items) {
+      const key = groupBy === 'table' ? `b${it.bill_id}` : `b${it.bill_id}-r${it.round_no}`;
+      if (!groups.has(key)) groups.set(key, { key, place: placeOf(it), items: [] });
+      groups.get(key).items.push(it);
+    }
+    return [...groups.values()];
+  }
+
+  /** 1 รายการในการ์ด: ชื่อ × จำนวน + ป้ายสถานะ + ปุ่ม */
+  function itemRow(it, showRound) {
     const step = STEP[it.status];
     const skipQc = it.kitchen_zone === 'drink_dessert' && it.status === 'cooking';
+    const late = it.wait_minutes >= LATE_MINUTES;
     const actions = viewMode ? '' : `
-      <div class="stack" style="gap:8px;margin-top:12px">
-        <button class="btn btn-lg btn-block" data-act="status" data-id="${it.id}" data-to="${step.to}">${step.label}</button>
-        ${skipQc ? `<button class="btn btn-secondary btn-lg btn-block" data-act="status" data-id="${it.id}" data-to="done">ข้าม QC · เสิร์ฟเลย</button>` : ''}
-        <button class="btn btn-danger btn-sm btn-block" data-act="cancel" data-id="${it.id}">ยกเลิกรายการ</button>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <button class="btn" style="${step.style}" data-act="status" data-id="${it.id}" data-to="${step.to}">${step.label}</button>
+        ${skipQc ? `<button class="btn btn-secondary" data-act="status" data-id="${it.id}" data-to="done">ข้าม QC · เสิร์ฟเลย</button>` : ''}
+        <button class="btn btn-danger btn-sm" data-act="cancel" data-id="${it.id}">ยกเลิก</button>
       </div>`;
-    return `<div class="card order-card zone-border zone-${it.kitchen_zone}${late ? ' late' : ''}">
-      <div class="row-between">
-        <span class="tile-code">${esc(placeOf(it))}</span>
-        <span class="${late ? 'bold text-red' : 'muted'}">${late ? '<i data-icon="clock"></i> ' : ''}${it.wait_minutes} นาที</span>
-      </div>
-      <div class="item-name bold">${esc(it.menu_name)}</div>
-      <div class="${viewMode ? 'h1' : 'h2'}">× ${it.remaining_qty} ${esc(it.unit)}</div>
-      ${it.cancelled_qty ? `<div class="small text-red">ยกเลิกแล้ว ${it.cancelled_qty} ${esc(it.unit)}</div>` : ''}
-      <div class="row-between" style="margin-top:8px">
+    return `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--cream-300)">
+      <div class="row-between" style="align-items:flex-start;flex-wrap:nowrap">
+        <div>
+          <div class="item-name bold">${!zone ? `<span class="zone-dot zone-${it.kitchen_zone}" title="${esc(ZONES[it.kitchen_zone] || '')}"></span> ` : ''}${esc(it.menu_name)}</div>
+          <div class="${viewMode ? 'h2' : 'bold'}">× ${it.remaining_qty} ${esc(it.unit)}
+            ${it.cancelled_qty ? `<span class="small text-red">(ยกเลิกแล้ว ${it.cancelled_qty})</span>` : ''}</div>
+          ${showRound || late ? `<div class="small ${late ? 'text-red bold' : 'muted'}">${showRound ? `รอบ ${it.round_no} · ` : ''}รอ ${it.wait_minutes} นาที</div>` : ''}
+        </div>
         ${badge(it.status)}
-        <span class="small muted">รอบ ${it.round_no} · สั่ง ${fmt.time(it.created_at)}</span>
       </div>
-      ${!viewMode && !zone ? `<div style="margin-top:8px">${zoneChip(it.kitchen_zone)}</div>` : ''}
       ${actions}
+    </div>`;
+  }
+
+  function card(g) {
+    const oldest = g.items[0];
+    const late = g.items.some((it) => it.wait_minutes >= LATE_MINUTES);
+    const zones = [...new Set(g.items.map((it) => it.kitchen_zone))];
+    const rounds = [...new Set(g.items.map((it) => it.round_no))];
+    // ปุ่มทำทั้งการ์ด: เลื่อนทุกรายการที่อยู่ขั้นแรกสุดของการ์ดไปขั้นถัดไป (มีตั้งแต่ 2 รายการขึ้นไป)
+    const first = ORDER.find((st) => g.items.some((it) => it.status === st));
+    const firstIds = g.items.filter((it) => it.status === first).map((it) => it.id);
+    const bulk = !viewMode && firstIds.length > 1
+      ? `<button class="btn btn-block" style="${STEP[first].style};margin-top:12px" data-act="bulk" data-ids="${firstIds.join(',')}" data-to="${STEP[first].to}">
+          ${STEP[first].all} (${firstIds.length})</button>` : '';
+    return `<div class="card order-card${zones.length === 1 ? ` zone-border zone-${zones[0]}` : ''}${late ? ' late' : ''}">
+      <div class="row-between">
+        <span class="tile-code">${esc(g.place)}</span>
+        <span class="${late ? 'bold text-red' : 'muted'}">${late ? '<i data-icon="clock"></i> ' : ''}${oldest.wait_minutes} นาที</span>
+      </div>
+      <div class="small muted">${groupBy === 'table' ? `รอบ ${rounds.join(', ')}` : `รอบ ${oldest.round_no} · สั่ง ${fmt.time(oldest.created_at)}`}
+        · ${g.items.length} รายการ</div>
+      ${bulk}
+      ${g.items.map((it) => itemRow(it, groupBy === 'table' && rounds.length > 1)).join('')}
     </div>`;
   }
 
   /* ---------- วาดหน้า ---------- */
   function renderTabs(d) {
+    // แท็บที่เลือกใช้สีไม้ไผ่แทนสีแดง (สีแดง = ยกเลิก/ปิด)
     const tab = (key, label, count) => `
-      <button class="btn btn-lg ${zone === key ? '' : 'btn-secondary'}" data-zone="${key}">
+      <button class="btn btn-lg ${zone === key ? '' : 'btn-secondary'}" data-zone="${key}"
+        ${zone === key ? `style="${STEP.waiting.style}"` : ''}>
         ${key ? `<span class="zone-dot zone-${key}"></span>` : ''}${label}
         <span class="badge ${count ? 'badge-wait' : 'badge-off'}">${count}</span>
       </button>`;
@@ -111,9 +161,9 @@
     const items = zone ? d.items.filter((it) => it.kitchen_zone === zone) : d.items;
     if (viewMode) $('viewPending').textContent = `ค้าง ${items.length} รายการ`;
     else renderTabs(d);
-    $('cards').className = items.length ? 'grid grid-4' : '';      // ไม่มีรายการ: ข้อความกลางจอเต็มความกว้าง
+    $('cards').className = items.length ? 'grid grid-3' : '';      // ไม่มีรายการ: ข้อความกลางจอเต็มความกว้าง
     $('cards').innerHTML = items.length
-      ? items.map(card).join('')
+      ? groupItems(items).map(card).join('')
       : `<div class="empty"><div class="empty-icon"><i data-icon="dumpling"></i></div><h3>ยังไม่มีรายการ</h3></div>`;
   }
 
@@ -161,6 +211,25 @@
     };
   }
 
+  // ปุ่มสลับการจัดกลุ่ม (ใช้ได้ทั้งจอหัวหน้าเชฟและจอโซน) · จำค่าที่เลือกไว้ในเครื่อง
+  const groupTabs = document.createElement('div');
+  groupTabs.className = 'tabs';
+  groupTabs.style.marginBottom = '12px';
+  const drawGroupTabs = () => {
+    groupTabs.innerHTML = `<button class="tab${groupBy === 'round' ? ' active' : ''}" data-group="round">แยกตามรอบที่สั่ง</button>
+      <button class="tab${groupBy === 'table' ? ' active' : ''}" data-group="table">รวมตามโต๊ะ</button>`;
+  };
+  drawGroupTabs();
+  $('svcAlert').before(groupTabs);
+  groupTabs.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-group]');
+    if (!b) return;
+    groupBy = b.dataset.group;
+    try { localStorage.setItem(GROUP_KEY, groupBy); } catch { /* ไม่มี storage ก็ไม่เป็นไร */ }
+    drawGroupTabs();
+    if (last) render(last);
+  });
+
   if (!viewMode) {
     $('zoneTabs').addEventListener('click', (e) => {
       const b = e.target.closest('[data-zone]');
@@ -171,6 +240,18 @@
     $('cards').addEventListener('click', async (e) => {
       const b = e.target.closest('[data-act]');
       if (!b || !last) return;
+      if (b.dataset.act === 'bulk') {
+        // ทำทั้งการ์ด: ส่งทีละรายการ (API เปลี่ยนสถานะทีละรายการ) แล้วโหลดใหม่ครั้งเดียว
+        b.disabled = true;
+        const ids = b.dataset.ids.split(',').map(Number);
+        let okCount = 0;
+        for (const id of ids) {
+          try { await api.post('kitchen', { action: 'update_status', item_id: id, status: b.dataset.to }); okCount++; } catch (err) { toast(err.message, 'error'); }
+        }
+        if (okCount) toast(`อัปเดต ${okCount} รายการแล้ว`);
+        load();
+        return;
+      }
       const it = last.items.find((x) => x.id === Number(b.dataset.id));
       if (!it) return;
       if (b.dataset.act === 'cancel') return openCancel(it);
