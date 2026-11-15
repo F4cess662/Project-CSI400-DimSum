@@ -67,6 +67,24 @@ function shopStatus(s) {
   return { open: false, text: 'ปิดอยู่' };
 }
 
+/* สีประจำหมวด (ใช้ตัวแปรสีที่ style.css มีอยู่แล้ว) · หมวดประจำ role = หมวดที่เปิดไว้ตอนแรก */
+const GROUP_STYLE = {
+  'หน้าร้าน':    { fg: 'var(--brown-900)',   bg: 'var(--cream-200)' },
+  'ครัว':        { fg: 'var(--doing)',      bg: 'var(--doing-bg)' },
+  'ผู้จัดการ':    { fg: 'var(--wait)',        bg: 'var(--wait-bg)' },
+  'เจ้าของร้าน': { fg: 'var(--ok)', bg: 'var(--ok-bg)' },
+};
+const GROUP_BY_ROLE = { staff: 'หน้าร้าน', head_chef: 'ครัว', manager: 'ผู้จัดการ', owner: 'เจ้าของร้าน' };
+
+/* จำสถานะเปิด/พับของแต่ละหมวดไว้ในเบราว์เซอร์ แยกตามผู้ใช้ (คนละบัญชีไม่ปนกัน) */
+const sideKey = (user) => 'dimsum_sidebar_' + user.id;
+function loadSideState(user) {
+  try { return JSON.parse(localStorage.getItem(sideKey(user))) || {}; } catch { return {}; }
+}
+function saveSideState(user, state) {
+  try { localStorage.setItem(sideKey(user), JSON.stringify(state)); } catch { /* เบราว์เซอร์ไม่ให้เก็บ ก็ใช้งานต่อได้ */ }
+}
+
 /**
  * เรียกบนสุดของทุกหน้าพนักงาน:
  *   const me = await initStaffPage({ title: 'ผังโต๊ะ', roles: ['staff','manager','owner'], perm: 'payment' });
@@ -82,12 +100,22 @@ async function initStaffPage({ title, roles, perm } = {}) {
   window.SHOP = settings;
 
   const current = location.pathname.split('/').pop();
+  const sideState = loadSideState(user);
   const menuHtml = STAFF_MENU.map((g) => {
     const items = g.items.filter((it) => canSee(user, it));
     if (!items.length) return '';
-    return `<div class="side-group">${g.group}</div>` + items.map((it) =>
-      `<a class="side-link ${it.file === current ? 'active' : ''}" href="/admin/${it.file}">
-         <span class="side-icon">${it.icon}</span>${it.label}</a>`).join('');
+    const c = GROUP_STYLE[g.group] || GROUP_STYLE['เจ้าของร้าน'];
+    // เปิดไว้ตอนแรกเฉพาะหมวดประจำ role · ถ้าเคยกดเปิด/พับเองแล้ว ใช้ตามที่จำไว้
+    const open = g.group in sideState ? sideState[g.group] : g.group === GROUP_BY_ROLE[user.role_code];
+    return `<div class="side-section" data-group="${g.group}">
+      <button type="button" class="side-group-head" aria-expanded="${open}"
+        style="display:flex;align-items:center;justify-content:space-between;width:100%;margin:var(--s3) 0 var(--s1);padding:8px var(--s3);border:0;border-left:4px solid ${c.fg};border-radius:var(--r-sm);background:${c.bg};color:${c.fg};font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">
+        <span>${g.group}</span><span class="side-caret" style="transition:transform .15s;${open ? '' : 'transform:rotate(-90deg)'}">▾</span></button>
+      <div class="side-items ${open ? '' : 'hidden'}">` +
+      items.map((it) =>
+        `<a class="side-link ${it.file === current ? 'active' : ''}" href="/admin/${it.file}">
+           <span class="side-icon">${it.icon}</span>${it.label}</a>`).join('') +
+      `</div></div>`;
   }).join('');
 
   const st = settings.morning_open ? shopStatus(settings) : null;
@@ -117,6 +145,17 @@ async function initStaffPage({ title, roles, perm } = {}) {
         <main class="content" id="content"></main>
       </div>
     </div>`;
+
+  document.querySelectorAll('.side-group-head').forEach((btn) => {
+    btn.onclick = () => {
+      const sec = btn.parentElement;
+      const hidden = sec.querySelector('.side-items').classList.toggle('hidden');   // true = ตอนนี้พับอยู่
+      btn.setAttribute('aria-expanded', String(!hidden));
+      btn.querySelector('.side-caret').style.transform = hidden ? 'rotate(-90deg)' : '';
+      sideState[sec.dataset.group] = !hidden;
+      saveSideState(user, sideState);
+    };
+  });
 
   document.getElementById('logoutBtn').onclick = async () => {
     await api.post('auth', { action: 'logout' }).catch(() => {});
