@@ -1733,3 +1733,17 @@ html {
         right: -12px;
     }
 }
+
+/* ข้อความ "NUENG SUK DIM SUM" ใต้ชื่อร้านใน footer อยู่บรรทัดเดียว (Feedback: เดิมตัดเป็น 2 บรรทัด) */
+.footer-logo-row small {
+    display: block;
+    white-space: nowrap;
+    letter-spacing: 1.5px;
+}
+
+/* กันสไตล์ footer เดิมของหน้าอื่น (เช่น memberAccount.css ใส่ footer{display:flex;padding;...}) มาทำให้ footer กลางเพี้ยน */
+.site-footer {
+    display: block;
+    gap: 0;
+    padding: 0;
+}
